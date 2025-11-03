@@ -19,10 +19,11 @@ const ConversationCard = memo(({
 
   // Memoize formatted date
   const formattedDate = useMemo(() => {
-    if (!conversation?.start_time) return 'N/A';
+    const dateStr = conversation?.session_start || conversation?.start_time || conversation?.created_at;
+    if (!dateStr) return 'N/A';
     
     try {
-      const date = new Date(conversation.start_time);
+      const date = new Date(dateStr);
       if (isNaN(date.getTime())) return 'Invalid Date';
       
       return date.toLocaleString('en-US', {
@@ -36,11 +37,11 @@ const ConversationCard = memo(({
       console.error('Date formatting error:', error);
       return 'Invalid Date';
     }
-  }, [conversation?.start_time]);
+  }, [conversation?.session_start, conversation?.start_time, conversation?.created_at]);
 
   // Memoize risk level styling
   const riskLevelStyle = useMemo(() => {
-    const risk = conversation?.risk_level?.toLowerCase() || 'low';
+    const risk = (conversation?.situationLevel || conversation?.risk_level || 'low').toLowerCase();
     const styles = {
       low: { color: '#10b981', backgroundColor: '#d1fae5' },
       medium: { color: '#f59e0b', backgroundColor: '#fef3c7' },
@@ -48,7 +49,7 @@ const ConversationCard = memo(({
       critical: { color: '#dc2626', backgroundColor: '#fecaca' }
     };
     return styles[risk] || styles.low;
-  }, [conversation?.risk_level]);
+  }, [conversation?.situationLevel, conversation?.risk_level]);
 
   // Memoize status styling
   const statusStyle = useMemo(() => {
@@ -71,15 +72,16 @@ const ConversationCard = memo(({
 
   // Memoize conversation summary
   const conversationSummary = useMemo(() => {
-    if (!conversation?.summary) return 'No summary available';
+    const summary = conversation?.summary || conversation?.situation || 'No summary available';
+    if (summary === 'No summary available') return summary;
     
     const maxLength = 150;
-    if (conversation.summary.length <= maxLength) {
-      return conversation.summary;
+    if (summary.length <= maxLength) {
+      return summary;
     }
     
-    return conversation.summary.substring(0, maxLength) + '...';
-  }, [conversation?.summary]);
+    return summary.substring(0, maxLength) + '...';
+  }, [conversation?.summary, conversation?.situation]);
 
   // Memoized event handlers
   const handleSelect = useCallback(() => {
@@ -160,7 +162,7 @@ const ConversationCard = memo(({
       <div className="conversation-card-header">
         <div className="conversation-card-title">
           <h3>{patientName}</h3>
-          <span className="conversation-id">#{conversation?.session_id}</span>
+          <span className="conversation-id">#{conversation?.id || conversation?.session_id}</span>
         </div>
         <div className="conversation-card-meta">
           <span className="conversation-date">{formattedDate}</span>
@@ -179,7 +181,7 @@ const ConversationCard = memo(({
             className="risk-badge"
             style={riskLevelStyle}
           >
-            {conversation?.risk_level || 'Low'} Risk
+            {conversation?.situationLevel || conversation?.risk_level || 'Low'} Risk
           </span>
         </div>
 
@@ -187,9 +189,9 @@ const ConversationCard = memo(({
           <p>{conversationSummary}</p>
         </div>
 
-        {conversation?.current_situation && (
+        {conversation?.situation && (
           <div className="conversation-card-situation">
-            <strong>Situation:</strong> {conversation.current_situation}
+            <strong>Situation:</strong> {conversation.situation}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import { mapEventTypeToDisplay, getEventTypeLabel, getEventTypeIcon } from '../utils/eventTypeMapper'
 import ConversationReportModal from './ConversationReportModal'
 import './ConversationDetailModal.css'
 
@@ -9,16 +10,48 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   const [showReportModal, setShowReportModal] = useState(false)
   const [reportData, setReportData] = useState(null)
   const [generatingReport, setGeneratingReport] = useState(false)
+  const [fullConversation, setFullConversation] = useState(null)
 
   useEffect(() => {
-    if (conversation && isOpen) {
-      setEvents(conversation.events || [])
+    const fetchConversationDetails = async () => {
+      if (!conversation || !isOpen) return
+      
+      try {
+        setLoading(true)
+        const response = await axios.get(`/api/conversations/${conversation.id}`)
+        
+        if (response.data.success) {
+          const detailedConversation = response.data.conversation
+          setFullConversation(detailedConversation)
+          // Get events from the detailed conversation
+          setEvents(detailedConversation.events || detailedConversation.recent_events || [])
+        } else {
+          // Fallback to conversation from props
+          setEvents(conversation.events || [])
+          setFullConversation(conversation)
+        }
+      } catch (err) {
+        console.error('Failed to load conversation details:', err)
+        // Fallback to conversation from props
+        setEvents(conversation.events || [])
+        setFullConversation(conversation)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [conversation, isOpen])
+    
+    if (conversation && isOpen) {
+      // Fetch full conversation details including events
+      fetchConversationDetails()
+    }
+  }, [conversation?.id, isOpen])
 
   if (!isOpen || !conversation) {
     return null
   }
+
+  // Use fullConversation if available, fallback to conversation from props
+  const displayConversation = fullConversation || conversation
 
   const formatDateTime = (dateString) => {
     // Handle null, undefined, or invalid date strings
@@ -79,13 +112,30 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     return configs[situation] || configs['Regolare']
   }
 
-  const getEventTypeConfig = (type) => {
+  const getEventTypeConfig = (eventType, severity) => {
+    // Map backend event_type to display type
+    const displayType = mapEventTypeToDisplay(eventType, severity)
+    
     const configs = {
       'INFO': { label: 'Info', class: 'event-info', icon: 'ℹ️' },
       'WARNING': { label: 'Attenzione', class: 'event-warning', icon: '⚠️' },
       'ALERT': { label: 'Allarme', class: 'event-alert', icon: '🚨' }
     }
-    return configs[type] || configs['INFO']
+    
+    const config = configs[displayType] || configs['INFO']
+    
+    // Enhance with backend-specific info if available
+    if (eventType) {
+      const backendIcon = getEventTypeIcon(eventType)
+      const backendLabel = getEventTypeLabel(eventType)
+      return {
+        ...config,
+        icon: backendIcon,
+        label: backendLabel
+      }
+    }
+    
+    return config
   }
 
   const handleStopAndReport = async () => {
@@ -184,40 +234,49 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const generateMockReport = () => {
+    const displayConv = displayConversation
     const createdDate = formatDateTime(
-      conversation.created_at || 
-      conversation.createdAt || 
-      conversation.session_start
+      displayConv.created_at || 
+      displayConv.createdAt || 
+      displayConv.session_start
     )
-    console.log('Mock report - conversation data:', conversation)
-    console.log('Mock report - patientInfo:', conversation.patientInfo)
+    console.log('Mock report - conversation data:', displayConv)
+    console.log('Mock report - patientInfo:', displayConv.patientInfo)
     return {
-      id: conversation.id,
-      patientId: conversation.patientId || conversation.patient_id,
-      patientInfo: conversation.patientInfo || { 
-        name: `Paziente ${conversation.patientId || conversation.patient_id || conversation.id}`,
+      id: displayConv.id,
+      patientId: displayConv.patientId || displayConv.patient_id,
+      patientInfo: displayConv.patientInfo || { 
+        name: `Paziente ${displayConv.patientId || displayConv.patient_id || displayConv.id}`,
         age: 45, 
         gender: 'M',
         pathology: 'Non specificata'
       },
       conversationDate: createdDate.date,
       conversationTime: createdDate.time,
-      duration: conversation.duration || conversation.session_duration_minutes || 0,
-      status: conversation.status,
-      situation: conversation.situation || 'Normale',
-      situationLevel: conversation.situationLevel || 'low',
+      duration: displayConv.duration || displayConv.session_duration_minutes || 0,
+      status: displayConv.status,
+      situation: displayConv.situation || 'Normale',
+      situationLevel: displayConv.situationLevel || 'low',
       events: events,
       summary: {
         totalEvents: events.length,
-        warningEvents: events.filter(e => e.type === 'WARNING').length,
-        alertEvents: events.filter(e => e.type === 'ALERT').length,
-        riskLevel: conversation.situationLevel || 'low',
-        recommendations: getRecommendations(conversation.situationLevel || 'low')
+        warningEvents: events.filter(e => {
+          const eventType = e.event_type || e.type
+          const severity = e.severity
+          return mapEventTypeToDisplay(eventType, severity) === 'WARNING'
+        }).length,
+        alertEvents: events.filter(e => {
+          const eventType = e.event_type || e.type
+          const severity = e.severity
+          return mapEventTypeToDisplay(eventType, severity) === 'ALERT'
+        }).length,
+        riskLevel: displayConv.situationLevel || 'low',
+        recommendations: getRecommendations(displayConv.situationLevel || 'low')
       },
       analysis: {
         keyTopics: ['famiglia', 'autolesionismo', 'supporto emotivo'],
         emotionalTone: 'preoccupato',
-        riskFactors: conversation.situationLevel === 'high' ? ['gesti pericolosi', 'termini auto-lesivi'] : [],
+        riskFactors: displayConv.situationLevel === 'high' ? ['gesti pericolosi', 'termini auto-lesivi'] : [],
         positiveAspects: ['apertura al dialogo', 'ricerca di aiuto']
       },
       generatedAt: new Date().toISOString()
@@ -250,11 +309,11 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const createdDate = formatDateTime(
-    conversation.created_at || 
-    conversation.createdAt || 
-    conversation.session_start
+    displayConversation.created_at || 
+    displayConversation.createdAt || 
+    displayConversation.session_start
   )
-  const situationConfig = getSituationConfig(conversation.situation, conversation.situationLevel)
+  const situationConfig = getSituationConfig(displayConversation.situation, displayConversation.situationLevel)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -275,23 +334,23 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
               <span className="patient-badge">1</span>
             </div>
             <div className="patient-details">
-              <h3>{conversation.patientInfo?.name || `Paziente ${conversation.patientId}`}</h3>
+              <h3>{displayConversation.patientInfo?.name || `Paziente ${displayConversation.patientId || displayConversation.patient_id}`}</h3>
               <div className="patient-meta">
-                <span>Età: {conversation.patientInfo?.age || 'N/A'} anni</span>
-                <span>Sesso: {conversation.patientInfo?.gender || 'N/A'}</span>
-                <span>Patologia: {conversation.patientInfo?.pathology || 'N/A'}</span>
+                <span>Età: {displayConversation.patientInfo?.age || 'N/A'} anni</span>
+                <span>Sesso: {displayConversation.patientInfo?.gender || 'N/A'}</span>
+                <span>Patologia: {displayConversation.patientInfo?.pathology || 'N/A'}</span>
               </div>
             </div>
           </div>
           
           <div className="conversation-info">
             <h4>Conversazione del {createdDate.date}</h4>
-            <p>Inizio ore {createdDate.time} - Stato: <span className="status-text">{conversation.status}</span> (Durata {conversation.duration} min)</p>
+            <p>Inizio ore {createdDate.time} - Stato: <span className="status-text">{displayConversation.status}</span> (Durata {displayConversation.duration || displayConversation.session_duration_minutes || 0} min)</p>
           </div>
         </div>
 
         {/* Alert Box */}
-        {conversation.situation !== 'Regolare' && (
+        {displayConversation.situation !== 'Regolare' && (
           <div className={`alert-box ${situationConfig.class}`}>
             <div className="alert-icon">{situationConfig.icon}</div>
             <div className="alert-content">
@@ -367,7 +426,9 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 {events.length > 0 ? (
                   events.map((event, index) => {
                     const eventDate = formatDateTime(event.timestamp)
-                    const eventConfig = getEventTypeConfig(event.type)
+                    // Support both old 'type' and new 'event_type' fields
+                    const eventType = event.event_type || event.type
+                    const eventConfig = getEventTypeConfig(eventType, event.severity)
                     
                     return (
                       <tr key={index} className={`event-row ${eventConfig.class}`}>
@@ -380,10 +441,10 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                           </div>
                         </td>
                         <td className="event-description">
-                          {event.description}
+                          {event.description || event.message_content || event.message || 'No description available'}
                         </td>
                         <td className="event-details">
-                          {event.details || '-'}
+                          {event.details || event.context || '-'}
                         </td>
                       </tr>
                     )

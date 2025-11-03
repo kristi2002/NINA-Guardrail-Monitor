@@ -62,11 +62,7 @@ This document outlines all improvements made to the OFH Dashboard project.
 - **Created**: `IMPROVEMENTS.md` - This file
 - **Impact**: Comprehensive documentation for developers and users
 
-### 9. Testing Infrastructure
-- **Created**: `frontend/jest.config.js` for Jest testing
-- **Impact**: Proper test configuration ready for writing tests
-
-### 10. Rate Limiting
+### 9. Rate Limiting
 - **Added**: Flask-Limiter integration for API protection
 - **Configured**: Global limits (200/day, 50/hour)
 - **Storage**: Uses Redis in production, memory in development

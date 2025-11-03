@@ -4,9 +4,8 @@ import MetricCard from '../components/MetricCard'
 import GuardrailChart from '../components/GuardrailChart'
 import ConversationList from '../components/ConversationList'
 import ConversationStatus from '../components/ConversationStatus'
-import ConversationEventLog from '../components/ConversationEventLog'
 import Sidebar from '../components/Sidebar'
-import socketService from '../services/socketService'
+import notificationService from '../services/notificationService'
 import './Dashboard.css'
 
 function Dashboard() {
@@ -19,60 +18,45 @@ function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [updateCounter, setUpdateCounter] = useState(0)
   const [realtimeActive, setRealtimeActive] = useState(false)
-  const [selectedConversationForEvents, setSelectedConversationForEvents] = useState(null)
-  const [eventLogOpen, setEventLogOpen] = useState(false)
 
   useEffect(() => {
     fetchMetrics()
     fetchAlerts()
     fetchConversations()
     
-    // Connect to WebSocket
-    socketService.connect('http://localhost:5000')
+    // Connect to WebSocket via notification service
+    notificationService.connect().then(() => {
+      console.log('✅ Connected to notification service')
+    }).catch(err => {
+      console.error('❌ Failed to connect to notification service:', err)
+    })
     
-    // Listen for real-time metric updates
-    socketService.on('metrics_update', (data) => {
-      console.log('📡 Received real-time metrics update')
+    // Subscribe to notifications (covers guardrail events)
+    const unsubscribeNotification = notificationService.subscribe('notification', (data) => {
+      console.log('🔔 Received notification:', data)
+      // Refresh alerts when new event arrives
+      fetchAlerts()
+      fetchConversations()
+    })
+    
+    // Subscribe to alert escalations (for high/critical events)
+    const unsubscribeEscalation = notificationService.subscribe('alert_escalation', (data) => {
+      console.log('🚨 Alert escalated:', data)
+      fetchAlerts()
+      fetchConversations()
+    })
+    
+    // Subscribe to system status updates
+    const unsubscribeStatus = notificationService.subscribe('system_status', (data) => {
+      console.log('📡 System status update:', data)
       setMetrics(data)
       setLastUpdated(new Date())
       setRealtimeActive(true)
     })
     
-    // Listen for new guardrail events
-    socketService.on('new_guardrail_event', (event) => {
-      console.log('🚨 New guardrail event:', event)
-      // Refresh alerts when new event arrives
-      fetchAlerts()
-    })
-    
-    // Listen for alert updates (status changes, assignments, etc.)
-    socketService.on('alert_updated', (data) => {
-      console.log('🔔 Alert updated:', data)
-      // Refresh alerts to reflect the changes
-      fetchAlerts()
-    })
-    
-    // Listen for new comments on alerts
-    socketService.on('alert_comment_added', (data) => {
-      console.log('💬 New comment on alert:', data)
-      // You can show a notification or update the UI accordingly
-    })
-    
-    // Listen for conversation updates
-    socketService.on('conversation_update', (data) => {
-      console.log('💬 Conversation updated:', data)
-      fetchConversations()
-    })
-    
-    // Listen for new conversations
-    socketService.on('new_conversation', (data) => {
-      console.log('🆕 New conversation started:', data)
-      fetchConversations()
-    })
-    
     // Fallback: Refresh metrics every 30 seconds if no real-time updates
     const interval = setInterval(() => {
-      if (!socketService.isConnected()) {
+      if (!notificationService.isConnected) {
         fetchMetrics()
         fetchAlerts()
         fetchConversations()
@@ -87,12 +71,9 @@ function Dashboard() {
     return () => {
       clearInterval(interval)
       clearInterval(timeInterval)
-      socketService.removeAllListeners('metrics_update')
-      socketService.removeAllListeners('new_guardrail_event')
-      socketService.removeAllListeners('alert_updated')
-      socketService.removeAllListeners('alert_comment_added')
-      socketService.removeAllListeners('conversation_update')
-      socketService.removeAllListeners('new_conversation')
+      unsubscribeNotification()
+      unsubscribeEscalation()
+      unsubscribeStatus()
     }
   }, [])
 
@@ -231,15 +212,6 @@ function Dashboard() {
         onAlertsRefresh={fetchAlerts}
       />
 
-      {/* Conversation Event Log Modal */}
-      <ConversationEventLog
-        conversationId={selectedConversationForEvents}
-        isOpen={eventLogOpen}
-        onClose={() => {
-          setEventLogOpen(false)
-          setSelectedConversationForEvents(null)
-        }}
-      />
     </div>
   )
 }

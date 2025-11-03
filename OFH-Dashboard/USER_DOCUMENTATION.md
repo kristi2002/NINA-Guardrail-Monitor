@@ -13,7 +13,7 @@ OFH Dashboard is a real-time monitoring and analytics platform for the NINA Guar
 1. Navigate to the login page at `http://localhost:3001/login`
 2. Enter your credentials:
    - **Username**: `admin`
-   - **Password**: `admin`
+   - **Password**: `admin123`
 3. Click "Sign In"
 
 ### Dashboard Overview

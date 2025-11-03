@@ -7,7 +7,7 @@ This guide helps you complete all pre-production tasks step by step.
 ### 1. Change All Default Passwords
 
 **Default passwords** (change these immediately!):
-- Admin: `admin` / `admin`
+- Admin: `admin` / `admin123`
 - Operator: `operator` / `operator123`
 
 **How to change passwords:**

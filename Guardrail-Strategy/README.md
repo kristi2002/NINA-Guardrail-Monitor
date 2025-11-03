@@ -63,11 +63,7 @@ Service starts on `http://localhost:5001`
 
 ### 4. Test It
 
-```bash
-python test_service.py
-```
-
-Or with curl:
+Test with curl:
 
 ```bash
 curl -X POST http://localhost:5001/validate \
@@ -154,7 +150,6 @@ Guardrail-Strategy/
 ├── validators.py       # Guardrails-AI integration
 ├── kafka_handler.py    # on_fail handler for validators
 ├── kafka_producer.py   # Kafka producer for events
-├── test_service.py     # Test suite
 ├── requirements.txt    # Python dependencies
 ├── env.example         # Environment variables template
 └── README.md           # This file
@@ -212,18 +207,22 @@ def send_message_safely(message, conversation_id):
 
 ## Testing
 
-Run the test suite:
+You can test the service manually using curl or HTTP clients:
 
 ```bash
-python -m pytest test_service.py -v
-```
+# Test with clean message
+curl -X POST http://localhost:5001/validate \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello, world!", "conversation_id": "test-123"}'
 
-Tests cover:
-- Health check endpoint
-- Validation with clean messages (pass)
-- Validation with toxic messages (fail)
-- Validation with PII (fail)
-- Error handling for bad requests
+# Test with PII (should fail)
+curl -X POST http://localhost:5001/validate \
+  -H "Content-Type: application/json" \
+  -d '{"message": "My email is test@example.com", "conversation_id": "test-456"}'
+
+# Test health check
+curl http://localhost:5001/health
+```
 
 ## Environment Variables
 

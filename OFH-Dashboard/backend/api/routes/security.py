@@ -79,7 +79,7 @@ def get_security_overview():
                 recent_incidents.append({
                     'id': event.event_id,  # Fixed: was alert.alert_id
                     'type': event.event_type or 'security_alert',  # Fixed: was alert.alert_type
-                    'severity': event.severity,
+                    'severity': (event.severity or 'low').lower(),
                     'timestamp': event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),  # Fixed: was alert.detected_at
                     'status': event.status,
                     'description': event.message_content or 'Security alert detected'  # Fixed: was alert.title
@@ -92,7 +92,7 @@ def get_security_overview():
                     recent_incidents.append({
                         'id': event.event_id,
                         'type': event.event_type,
-                        'severity': event.severity,
+                        'severity': (event.severity or 'low').lower(),
                         'timestamp': event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),
                         'status': event.status,
                         'description': event.message_content or 'Guardrail event detected'  # Fixed: was event.title or event.description
@@ -164,7 +164,7 @@ def get_security_threats():
                 threat = {
                     'id': event.event_id,  # Fixed: was alert.alert_id
                     'type': event.event_type,  # Use event_type as threat type
-                    'severity': event.severity,
+                    'severity': (event.severity or 'low').lower(),
                     'conversation_id': event.conversation_id,
                     'detected_at': event.created_at.isoformat() if event.created_at else datetime.now().isoformat(),  # Fixed: was alert.detected_at
                     'status': event.status,

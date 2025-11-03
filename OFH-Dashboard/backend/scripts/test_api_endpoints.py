@@ -12,7 +12,7 @@ from datetime import datetime
 # Configuration
 BASE_URL = "http://localhost:5000"
 TEST_USERNAME = "admin"  # Update with your test user
-TEST_PASSWORD = "admin"  # Update with your test user password
+TEST_PASSWORD = "admin123"  # Update with your test user password
 
 # Colors for terminal output
 class Colors:
@@ -460,3 +460,4 @@ if __name__ == "__main__":
     success = tester.run_all_tests()
     
     sys.exit(0 if success else 1)
+

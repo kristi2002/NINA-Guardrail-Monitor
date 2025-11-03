@@ -193,8 +193,10 @@ def get_conversation_details(conversation_id):
             recent_events.append({
                 'id': event.id,
                 'type': event.event_type or 'guardrail_violation',
-                'severity': event.severity or 'low',
+                'event_type': event.event_type or 'guardrail_violation',
+                'severity': (event.severity or 'low').lower(),
                 'message': event.message_content or 'No message',  # Correct column
+                'description': event.message_content or 'No message',
                 'timestamp': event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),
                 'confidence': getattr(event, 'confidence_score', 0.0) or 0.0
             })

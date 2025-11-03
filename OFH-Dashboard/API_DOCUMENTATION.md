@@ -307,14 +307,31 @@ Get all active alerts.
   "success": true,
   "alerts": [
     {
-      "id": 1,
-      "type": "Content Safety",
+      "id": "1",
+      "event_type": "privacy_violation_prevented",
       "severity": "high",
-      "status": "active",
-      "message": "Potential harmful content detected",
-      "created_at": "2024-01-01T00:00:00Z"
+      "status": "pending",
+      "message": "Guardrail Failure: PII detected",
+      "created_at": "2024-01-01T00:00:00Z",
+      "conversation_id": "conv-abc-123",
+      "priority": "high",
+      "assigned_to": "operator_001",
+      "escalated": false,
+      "escalation_level": 0,
+      "patient_info": {
+        "name": "Paziente X",
+        "age": 45,
+        "gender": "M"
+      },
+      "tags": ["pii", "violation"],
+      "response_time": 0,
+      "resolution_time": null
     }
-  ]
+  ],
+  "total": 45,
+  "critical_count": 12,
+  "active_count": 23,
+  "timestamp": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -323,18 +340,48 @@ Get all active alerts.
 #### GET /api/conversations
 Get all active conversations.
 
+**Query Parameters:**
+- `status`: Filter by status (optional)
+- `limit`: Number of results (default: 50)
+- `offset`: Pagination offset (default: 0)
+
 **Response (200):**
 ```json
 {
   "success": true,
   "conversations": [
     {
-      "id": 1,
+      "id": "conv-abc-123",
       "patient_id": "pat_123",
-      "status": "active",
-      "started_at": "2024-01-01T00:00:00Z"
+      "patientInfo": {
+        "name": "Paziente X",
+        "age": 45,
+        "gender": "M",
+        "pathology": "Depression"
+      },
+      "status": "ACTIVE",
+      "situation": "Normal monitoring",
+      "situationLevel": "low",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T01:00:00Z",
+      "session_start": "2024-01-01T00:00:00Z",
+      "session_end": null,
+      "session_duration_minutes": 60,
+      "total_messages": 45,
+      "guardrail_violations": 2,
+      "statistics": {
+        "total_events": 2,
+        "events_by_severity": {
+          "critical": 0,
+          "high": 1,
+          "medium": 1,
+          "low": 0
+        },
+        "guardrail_violations": 2
+      }
     }
-  ]
+  ],
+  "total": 25
 }
 ```
 
@@ -366,7 +413,22 @@ Check API health status.
 {
   "status": "healthy",
   "timestamp": "2024-01-01T00:00:00Z",
-  "version": "1.0.0"
+  "version": "2.0.0",
+  "components": {
+    "database": {
+      "status": "healthy",
+      "type": "sqlalchemy"
+    },
+    "cache": {
+      "status": "healthy",
+      "type": "memory"
+    },
+    "kafka": {
+      "status": "healthy",
+      "active_topics": 4,
+      "active_consumers": 2
+    }
+  }
 }
 ```
 

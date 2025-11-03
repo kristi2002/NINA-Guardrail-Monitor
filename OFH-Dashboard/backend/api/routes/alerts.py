@@ -106,7 +106,7 @@ def get_alerts():
                 'id': str(alert.id),
                 'conversation_id': alert.conversation_id or 'unknown',
                 'event_type': alert.event_type or 'unknown',  # Fixed: was alert.alert_type
-                'severity': alert.severity or 'low',
+                'severity': (alert.severity or 'low').lower(),
                 'message': alert.message_content or 'No description',  # Fixed: was alert.description
                 'status': alert.status or 'unknown',
                 'priority': alert.priority or 'low',

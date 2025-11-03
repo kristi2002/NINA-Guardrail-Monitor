@@ -19,10 +19,11 @@ const AlertCard = memo(({
 
   // Memoize formatted date
   const formattedDate = useMemo(() => {
-    if (!alert?.triggered_at) return 'N/A';
+    const dateStr = alert?.triggered_at || alert?.created_at;
+    if (!dateStr) return 'N/A';
     
     try {
-      const date = new Date(alert.triggered_at);
+      const date = new Date(dateStr);
       if (isNaN(date.getTime())) return 'Invalid Date';
       
       return date.toLocaleString('en-US', {
@@ -36,7 +37,7 @@ const AlertCard = memo(({
       console.error('Date formatting error:', error);
       return 'Invalid Date';
     }
-  }, [alert?.triggered_at]);
+  }, [alert?.triggered_at, alert?.created_at]);
 
   // Memoize severity styling
   const severityStyle = useMemo(() => {
@@ -101,22 +102,24 @@ const AlertCard = memo(({
 
   // Memoize alert description
   const alertDescription = useMemo(() => {
-    if (!alert?.description) return 'No description available';
+    const description = alert?.description || alert?.message_content || alert?.message
+    if (!description) return 'No description available';
     
     const maxLength = 200;
-    if (alert.description.length <= maxLength) {
-      return alert.description;
+    if (description.length <= maxLength) {
+      return description;
     }
     
-    return alert.description.substring(0, maxLength) + '...';
-  }, [alert?.description]);
+    return description.substring(0, maxLength) + '...';
+  }, [alert?.description, alert?.message_content, alert?.message]);
 
   // Memoize time since alert
   const timeSinceAlert = useMemo(() => {
-    if (!alert?.triggered_at) return 'Unknown';
+    const alertDate = alert?.triggered_at || alert?.created_at;
+    if (!alertDate) return 'Unknown';
     
     try {
-      const alertTime = new Date(alert.triggered_at);
+      const alertTime = new Date(alertDate);
       const now = new Date();
       const diffMs = now - alertTime;
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
@@ -136,7 +139,7 @@ const AlertCard = memo(({
       console.error('Time calculation error:', error);
       return 'Unknown';
     }
-  }, [alert?.triggered_at]);
+  }, [alert?.triggered_at, alert?.created_at]);
 
   // Memoized event handlers
   const handleSelect = useCallback(() => {
@@ -231,8 +234,8 @@ const AlertCard = memo(({
     >
       <div className="alert-card-header">
         <div className="alert-card-title">
-          <h3>{alert?.title || 'Untitled Alert'}</h3>
-          <span className="alert-id">#{alert?.alert_id}</span>
+          <h3>{alert?.title || alert?.event_type || 'Untitled Alert'}</h3>
+          <span className="alert-id">#{alert?.alert_id || alert?.id}</span>
         </div>
         <div className="alert-card-meta">
           <span className="alert-date">{formattedDate}</span>

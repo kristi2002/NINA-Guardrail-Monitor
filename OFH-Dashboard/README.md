@@ -51,14 +51,13 @@ OFH-Dashboard/
 │   │   │   └── Login.jsx
 │   │   ├── contexts/           # React contexts
 │   │   │   ├── AuthContext.jsx
-│   │   │   └── DataContext.jsx
+│   │   │   └── NotificationContext.jsx
 │   │   ├── services/           # API services
 │   │   │   ├── authService.js
 │   │   │   ├── dataService.js
-│   │   │   └── socketService.js
-│   │   └── hooks/              # Custom hooks
-│   │       └── useApiCache.js
-│   ├── __tests__/              # Test files
+│   │   │   └── notificationService.js
+│   │   └── utils/              # Utility functions
+│   │       └── eventTypeMapper.js
 │   └── package.json
 │
 ├── backend/                     # Python Flask API (Clean Architecture)
@@ -97,7 +96,6 @@ OFH-Dashboard/
 │   ├── repositories/           # Data Access Layer
 │   │   ├── base_repository.py
 │   │   ├── user_repository.py
-│   │   ├── alert_repository.py
 │   │   ├── conversation_repository.py
 │   │   ├── guardrail_event_repository.py
 │   │   ├── chat_message_repository.py
@@ -106,7 +104,6 @@ OFH-Dashboard/
 │   ├── models/                 # Data Layer
 │   │   ├── base.py
 │   │   ├── user.py
-│   │   ├── alert.py
 │   │   ├── conversation.py
 │   │   ├── guardrail_event.py
 │   │   ├── chat_message.py
@@ -493,7 +490,7 @@ API Routes (Presentation) → Services (Business Logic) → Repositories (Data A
 #### **React Patterns**
 - **Components**: Reusable UI pieces (MetricCard, ErrorBoundary)
 - **Hooks**: State management (useState, useEffect, useContext)
-- **Context**: Global state (AuthContext, DataContext)
+- **Context**: Global state (AuthContext, NotificationContext)
 - **Error Boundaries**: Fault tolerance and recovery
 
 #### **Backend Patterns**

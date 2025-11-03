@@ -66,7 +66,6 @@ backend/
 ├── repositories/                 # Data Access Layer
 │   ├── base_repository.py       # Base repository with CRUD
 │   ├── user_repository.py       # User data access
-│   ├── alert_repository.py      # Alert data access
 │   ├── conversation_repository.py # Conversation data access
 │   ├── guardrail_event_repository.py # Guardrail events
 │   ├── chat_message_repository.py # Chat messages
@@ -75,7 +74,6 @@ backend/
 ├── models/                       # Data Layer
 │   ├── base.py                  # Base model with common fields
 │   ├── user.py                  # User model
-│   ├── alert.py                 # Alert model
 │   ├── conversation.py          # Conversation session
 │   ├── guardrail_event.py       # Guardrail events
 │   ├── chat_message.py          # Chat messages
@@ -83,7 +81,11 @@ backend/
 │
 ├── core/                         # Core Infrastructure
 │   ├── database.py              # Database manager & connection
-│   └── __init__.py
+│   ├── cache.py                 # Caching service
+│   ├── logging_config.py        # Logging configuration
+│   ├── query_optimizer.py       # Query optimization utilities
+│   ├── serializer.py            # Data serialization utilities
+│   └── config_helper.py         # Configuration helper functions
 │
 ├── schemas/                      # JSON Schemas
 │   ├── guardrail_event.schema.json

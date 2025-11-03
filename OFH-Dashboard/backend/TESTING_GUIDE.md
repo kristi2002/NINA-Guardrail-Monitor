@@ -16,19 +16,19 @@ This guide explains how to test the updated API endpoints for alerts, conversati
    - Ensure you have test data (or the script will show warnings for empty database)
 
 3. **Test User Credentials**
-   - Update `test_api_endpoints.py` with valid username/password
+   - Update `scripts/test_api_endpoints.py` with valid username/password
    - Default: `admin` / `admin123`
 
 ## Running the Tests
 
 ### Option 1: Run All Tests
 ```powershell
-python test_api_endpoints.py
+python scripts/test_api_endpoints.py
 ```
 
 ### Option 2: Custom Configuration
 ```powershell
-python test_api_endpoints.py --url http://localhost:5000 --username admin --password admin123
+python scripts/test_api_endpoints.py --url http://localhost:5000 --username admin --password admin123
 ```
 
 ## What Gets Tested

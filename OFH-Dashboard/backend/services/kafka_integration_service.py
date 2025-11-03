@@ -41,39 +41,53 @@ class KafkaIntegrationService:
 
     def handle_consumed_event(self, event_type, conversation_id, event):
         """
-        Callback function that the consumer calls after successfully processing an event.
-        This ensures Socket.IO emissions happen AFTER the event is processed and saved to database.
+        Callback function that the consumer calls after processing an event.
+        This is now SYNCED with notificationService.js
         """
         if not self.socketio:
             return  # No frontend to update
             
         try:
+            # Check if this is a guardrail event
             if event_type == 'guardrail_event':
-                self.socketio.emit('new_guardrail_event', {
+                
+                # Get severity to decide which event to send
+                severity = event.get('severity', 'info').lower()
+                
+                # --- THE FIX ---
+                # If severity is high or critical, emit 'alert_escalation'
+                if severity in ['high', 'critical']:
+                    self.socketio.emit('alert_escalation', {
+                        'conversation_id': conversation_id,
+                        'event': event
+                    })
+                    self.logger.info(f"Socket.IO 'alert_escalation' emitted for {conversation_id}")
+                
+                # For all other severities, emit a generic 'notification'
+                else:
+                    self.socketio.emit('notification', {
+                        'conversation_id': conversation_id,
+                        'event': event
+                    })
+                    self.logger.info(f"Socket.IO 'notification' emitted for {conversation_id}")
+            
+            # Check if this is an operator action
+            elif event_type == 'operator_action':
+                # Send all operator actions as a generic 'notification'
+                self.socketio.emit('notification', {
+                    'conversation_id': conversation_id,
+                    'event': event  # Send the full operator action event
+                })
+                self.logger.info(f"Socket.IO 'notification' (for operator_action) emitted for {conversation_id}")
+
+            elif event_type == 'false_alarm_feedback':
+                # Send this as a generic 'notification' as well
+                self.socketio.emit('notification', {
                     'conversation_id': conversation_id,
                     'event': event
                 })
-                self.logger.info(f"Socket.IO guardrail event emitted for conversation {conversation_id}")
-                
-            elif event_type == 'operator_action':
-                self.socketio.emit('operator_action', {
-                    'conversation_id': conversation_id,
-                    'action_type': event.get('action_type', 'unknown'),
-                    'message': event.get('message', ''),
-                    'reason': event.get('reason'),
-                    'timestamp': event.get('timestamp', datetime.now().isoformat())
-                })
-                self.logger.info(f"Socket.IO operator action emitted for conversation {conversation_id}")
-                
-            elif event_type == 'false_alarm_feedback':
-                self.socketio.emit('false_alarm_feedback', {
-                    'conversation_id': conversation_id,
-                    'original_event_id': event.get('original_event_id'),
-                    'feedback': event.get('feedback'),
-                    'timestamp': event.get('timestamp', datetime.now().isoformat())
-                })
-                self.logger.info(f"Socket.IO false alarm feedback emitted for conversation {conversation_id}")
-                
+                self.logger.info(f"Socket.IO 'notification' (for false_alarm) emitted for {conversation_id}")
+
         except Exception as e:
             self.logger.error(f"Failed to emit Socket.IO event for {event_type}: {e}", exc_info=True)
 
