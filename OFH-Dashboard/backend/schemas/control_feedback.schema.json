@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ControlFeedbackV1",
+  "description": "Schema for guardrail control and feedback messages, version 1.0",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "description": "Version of this schema",
+      "type": "string",
+      "const": "1.0"
+    },
+    "conversation_id": {
+      "description": "Unique ID for the conversation",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "ISO 8601 timestamp of the feedback",
+      "type": "string",
+      "format": "date-time"
+    },
+    "feedback_type": {
+      "description": "Type of control feedback",
+      "type": "string",
+      "enum": [
+        "false_alarm",
+        "true_positive",
+        "escalation_request",
+        "system_override",
+        "guardrail_adjustment",
+        "model_feedback",
+        "compliance_report",
+        "system_health_check"
+      ]
+    },
+    "original_event_id": {
+      "description": "ID of the original event this feedback relates to",
+      "type": ["string", "null"]
+    },
+    "feedback_content": {
+      "description": "The actual feedback content or message",
+      "type": "string"
+    },
+    "feedback_source": {
+      "description": "Source of the feedback",
+      "type": "string",
+      "enum": ["operator", "user", "system", "automated", "admin"]
+    },
+    "feedback_metadata": {
+      "description": "Additional metadata about the feedback",
+      "type": ["object", "null"],
+      "properties": {
+        "confidence_level": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "impact_assessment": {
+          "type": ["string", "null"],
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "requires_follow_up": {
+          "type": ["boolean", "null"]
+        },
+        "model_learning_enabled": {
+          "type": ["boolean", "null"]
+        },
+        "feedback_category": {
+          "type": ["string", "null"],
+          "enum": ["accuracy", "performance", "bias", "coverage", "other"]
+        }
+      }
+    },
+    "system_response": {
+      "description": "System's response to the feedback",
+      "type": ["object", "null"],
+      "properties": {
+        "acknowledged": {
+          "type": ["boolean", "null"]
+        },
+        "processing_time_ms": {
+          "type": ["number", "null"]
+        },
+        "action_taken": {
+          "type": ["string", "null"],
+          "enum": ["model_retrained", "rules_updated", "threshold_adjusted", "flagged_for_review", "no_action"]
+        },
+        "next_review_date": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    },
+    "context": {
+      "description": "Additional context about the feedback",
+      "type": ["object", "null"],
+      "properties": {
+        "user_satisfaction": {
+          "type": ["number", "null"],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "false_positive_details": {
+          "type": ["string", "null"]
+        },
+        "suggested_improvements": {
+          "type": ["string", "null"]
+        },
+        "related_incidents": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "conversation_id",
+    "timestamp",
+    "feedback_type",
+    "feedback_content",
+    "feedback_source"
+  ],
+  "additionalProperties": false
+}

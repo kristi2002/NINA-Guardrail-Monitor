@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GuardrailEventV1",
+  "description": "Schema for guardrail monitoring events, version 1.0",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "description": "Version of this schema",
+      "type": "string",
+      "const": "1.0"
+    },
+    "conversation_id": {
+      "description": "Unique ID for the conversation",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "ISO 8601 timestamp of the event",
+      "type": "string",
+      "format": "date-time"
+    },
+    "event_type": {
+      "description": "Type of guardrail event",
+      "type": "string",
+      "enum": [
+        "conversation_started",
+        "warning_triggered",
+        "alarm_triggered",
+        "privacy_violation_prevented",
+        "medication_warning",
+        "inappropriate_content",
+        "emergency_protocol",
+        "conversation_ended",
+        "false_alarm_reported",
+        "operator_intervention",
+        "system_alert",
+        "compliance_check"
+      ]
+    },
+    "severity": {
+      "description": "Severity level of the event",
+      "type": "string",
+      "enum": ["info", "medium", "high", "critical"]
+    },
+    "message": {
+      "description": "Human-readable description of the event",
+      "type": "string"
+    },
+    "context": {
+      "description": "Additional context about the event trigger",
+      "type": ["string", "null"]
+    },
+    "user_id": {
+      "description": "Identifier for the user in the conversation",
+      "type": ["string", "null"]
+    },
+    "action_taken": {
+      "description": "Action automatically taken by the guardrail",
+      "type": ["string", "null"],
+      "enum": ["blocked", "warned", "logged", "escalated", "allowed", null]
+    },
+    "confidence_score": {
+      "description": "Confidence score from the detection mechanism (if applicable)",
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "guardrail_version": {
+      "description": "Version of the guardrail logic that generated the event",
+      "type": ["string", "null"]
+    },
+    "event_id": {
+      "description": "Unique identifier for this specific event",
+      "type": "string"
+    },
+    "session_metadata": {
+      "description": "Optional metadata about the session state",
+      "type": ["object", "null"],
+      "properties": {
+        "start_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message_count": {
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "type": "integer"
+        },
+        "user_agent": {
+          "type": ["string", "null"]
+        },
+        "ip_address": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "detection_metadata": {
+      "description": "Metadata about the detection process",
+      "type": ["object", "null"],
+      "properties": {
+        "model_version": {
+          "type": ["string", "null"]
+        },
+        "detection_time_ms": {
+          "type": ["number", "null"]
+        },
+        "triggered_rules": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          }
+        },
+        "false_positive_probability": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "conversation_id",
+    "timestamp",
+    "event_type",
+    "severity",
+    "message",
+    "event_id"
+  ],
+  "additionalProperties": false
+}

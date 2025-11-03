@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OperatorActionV1",
+  "description": "Schema for operator actions on conversations, version 1.0",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "description": "Version of this schema",
+      "type": "string"
+    },
+    "conversation_id": {
+      "description": "Unique ID for the conversation",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "ISO 8601 timestamp of the action",
+      "type": "string",
+      "format": "date-time"
+    },
+    "action_type": {
+      "description": "Type of operator action",
+      "type": "string",
+      "enum": [
+        "stop_conversation",
+        "false_alarm",
+        "escalate",
+        "acknowledge",
+        "resolve",
+        "override_guardrail",
+        "manual_intervention",
+        "system_override",
+        "emergency_stop",
+        "resume_conversation"
+      ]
+    },
+    "operator_id": {
+      "description": "Identifier for the operator who performed the action",
+      "type": "string"
+    },
+    "message": {
+      "description": "Human-readable description of the action taken (replaces 'action_description')",
+      "type": "string"
+    },
+    "reason": {
+      "description": "Reason for the action",
+      "type": ["string", "null"]
+    },
+    "priority": {
+      "description": "Priority level of the action (now optional)",
+      "type": "string",
+      "enum": ["low", "normal", "high", "urgent"]
+    },
+    "target_event_id": {
+      "description": "ID of the specific event this action relates to",
+      "type": ["string", "null"]
+    },
+    "command": {
+      "description": "Specific command payload for the agent (added to match code)",
+      "type": ["object", "null"],
+      "properties": {
+        "type": { "type": "string" },
+        "reason": { "type": ["string", "null"] },
+        "final_message": { "type": ["string", "null"] }
+      }
+    },
+    "action_metadata": {
+      "description": "Additional metadata about the action",
+      "type": ["object", "null"],
+      "properties": {
+        "response_time_seconds": {
+          "type": ["number", "null"]
+        },
+        "escalation_level": {
+          "type": ["string", "null"],
+          "enum": ["level_1", "level_2", "level_3", "supervisor", "admin"]
+        },
+        "notification_sent": {
+          "type": ["boolean", "null"]
+        },
+        "follow_up_required": {
+          "type": ["boolean", "null"]
+        },
+        "resolution_notes": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "system_context": {
+      "description": "System context at the time of the action",
+      "type": ["object", "null"],
+      "properties": {
+        "active_guardrails": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          }
+        },
+        "conversation_state": {
+          "type": ["string", "null"],
+          "enum": ["active", "paused", "escalated", "resolved", "stopped"]
+        },
+        "risk_level": {
+          "type": ["string", "null"],
+          "enum": ["low", "medium", "high", "critical"]
+        }
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "conversation_id",
+    "timestamp",
+    "action_type",
+    "operator_id",
+    "message"
+  ],
+  "additionalProperties": false
+}

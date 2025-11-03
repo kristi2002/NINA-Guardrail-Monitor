@@ -1,0 +1,315 @@
+/**
+ * Alert Card Styles
+ */
+
+.alert-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.alert-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.alert-card.selected {
+  border-color: #3b82f6;
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.alert-card:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.alert-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.alert-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.alert-card-title h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.alert-id {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.alert-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.alert-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.alert-time-ago {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.alert-card-body {
+  margin-bottom: 1rem;
+}
+
+.alert-card-status {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.severity-badge,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+}
+
+.severity-badge {
+  min-width: 80px;
+  justify-content: center;
+}
+
+.status-badge {
+  min-width: 100px;
+  justify-content: center;
+}
+
+.alert-card-description {
+  margin-bottom: 1rem;
+}
+
+.alert-card-description p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.875rem;
+}
+
+.alert-card-assignment,
+.alert-card-patient {
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.alert-card-assignment:last-child,
+.alert-card-patient:last-child {
+  margin-bottom: 0;
+}
+
+.alert-card-assignment strong,
+.alert-card-patient strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.alert-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.alert-card-actions button {
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-acknowledge {
+  background: #f59e0b;
+  color: white;
+  border-color: #f59e0b;
+}
+
+.btn-acknowledge:hover {
+  background: #d97706;
+  border-color: #d97706;
+  transform: translateY(-1px);
+}
+
+.btn-resolve {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.btn-resolve:hover {
+  background: #059669;
+  border-color: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-escalate {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.btn-escalate:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Critical alert styling */
+.alert-card[data-severity="critical"] {
+  border-left: 4px solid #dc2626;
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+}
+
+.alert-card[data-severity="critical"]:hover {
+  border-color: #dc2626;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+/* High severity alert styling */
+.alert-card[data-severity="high"] {
+  border-left: 4px solid #ef4444;
+}
+
+/* Medium severity alert styling */
+.alert-card[data-severity="medium"] {
+  border-left: 4px solid #f59e0b;
+}
+
+/* Low severity alert styling */
+.alert-card[data-severity="low"] {
+  border-left: 4px solid #10b981;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .alert-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .alert-card:hover {
+    border-color: #60a5fa;
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.15);
+  }
+
+  .alert-card.selected {
+    background: #111827;
+    border-color: #60a5fa;
+  }
+
+  .alert-card-title h3 {
+    color: #f9fafb;
+  }
+
+  .alert-id,
+  .alert-date {
+    color: #9ca3af;
+  }
+
+  .alert-time-ago {
+    color: #6b7280;
+  }
+
+  .alert-card-description p {
+    color: #d1d5db;
+  }
+
+  .alert-card-assignment,
+  .alert-card-patient {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .alert-card-assignment strong,
+  .alert-card-patient strong {
+    color: #f9fafb;
+  }
+
+  .alert-card-actions {
+    border-color: #374151;
+  }
+
+  .alert-card[data-severity="critical"] {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .alert-card {
+    padding: 1rem;
+  }
+
+  .alert-card-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .alert-card-meta {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .alert-card-actions {
+    flex-direction: column;
+  }
+
+  .alert-card-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

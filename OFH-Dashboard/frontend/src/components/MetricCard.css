@@ -1,0 +1,269 @@
+/* ==============================================
+   1. CSS VARIABLES (THEME CONFIGURATION)
+   ============================================== */
+   :root {
+    /* Base Colors */
+    --white-95: rgba(255, 255, 255, 0.95);
+    --white-25: rgba(255, 255, 255, 0.25);
+    --white-18: rgba(255, 255, 255, 0.18);
+    --black-15: rgba(0, 0, 0, 0.15);
+    --black-08: rgba(0, 0, 0, 0.08);
+
+    /* Card-Specific Colors & Shadows - Use page variables */
+    --card-border-color: var(--white-18);
+    --card-shadow-color: rgba(0, 0, 0, 0.1);
+    --card-shadow-hover-color: rgba(0, 0, 0, 0.15);
+    
+    /* Trend Colors */
+    --positive-color: #22c55e;
+    --positive-bg: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
+    --positive-border: rgba(34, 197, 94, 0.3);
+    --positive-shadow: rgba(34, 197, 94, 0.15);
+
+    --negative-color: #ef4444;
+    --negative-bg: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.15) 100%);
+    --negative-border: rgba(239, 68, 68, 0.3);
+    --negative-shadow: rgba(239, 68, 68, 0.15);
+
+    --neutral-color: #9ca3af;
+    --neutral-bg: linear-gradient(135deg, rgba(156, 163, 175, 0.25) 0%, rgba(156, 163, 175, 0.15) 100%);
+    --neutral-border: rgba(156, 163, 175, 0.3);
+    --neutral-shadow: rgba(156, 163, 175, 0.15);
+    
+    /* Sizing & Spacing */
+    --card-padding: 2rem;
+    --card-border-radius: 20px;
+    
+    /* Effects */
+    --card-blur: 24px;
+    --transition-speed: 0.4s;
+    --transition-timing: cubic-bezier(0.23, 1, 0.32, 1);
+    --card-shadow: 0 8px 32px var(--card-shadow-color);
+    --card-shadow-hover: 0 24px 48px var(--card-shadow-hover-color);
+}
+
+/* ==============================================
+   2. METRIC CARD: BASE STYLES
+   ============================================== */
+.metric-card {
+    position: relative;
+    background: var(--card-bg, rgba(255, 255, 255, 0.1));
+    backdrop-filter: blur(var(--card-blur));
+    border-radius: var(--card-border-radius);
+    border: 1px solid var(--card-border, var(--card-border-color));
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    min-height: 180px;
+    transition: 
+        transform var(--transition-speed) var(--transition-timing),
+        box-shadow var(--transition-speed) var(--transition-timing),
+        border-color var(--transition-speed) var(--transition-timing);
+}
+
+/* Force all text in metric cards to be dark for readability */
+.metric-card * {
+    color: #1a202c !important;
+}
+
+.metric-card:hover,
+.metric-card:focus-visible {
+    transform: translateY(-12px) scale(1.03);
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--white-25);
+    outline: none; /* For focus-visible state */
+}
+
+/* ==============================================
+   3. CARD STATES (ALERT)
+   ============================================== */
+.metric-card.alert {
+    --card-bg: linear-gradient(135deg, rgba(255, 71, 87, 0.15) 0%, rgba(255, 107, 122, 0.08) 100%);
+    --card-border-color: rgba(255, 71, 87, 0.25);
+    --card-shadow-color: rgba(255, 71, 87, 0.12);
+    --card-shadow-hover-color: rgba(255, 71, 87, 0.18);
+}
+
+.metric-card.alert:hover,
+.metric-card.alert:focus-visible {
+    border-color: rgba(255, 71, 87, 0.35);
+}
+
+/* ==============================================
+   4. CARD DECORATIVE ELEMENTS
+   ============================================== */
+.card-background {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
+    z-index: 1;
+}
+
+/* ==============================================
+   5. CARD CONTENT
+   ============================================== */
+.card-content {
+    position: relative;
+    z-index: 2;
+    padding: var(--card-padding);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Header */
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex: 1;
+}
+
+.icon-container {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--white-25);
+    box-shadow: 0 4px 16px var(--black-08);
+    transition: transform 0.3s ease;
+}
+
+.metric-icon {
+    font-size: 1.75rem;
+    filter: drop-shadow(0 2px 4px var(--black-15));
+}
+
+.metric-card:hover .icon-container,
+.metric-card:focus-visible .icon-container {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.metric-title {
+    color: #1a202c !important;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-shadow: none;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Main Value & Trend */
+.metric-value-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.metric-value {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1.5px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1a202c !important;
+    text-shadow: none;
+    filter: none;
+}
+
+.metric-trend {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    backdrop-filter: blur(10px);
+    white-space: nowrap;
+}
+
+.metric-trend.positive {
+    background: var(--positive-bg);
+    color: var(--positive-color);
+    border: 1px solid var(--positive-border);
+    box-shadow: 0 2px 8px var(--positive-shadow);
+}
+.metric-trend.negative {
+    background: var(--negative-bg);
+    color: var(--negative-color);
+    border: 1px solid var(--negative-border);
+    box-shadow: 0 2px 8px var(--negative-shadow);
+}
+.metric-trend.neutral {
+    background: var(--neutral-bg);
+    color: var(--neutral-color);
+    border: 1px solid var(--neutral-border);
+    box-shadow: 0 2px 8px var(--neutral-shadow);
+}
+
+/* Alert Indicator */
+.alert-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--negative-bg);
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: var(--negative-color);
+    font-weight: 700;
+    border: 1px solid var(--negative-border);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--negative-color);
+    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--negative-color);
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* ==============================================
+   6. RESPONSIVE DESIGN
+   ============================================== */
+@media (max-width: 768px) {
+    :root {
+        --card-padding: 1.5rem;
+    }
+    .metric-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .alert-indicator { align-self: flex-end; }
+    .metric-value { font-size: 2.5rem; }
+    .icon-container { width: 48px; height: 48px; }
+    .metric-icon { font-size: 1.5rem; }
+}
+
+@media (max-width: 480px) {
+    .metric-value-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+}

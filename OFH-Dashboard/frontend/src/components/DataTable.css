@@ -1,0 +1,366 @@
+/**
+ * Data Table Styles
+ */
+
+.data-table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.data-table-wrapper {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table-header {
+  background: #f8fafc;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.data-table-header.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.data-table-header.sortable:hover {
+  background: #f1f5f9;
+}
+
+.data-table-header.sorted-asc,
+.data-table-header.sorted-desc {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sort-indicator {
+  font-size: 0.75rem;
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.data-table-header.sorted-asc .sort-indicator,
+.data-table-header.sorted-desc .sort-indicator {
+  color: #0369a1;
+}
+
+.filter-input {
+  margin-top: 0.5rem;
+}
+
+.filter-input input {
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: white;
+}
+
+.filter-input input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.data-table-row {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.data-table-row:hover {
+  background: #f8fafc;
+}
+
+.data-table-row.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.data-table-row.selected:hover {
+  background: #dbeafe;
+}
+
+.data-table-cell {
+  padding: 0.75rem;
+  color: #374151;
+  vertical-align: top;
+}
+
+.selection-cell {
+  padding: 0.75rem;
+  text-align: center;
+  width: 40px;
+}
+
+.selection-header {
+  padding: 1rem 0.75rem;
+  text-align: center;
+  width: 40px;
+}
+
+.selection-cell input[type="checkbox"],
+.selection-header input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.data-table-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.data-table-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.pagination-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .data-table-container {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+
+  .data-table-header {
+    background: #374151;
+    color: #d1d5db;
+    border-color: #4b5563;
+  }
+
+  .data-table-header.sortable:hover {
+    background: #4b5563;
+  }
+
+  .data-table-header.sorted-asc,
+  .data-table-header.sorted-desc {
+    background: #1e40af;
+    color: #dbeafe;
+  }
+
+  .data-table-row {
+    border-color: #4b5563;
+  }
+
+  .data-table-row:hover {
+    background: #374151;
+  }
+
+  .data-table-row.selected {
+    background: #1e40af;
+    border-color: #3b82f6;
+  }
+
+  .data-table-row.selected:hover {
+    background: #1d4ed8;
+  }
+
+  .data-table-cell {
+    color: #d1d5db;
+  }
+
+  .filter-input input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .filter-input input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 1px #60a5fa;
+  }
+
+  .data-table-loading {
+    color: #9ca3af;
+  }
+
+  .data-table-empty {
+    color: #9ca3af;
+  }
+
+  .pagination-controls {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .pagination-info {
+    color: #9ca3af;
+  }
+
+  .pagination-btn {
+    background: #4b5563;
+    color: #d1d5db;
+    border-color: #6b7280;
+  }
+
+  .pagination-btn:hover:not(:disabled) {
+    background: #6b7280;
+    border-color: #9ca3af;
+  }
+
+  .pagination-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .data-table-container {
+    border-radius: 8px;
+  }
+
+  .data-table-header {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .data-table-cell {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .pagination-controls {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .pagination-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pagination-btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Scrollbar styling */
+.data-table-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.data-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.data-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.data-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .data-table-wrapper::-webkit-scrollbar-track {
+    background: #374151;
+  }
+
+  .data-table-wrapper::-webkit-scrollbar-thumb {
+    background: #6b7280;
+  }
+
+  .data-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+}
+

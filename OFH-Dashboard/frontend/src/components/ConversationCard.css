@@ -1,0 +1,261 @@
+/**
+ * Conversation Card Styles
+ */
+
+.conversation-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.conversation-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.conversation-card.selected {
+  border-color: #3b82f6;
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.conversation-card:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.conversation-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.conversation-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.conversation-card-title h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.conversation-id {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.conversation-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.conversation-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.conversation-card-body {
+  margin-bottom: 1rem;
+}
+
+.conversation-card-status {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.status-badge,
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge {
+  min-width: 80px;
+  justify-content: center;
+}
+
+.risk-badge {
+  min-width: 70px;
+  justify-content: center;
+}
+
+.conversation-card-summary {
+  margin-bottom: 1rem;
+}
+
+.conversation-card-summary p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.875rem;
+}
+
+.conversation-card-situation {
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.conversation-card-situation strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.conversation-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.conversation-card-actions button {
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-acknowledge {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.btn-acknowledge:hover {
+  background: #059669;
+  border-color: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-escalate {
+  background: #f59e0b;
+  color: white;
+  border-color: #f59e0b;
+}
+
+.btn-escalate:hover {
+  background: #d97706;
+  border-color: #d97706;
+  transform: translateY(-1px);
+}
+
+.btn-close {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.btn-close:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .conversation-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .conversation-card:hover {
+    border-color: #60a5fa;
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.15);
+  }
+
+  .conversation-card.selected {
+    background: #111827;
+    border-color: #60a5fa;
+  }
+
+  .conversation-card-title h3 {
+    color: #f9fafb;
+  }
+
+  .conversation-id,
+  .conversation-date {
+    color: #9ca3af;
+  }
+
+  .conversation-card-summary p {
+    color: #d1d5db;
+  }
+
+  .conversation-card-situation {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .conversation-card-situation strong {
+    color: #f9fafb;
+  }
+
+  .conversation-card-actions {
+    border-color: #374151;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .conversation-card {
+    padding: 1rem;
+  }
+
+  .conversation-card-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .conversation-card-meta {
+    align-items: flex-start;
+  }
+
+  .conversation-card-actions {
+    flex-direction: column;
+  }
+
+  .conversation-card-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
