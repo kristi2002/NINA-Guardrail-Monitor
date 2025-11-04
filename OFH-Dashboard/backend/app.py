@@ -125,11 +125,12 @@ try:
     kafka_service = KafkaIntegrationService(
         bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
         socketio=socketio,
-        app=app
+        app=app,
+        db=db  # CRITICAL: Pass db instance for database operations
     )
     logger.info("Kafka integration service initialized successfully")
 except Exception as e:
-    logger.error(f"Failed to initialize Kafka integration service: {e}")
+    logger.error(f"Failed to initialize Kafka integration service: {e}", exc_info=True)
     logger.warning("Application will continue without Kafka integration")
 
 # Make kafka_service available to routes

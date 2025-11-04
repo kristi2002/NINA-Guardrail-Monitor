@@ -5,8 +5,8 @@ Centralized configuration using environment variables with fallback defaults
 """
 
 import os
-from typing import Optional, Dict, Any
-from dotenv import load_dotenv
+from typing import Dict, Any
+from dotenv import load_dotenv # type: ignore
 
 # Load environment variables from .env file
 # load_dotenv()  # Commented out to use default database configuration

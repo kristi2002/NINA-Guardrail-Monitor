@@ -77,21 +77,21 @@ class UserRepository(BaseRepository):
     def get_user_statistics(self) -> Dict[str, Any]:
         """Get user statistics"""
         try:
-            # Total users
-            total_users = self.db.query(User).filter(User.is_deleted.is_(False)).count()
+            # Total users - use func.count() to avoid loading all columns
+            total_users = self.db.query(func.count(User.id)).filter(User.is_deleted.is_(False)).scalar() or 0
             
             # Active users
-            active_users = self.db.query(User).filter(
+            active_users = self.db.query(func.count(User.id)).filter(
                 User.is_active == True,
                 User.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             # Locked users
-            locked_users = self.db.query(User).filter(
+            locked_users = self.db.query(func.count(User.id)).filter(
                 User.locked_until.isnot(None),
                 User.locked_until > datetime.utcnow(),
                 User.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             # Users by role
             role_stats = self.db.query(
@@ -108,11 +108,11 @@ class UserRepository(BaseRepository):
                 User.department.isnot(None)
             ).group_by(User.department).all()
             
-            # Recent logins (last 24 hours)
-            recent_logins = self.db.query(User).filter(
+            # Recent logins (last 24 hours) - use func.count() to avoid loading all columns
+            recent_logins = self.db.query(func.count(User.id)).filter(
                 User.last_login >= datetime.utcnow() - timedelta(hours=24),
                 User.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             # Calculate rates
             active_user_rate = (active_users / total_users) if total_users > 0 else 0
@@ -138,26 +138,26 @@ class UserRepository(BaseRepository):
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
-            # Recent logins
-            recent_logins = self.db.query(User).filter(
+            # Recent logins - use func.count() to avoid loading all columns
+            recent_logins = self.db.query(func.count(User.id)).filter(
                 User.last_login >= cutoff_time,
                 User.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             # Users with high activity (multiple logins)
-            high_activity_users = self.db.query(User).filter(
+            high_activity_users = self.db.query(func.count(User.id)).filter(
                 User.last_login >= cutoff_time,
                 User.is_deleted.is_(False)
-            ).count()  # This would need more sophisticated logic
+            ).scalar() or 0  # This would need more sophisticated logic
             
-            # Failed login attempts
-            failed_attempts = self.db.query(User).filter(
+            # Failed login attempts - use func.count() to avoid loading all columns
+            failed_attempts = self.db.query(func.count(User.id)).filter(
                 User.login_attempts > 0,
                 User.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
-            # Calculate rates
-            total_users = self.db.query(User).filter(User.is_deleted.is_(False)).count()
+            # Calculate rates - use func.count() to avoid loading all columns
+            total_users = self.db.query(func.count(User.id)).filter(User.is_deleted.is_(False)).scalar() or 0
             activity_rate = (recent_logins / total_users) if total_users > 0 else 0
             failed_login_rate = (failed_attempts / total_users) if total_users > 0 else 0
             

@@ -89,7 +89,7 @@ class ChatMessage(BaseModel):
     
     def is_high_risk(self):
         """Check if message has high risk score"""
-        return self.risk_score and self.risk_score >= 0.7
+        return self.risk_score is not None and self.risk_score >= 0.7
     
     def is_sensitive(self):
         """Check if message contains sensitive content"""
@@ -97,24 +97,22 @@ class ChatMessage(BaseModel):
     
     def get_sentiment_label(self):
         """Get sentiment label from score"""
-        if self.sentiment_score is None:
-            return 'unknown'
-        elif self.sentiment_score >= 0.3:
+        sentiment_val: float = float(self.sentiment_score) if self.sentiment_score is not None else 0.0  # type: ignore
+        if sentiment_val >= 0.3:
             return 'positive'
-        elif self.sentiment_score <= -0.3:
+        elif sentiment_val <= -0.3:
             return 'negative'
         else:
             return 'neutral'
     
     def get_risk_level(self):
         """Get risk level from score"""
-        if self.risk_score is None:
-            return 'unknown'
-        elif self.risk_score >= 0.8:
+        risk_val: float = float(self.risk_score) if self.risk_score is not None else 0.0  # type: ignore
+        if risk_val >= 0.8:
             return 'critical'
-        elif self.risk_score >= 0.6:
+        elif risk_val >= 0.6:
             return 'high'
-        elif self.risk_score >= 0.4:
+        elif risk_val >= 0.4:
             return 'medium'
         else:
             return 'low'

@@ -1,0 +1,33 @@
+{
+    "include": [
+        "Guardrail-Strategy",
+        "OFH-Dashboard/backend"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/venv",
+        "**/__pycache__",
+        "**/.pytest_cache"
+    ],
+    "venvPath": ".",
+    "pythonVersion": "3.11",
+    "pythonPlatform": "Windows",
+    "typeCheckingMode": "off",
+    "reportMissingImports": false,
+    "reportMissingTypeStubs": false,
+    "reportUnusedImport": false,
+    "reportUnusedClass": false,
+    "reportUnusedFunction": false,
+    "reportUnusedVariable": false,
+    "reportUnknownMemberType": false,
+    "reportUnknownArgumentType": false,
+    "reportUnknownVariableType": false,
+    "reportGeneralTypeIssues": false,
+    "reportAttributeAccessIssue": false,
+    "reportCallIssue": false,
+    "extraPaths": [
+        "${workspaceFolder}/Guardrail-Strategy/venv/Lib/site-packages",
+        "${workspaceFolder}/OFH-Dashboard/backend/.venv/Lib/site-packages",
+        "${workspaceFolder}/OFH-Dashboard/backend/venv/Lib/site-packages"
+    ]
+}

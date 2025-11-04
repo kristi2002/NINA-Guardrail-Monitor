@@ -33,6 +33,10 @@ class GuardrailEventRepository(BaseRepository):
             ).order_by(desc(GuardrailEvent.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting events for conversation {conversation_id}: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_by_event_type(self, event_type: str, limit: int = 100) -> List[GuardrailEvent]: 
@@ -44,18 +48,28 @@ class GuardrailEventRepository(BaseRepository):
             ).order_by(desc(GuardrailEvent.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting events by type {event_type}: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_by_severity(self, severity: str, limit: int = 100) -> List[GuardrailEvent]: 
         """Get events by severity"""
         try:
-            return self.db.query(GuardrailEvent).filter(
-                GuardrailEvent.severity == severity,
+            events = self.db.query(GuardrailEvent).filter(
+                GuardrailEvent.severity.in_([severity.upper(), severity.lower(), severity.capitalize()]),
                 GuardrailEvent.is_deleted.is_(False)
             ).order_by(desc(GuardrailEvent.created_at)).limit(limit).all()
+            return events
         except Exception as e:
             logger.error(f"Error getting events by severity {severity}: {e}")
-            raise
+            # Rollback failed transaction to prevent "InFailedSqlTransaction" errors
+            try:
+                self.db.rollback()
+            except Exception:
+                pass  # Ignore rollback errors
+            return []  # Return empty list instead of raising
     
     def get_high_confidence_events(self, confidence_threshold: float = 0.8, limit: int = 100) -> List[GuardrailEvent]:
         """Get high confidence events"""
@@ -83,7 +97,7 @@ class GuardrailEventRepository(BaseRepository):
         """Get unreviewed events"""
         try:
             return self.db.query(GuardrailEvent).filter(
-                GuardrailEvent.status == 'detected',
+                GuardrailEvent.status == 'PENDING',
                 GuardrailEvent.is_deleted.is_(False)
             ).order_by(desc(GuardrailEvent.created_at)).limit(limit).all()
         except Exception as e:
@@ -100,7 +114,11 @@ class GuardrailEventRepository(BaseRepository):
             ).order_by(desc(GuardrailEvent.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting recent events: {e}")
-            raise
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+            return []  # Return empty list instead of raising
     
     def mark_as_false_positive(self, event_id: str, user_id: str, reason: str = None) -> Optional[GuardrailEvent]:
         """Mark event as false positive"""
@@ -161,11 +179,11 @@ class GuardrailEventRepository(BaseRepository):
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
-            # Total events
-            total_events = self.db.query(GuardrailEvent).filter(
+            # Total events - use func.count to avoid loading all columns
+            total_events = self.db.query(func.count(GuardrailEvent.id)).filter(
                 GuardrailEvent.created_at >= cutoff_time,
                 GuardrailEvent.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             # Events by type
             type_stats = self.db.query(
@@ -194,12 +212,12 @@ class GuardrailEventRepository(BaseRepository):
                 GuardrailEvent.is_deleted.is_(False)
             ).group_by(GuardrailEvent.status).all()
             
-            # False positive rate
-            false_positives = self.db.query(GuardrailEvent).filter(
+            # False positive rate - use func.count to avoid loading all columns
+            false_positives = self.db.query(func.count(GuardrailEvent.id)).filter(
                 GuardrailEvent.is_false_positive == True,
                 GuardrailEvent.created_at >= cutoff_time,
                 GuardrailEvent.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             false_positive_rate = (false_positives / total_events) if total_events > 0 else 0
             

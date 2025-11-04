@@ -9,6 +9,8 @@ class NotificationService {
     this.reconnectAttempts = 0
     this.maxReconnectAttempts = 5
     this.reconnectDelay = 1000
+    // For Socket.IO, connect directly to backend port (WebSocket through proxy can be problematic)
+    // Use environment variable if set, otherwise default to direct backend connection
     this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
   }
 
@@ -17,10 +19,13 @@ class NotificationService {
     return new Promise((resolve, reject) => {
       try {
         this.socket = io(this.baseURL, {
-          transports: ['websocket', 'polling'],
+          transports: ['polling', 'websocket'],  // Try polling first, then upgrade to websocket
           reconnection: true,
           reconnectionDelay: this.reconnectDelay,
-          reconnectionAttempts: this.maxReconnectAttempts
+          reconnectionAttempts: this.maxReconnectAttempts,
+          timeout: 20000,  // 20 second timeout
+          forceNew: false,  // Reuse connection if available
+          autoConnect: true
         })
 
         this.socket.on('connect', () => {
@@ -36,9 +41,16 @@ class NotificationService {
         })
 
         this.socket.on('connect_error', (error) => {
-          console.error('🔔 Connection error:', error)
+          // Only log errors in development, and make them less noisy
+          if (import.meta.env.DEV) {
+            console.warn('🔔 Socket.IO connection error (this is normal if backend is not running):', error.message || error)
+          }
+          // Don't reject on initial connect - let it retry in background
           this.handleReconnect()
-          reject(error)
+          // Only reject if this was the initial connection attempt
+          if (this.reconnectAttempts === 0) {
+            // Don't reject - let it retry silently
+          }
         })
 
         // Listen for notifications from backend

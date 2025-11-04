@@ -96,7 +96,7 @@ class AutoEscalationService:
                 # Find unacknowledged alerts older than cutoff
                 alerts_to_escalate = GuardrailEvent.query.filter(
                     GuardrailEvent.severity == severity,
-                    GuardrailEvent.status.in_(['PENDING', 'IN_PROGRESS']),
+                    GuardrailEvent.status == 'PENDING',  # Fixed: Use PENDING instead of IN_PROGRESS
                     GuardrailEvent.created_at <= cutoff_time,
                     GuardrailEvent.escalated_at.is_(
                         None)  # Not already escalated

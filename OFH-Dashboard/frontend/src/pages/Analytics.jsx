@@ -385,13 +385,16 @@ function Analytics() {
   }
 
   const renderNotificationsTab = () => {
-    // 1. Check for null data FIRST
-    if (!analyticsData) return <NotificationsSkeleton />
+    // 1. Check for null or empty data FIRST
+    if (!analyticsData || Object.keys(analyticsData).length === 0) {
+      if (loading) return <NotificationsSkeleton />
+      return <div className="analytics-loading">No notifications data available. Try refreshing.</div>
+    }
 
     // 2. Wrap the rest in try...catch for unexpected render errors
     try {
       const data = analyticsData.data || analyticsData
-      if (!data || typeof data !== 'object') {
+      if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
         // Handle unexpected data structure
         console.warn("Unexpected data structure in renderNotificationsTab:", data)
         return <div className="analytics-loading">Processing notifications data...</div>
@@ -560,41 +563,51 @@ function Analytics() {
   }
 
   const renderAlertsTab = () => {
-    // 1. Check for null data FIRST
-    if (!analyticsData) return <AlertsSkeleton />
+    // 1. Check for null or empty data FIRST
+    if (!analyticsData || Object.keys(analyticsData).length === 0) {
+      if (loading) return <AlertsSkeleton />
+      return <div className="analytics-loading">No alert trends data available. Try refreshing.</div>
+    }
 
     // 2. Wrap the rest in try...catch for unexpected render errors
     try {
       const data = analyticsData.data || analyticsData
-      if (!data || typeof data !== 'object') {
+      if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
         // Handle unexpected data structure
         console.warn("Unexpected data structure in renderAlertsTab:", data)
         return <div className="analytics-loading">Processing alert trends data...</div>
       }
 
+      // Get data from the correct structure
+      const summary = data.summary || {}
+      const distributions = data.distributions || {}
+      const performanceMetrics = data.performance_metrics || {}
+      
+      // Calculate most common event type from distributions
+      const eventTypes = distributions.by_event_type || {}
+      const mostCommonType = Object.keys(eventTypes).reduce((a, b) => eventTypes[a] > eventTypes[b] ? a : b, 'N/A') || 'N/A'
+      
       return (
       <div className="analytics-tab">
         <div className="metrics-grid">
-          {renderMetricCard('Total Alerts', analyticsData.total_alerts, 'This period', '🚨')}
-          {renderMetricCard('Most Common', safeGet(analyticsData, 'trend_analysis.most_common_type', 'N/A'), 'Alert type', '📊')}
-          {renderMetricCard('Peak Hour', safeGet(analyticsData, 'peak_hours.peak_hour', 'N/A'), `${safeGet(analyticsData, 'peak_hours.peak_count', 0)} alerts`, '⏰')}
-          {renderMetricCard('Weekly Change', `${safeGet(analyticsData, 'trend_analysis.week_over_week_change', 0)}%`, 'vs last week', '📈')}
+          {renderMetricCard('Total Alerts', summary.total_alerts || 0, 'This period', '🚨')}
+          {renderMetricCard('Critical Alerts', summary.critical_alerts || 0, 'High priority', '⚠️')}
+          {renderMetricCard('Active Alerts', summary.active_alerts || 0, 'Currently open', '📊')}
+          {renderMetricCard('Most Common Type', mostCommonType, 'Event type', '📈')}
         </div>
 
         <div className="charts-grid">
           <div className="chart-container">
             <h3>Alert Trends Over Time</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analyticsData.time_series}>
+              <LineChart data={performanceMetrics.resolution_time_trends || []}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="timestamp" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
+                <XAxis dataKey="date" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="self_harm_detection" stroke="#dc2626" name="Self-Harm" />
-                <Line type="monotone" dataKey="pii_exposure" stroke="#f97316" name="PII Exposure" />
-                <Line type="monotone" dataKey="medical_misinformation" stroke="#fbbf24" name="Medical Info" />
-                <Line type="monotone" dataKey="toxicity_filter" stroke="#3b82f6" name="Toxicity" />
+                <Line type="monotone" dataKey="average_resolution_time_minutes" stroke="#dc2626" name="Avg Resolution (min)" />
+                <Line type="monotone" dataKey="count" stroke="#3b82f6" name="Alert Count" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -604,16 +617,16 @@ function Analytics() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={analyticsData.alert_breakdown || []}
+                  data={Object.entries(eventTypes).map(([type, count]) => ({ type, count }))}
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
                   dataKey="count"
                   nameKey="type"
-                  label={({type, percentage}) => `${type}: ${percentage}%`}
+                  label={({type, count}) => `${type}: ${count}`}
                 >
-                  {(analyticsData.alert_breakdown || []).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#dc2626', '#f97316', '#fbbf24', '#3b82f6', '#22c55e'][index]} />
+                  {Object.entries(eventTypes).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#dc2626', '#f97316', '#fbbf24', '#3b82f6', '#22c55e'][index % 5]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -658,13 +671,16 @@ function Analytics() {
   }
 
   const renderResponseTimesTab = () => {
-    // 1. Check for null data FIRST
-    if (!analyticsData) return <ResponseTimesSkeleton />
+    // 1. Check for null or empty data FIRST
+    if (!analyticsData || Object.keys(analyticsData).length === 0) {
+      if (loading) return <ResponseTimesSkeleton />
+      return <div className="analytics-loading">No response times data available. Try refreshing.</div>
+    }
 
     // 2. Wrap the rest in try...catch for unexpected render errors
     try {
       const responseData = analyticsData.data || analyticsData
-      if (!responseData || typeof responseData !== 'object') {
+      if (!responseData || typeof responseData !== 'object' || Object.keys(responseData).length === 0) {
         // Handle unexpected data structure
         console.warn("Unexpected data structure in renderResponseTimesTab:", responseData)
         return <div className="analytics-loading">Processing response times data...</div>
@@ -689,33 +705,37 @@ function Analytics() {
       
       // Get data from summary or top level
       const summary = responseData.summary || {}
+      const performanceMetrics = responseData.performance_metrics || {}
       const fastestTime = summary.fastest_response_time_minutes
       const improvement = summary.improvement_percentage
-      const overallAvg = summary.average_response_time || analyticsData.overall_avg_response_time
+      const overallAvg = summary.average_response_time || 0
+      const avgResolution = summary.average_resolution_time || 0
+      const responseTimeBySeverity = performanceMetrics.response_time_by_severity || {}
+      const resolutionTrends = performanceMetrics.resolution_time_trends || []
 
       return (
       <div className="analytics-tab">
         <div className="metrics-grid">
           {renderMetricCard('Overall Avg', formatResponseTime(overallAvg), 'Response time', '⏱️')}
-          {renderMetricCard('SLA Compliance', `${analyticsData.sla_compliance_rate || 0}%`, 'Within targets', '🎯')}
+          {renderMetricCard('Avg Resolution', formatResponseTime(avgResolution), 'Resolution time', '✅')}
           {renderMetricCard('Fastest Response', formatResponseTime(fastestTime), 'Best time', '🚀')}
           {renderMetricCard('Improvement', improvement !== null && improvement !== undefined ? `${improvement >= 0 ? '+' : ''}${improvement}%` : 'N/A', 'vs last period', '📈')}
         </div>
 
         <div className="sla-targets">
-          <h3>🎯 SLA Performance by Severity</h3>
+          <h3>🎯 Response Time by Severity</h3>
           <div className="sla-grid">
-            {(analyticsData.sla_targets || []).map((sla, index) => (
-              <div key={index} className={`sla-card ${sla.status}`}>
-                <div className="sla-severity">{sla.severity}</div>
+            {Object.entries(responseTimeBySeverity).map(([severity, timeMinutes], index) => (
+              <div key={index} className="sla-card">
+                <div className="sla-severity">{severity}</div>
                 <div className="sla-times">
-                  <div className="sla-target">Target: {sla.target_formatted}</div>
-                  <div className="sla-actual">Actual: {sla.avg_response_formatted}</div>
+                  <div className="sla-actual">Avg: {formatResponseTime(timeMinutes)}</div>
                 </div>
-                <div className="sla-compliance">{sla.compliance_rate}%</div>
-                <div className={`sla-status-indicator ${sla.status}`}></div>
               </div>
             ))}
+            {Object.keys(responseTimeBySeverity).length === 0 && (
+              <div className="sla-card">No response time data available</div>
+            )}
           </div>
         </div>
 
@@ -723,14 +743,14 @@ function Analytics() {
           <div className="chart-container">
             <h3>Response Times Over Time</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analyticsData.time_series}>
+              <LineChart data={resolutionTrends}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="timestamp" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
+                <XAxis dataKey="date" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="avg_response_time" stroke="#3b82f6" name="Avg Response (s)" />
-                <Line type="monotone" dataKey="critical_response_time" stroke="#dc2626" name="Critical Response (s)" />
+                <Line type="monotone" dataKey="average_resolution_time_minutes" stroke="#3b82f6" name="Avg Resolution (min)" />
+                <Line type="monotone" dataKey="count" stroke="#dc2626" name="Alert Count" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -846,12 +866,9 @@ function Analytics() {
     }
   }
 
-  if (loading) {
+  // Only show full-page loading for initial load
+  if (loading && !analyticsData) {
     return <div className="analytics-loading">Loading analytics dashboard...</div>
-  }
-
-  if (error) {
-    return <div className="analytics-error">{error}</div>
   }
 
 
@@ -905,6 +922,15 @@ function Analytics() {
 
       {/* Tab Content */}
       <div className="analytics-content">
+        {error && (
+          <div className="analytics-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c33', marginBottom: '1rem', borderRadius: '4px' }}>
+            ⚠️ {error}
+            <button onClick={() => { setError(null); fetchAnalyticsData(); }} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem' }}>Retry</button>
+          </div>
+        )}
+        {loading && analyticsData && (
+          <div className="analytics-loading-indicator" style={{ padding: '1rem', textAlign: 'center' }}>Loading {activeTab} data...</div>
+        )}
         {activeTab === 'overview' && renderOverviewTab()}
         {activeTab === 'notifications' && renderNotificationsTab()}
         {activeTab === 'operators' && renderOperatorsTab()}

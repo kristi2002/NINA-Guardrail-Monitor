@@ -38,29 +38,50 @@ def get_security_overview():
             hours = 24
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
-            # Get guardrail events (security threats)
-            event_stats = guardrail_repo.get_event_statistics(hours)
+            # Get guardrail events (security threats) - handle errors
+            try:
+                event_stats = guardrail_repo.get_event_statistics(hours)
+            except Exception as e:
+                logger.warning(f"Error getting event statistics: {e}")
+                event_stats = {'total_events': 0, 'severity_distribution': {}, 'type_distribution': {}}
+            
             total_events = event_stats.get('total_events', 0)
             
             # Active threats (events with status 'PENDING' or 'ACKNOWLEDGED')
-            active_threats = session.query(GuardrailEvent).filter(
-                GuardrailEvent.created_at >= cutoff_time,
-                GuardrailEvent.status.in_(['PENDING', 'ACKNOWLEDGED']),  # Fixed: use correct status values
-                GuardrailEvent.is_deleted.is_(False)
-            ).count()
+            # Use func.count() to avoid loading all columns
+            try:
+                active_threats = session.query(func.count(GuardrailEvent.id)).filter(
+                    GuardrailEvent.created_at >= cutoff_time,
+                    GuardrailEvent.status.in_(['PENDING', 'ACKNOWLEDGED']),  # Fixed: use correct status values
+                    GuardrailEvent.is_deleted.is_(False)
+                ).scalar() or 0
+            except Exception as e:
+                logger.warning(f"Error counting active threats: {e}")
+                active_threats = 0
             
             # Get event statistics (alerts are now GuardrailEvents)
             total_alerts = event_stats.get('total_events', 0)
-            critical_alerts = event_stats.get('severity_distribution', {}).get('CRITICAL', 0)            
-            # Get user statistics
-            user_stats = user_repo.get_user_statistics()
+            critical_alerts = event_stats.get('severity_distribution', {}).get('CRITICAL', 0) + event_stats.get('severity_distribution', {}).get('critical', 0)
+            
+            # Get user statistics - handle errors
+            try:
+                user_stats = user_repo.get_user_statistics()
+            except Exception as e:
+                logger.warning(f"Error getting user statistics: {e}")
+                user_stats = {'total_users': 0, 'recent_logins_24h': 0, 'role_distribution': {}}
+            
             total_users = user_stats.get('total_users', 0)
             
             # Active sessions = users who logged in recently (last 24 hours)
             active_sessions = user_stats.get('recent_logins_24h', 0)
             
-            # Failed logins from user activity
-            user_activity = user_repo.get_user_activity_metrics(hours)
+            # Failed logins from user activity - handle errors
+            try:
+                user_activity = user_repo.get_user_activity_metrics(hours)
+            except Exception as e:
+                logger.warning(f"Error getting user activity metrics: {e}")
+                user_activity = {'failed_login_attempts': 0}
+            
             failed_logins = user_activity.get('failed_login_attempts', 0)
             
             # Calculate security score (higher is better)
@@ -74,29 +95,43 @@ def get_security_overview():
             recent_incidents = []
             
             # Get recent critical guardrail events (alerts are now GuardrailEvents)
-            critical_events = guardrail_repo.get_by_severity('critical', limit=5)
-            for event in critical_events[:3]:
-                recent_incidents.append({
-                    'id': event.event_id,  # Fixed: was alert.alert_id
-                    'type': event.event_type or 'security_alert',  # Fixed: was alert.alert_type
-                    'severity': (event.severity or 'low').lower(),
-                    'timestamp': event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),  # Fixed: was alert.detected_at
-                    'status': event.status,
-                    'description': event.message_content or 'Security alert detected'  # Fixed: was alert.title
-                })
+            try:
+                critical_events = guardrail_repo.get_by_severity('critical', limit=5)
+                for event in critical_events[:3]:
+                    try:
+                        recent_incidents.append({
+                            'id': getattr(event, 'event_id', None) or getattr(event, 'id', None),
+                            'type': getattr(event, 'event_type', None) or 'security_alert',
+                            'severity': (getattr(event, 'severity', None) or 'low').lower(),
+                            'timestamp': event.created_at.isoformat() if hasattr(event, 'created_at') and event.created_at else datetime.utcnow().isoformat(),
+                            'status': getattr(event, 'status', 'PENDING'),
+                            'description': getattr(event, 'message_content', None) or 'Security alert detected'
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error processing critical event: {e}")
+                        continue
+            except Exception as e:
+                logger.warning(f"Error getting critical events: {e}")
             
             # Get recent high severity guardrail events
-            high_severity_events = guardrail_repo.get_by_severity('high', limit=2)
-            for event in high_severity_events:
-                if len(recent_incidents) < 5:  # Limit total incidents
-                    recent_incidents.append({
-                        'id': event.event_id,
-                        'type': event.event_type,
-                        'severity': (event.severity or 'low').lower(),
-                        'timestamp': event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),
-                        'status': event.status,
-                        'description': event.message_content or 'Guardrail event detected'  # Fixed: was event.title or event.description
-                    })
+            try:
+                high_severity_events = guardrail_repo.get_by_severity('high', limit=2)
+                for event in high_severity_events:
+                    if len(recent_incidents) < 5:  # Limit total incidents
+                        try:
+                            recent_incidents.append({
+                                'id': getattr(event, 'event_id', None) or getattr(event, 'id', None),
+                                'type': getattr(event, 'event_type', None),
+                                'severity': (getattr(event, 'severity', None) or 'low').lower(),
+                                'timestamp': event.created_at.isoformat() if hasattr(event, 'created_at') and event.created_at else datetime.utcnow().isoformat(),
+                                'status': getattr(event, 'status', 'PENDING'),
+                                'description': getattr(event, 'message_content', None) or 'Guardrail event detected'
+                            })
+                        except Exception as e:
+                            logger.warning(f"Error processing high severity event: {e}")
+                            continue
+            except Exception as e:
+                logger.warning(f"Error getting high severity events: {e}")
             
             security_data = {
                 'summary': {
@@ -151,29 +186,41 @@ def get_security_threats():
         with get_session_context() as session:
             guardrail_repo = GuardrailEventRepository(session)  # Fixed: Use GuardrailEventRepository instead of AlertRepository
             
-            # Get recent guardrail events (alerts are now GuardrailEvents)
-            recent_events = guardrail_repo.get_recent_events(hours, 100)
+            # Get recent guardrail events (alerts are now GuardrailEvents) - handle errors
+            try:
+                recent_events = guardrail_repo.get_recent_events(hours, 100)
+            except Exception as e:
+                logger.warning(f"Error getting recent events: {e}")
+                recent_events = []
             
             # Filter by severity if specified
             if severity != 'all':
-                recent_events = [e for e in recent_events if e.severity.upper() == severity.upper()]
+                try:
+                    recent_events = [e for e in recent_events if hasattr(e, 'severity') and e.severity and e.severity.upper() == severity.upper()]
+                except Exception as e:
+                    logger.warning(f"Error filtering by severity: {e}")
+                    recent_events = []
             
-            # Map guardrail events to threats
+            # Map guardrail events to threats - handle errors safely
             threats = []
             for event in recent_events:
-                threat = {
-                    'id': event.event_id,  # Fixed: was alert.alert_id
-                    'type': event.event_type,  # Use event_type as threat type
-                    'severity': (event.severity or 'low').lower(),
-                    'conversation_id': event.conversation_id,
-                    'detected_at': event.created_at.isoformat() if event.created_at else datetime.now().isoformat(),  # Fixed: was alert.detected_at
-                    'status': event.status,
-                    'description': event.message_content,  # Fixed: was alert.title
-                    'mitigation': event.action_taken or event.action_notes or 'Action pending',  # Fixed: was alert.resolution_action
-                    'assigned_to': event.acknowledged_by or event.resolved_by or 'Unassigned',  # Fixed: was alert.assigned_to
-                    'escalated': event.status == 'ESCALATED'  # Fixed: derive from status
-                }
-                threats.append(threat)
+                try:
+                    threat = {
+                        'id': getattr(event, 'event_id', None) or getattr(event, 'id', None),
+                        'type': getattr(event, 'event_type', None) or 'unknown',
+                        'severity': (getattr(event, 'severity', None) or 'low').lower(),
+                        'conversation_id': getattr(event, 'conversation_id', None),
+                        'detected_at': event.created_at.isoformat() if hasattr(event, 'created_at') and event.created_at else datetime.now().isoformat(),
+                        'status': getattr(event, 'status', 'PENDING') or 'PENDING',
+                        'description': getattr(event, 'message_content', None) or 'Security threat detected',
+                        'mitigation': getattr(event, 'action_taken', None) or getattr(event, 'action_notes', None) or 'Action pending',
+                        'assigned_to': getattr(event, 'acknowledged_by', None) or getattr(event, 'resolved_by', None) or 'Unassigned',
+                        'escalated': getattr(event, 'status', None) == 'ESCALATED'
+                    }
+                    threats.append(threat)
+                except Exception as e:
+                    logger.warning(f"Error processing threat event: {e}")
+                    continue
             
             # Calculate summary statistics
             total = len(threats)

@@ -4,12 +4,11 @@ Guardrail Service - System 2: The Guard
 Flask microservice for guardrail validation (port 5001)
 """
 
-from flask import Flask, request, jsonify # type: ignore
-from dotenv import load_dotenv # type: ignore
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv 
 import os
 import logging
 import uuid
-from datetime import datetime
 from validators import GuardrailValidator
 from kafka_producer import GuardrailKafkaProducer
 

@@ -12,6 +12,21 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true
+      },
+      '/socket.io': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        ws: true,  // Enable WebSocket proxying
+        secure: false,  // For local development
+        rewrite: (path) => path,  // Keep the /socket.io path
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('Socket.IO proxy error:', err);
+          });
+          proxy.on('proxyReqWs', (proxyReq, _req, _socket) => {
+            console.log('Socket.IO WebSocket upgrade request');
+          });
+        }
       }
     }
   },

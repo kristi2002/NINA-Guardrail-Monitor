@@ -25,15 +25,39 @@ Guardrail Strategy Service
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Setup Virtual Environment (Windows)
 
-```bash
+**Option A: Using setup script (Recommended)**
+```powershell
+.\setup.bat
+```
+
+**Option B: Manual setup**
+```powershell
+# Create virtual environment with Python 3.14
+py -3.14 -m venv venv
+
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
 pip install -r requirements.txt
+```
+
+**Option C: Migrate existing venv to Python 3.14**
+If you have an existing virtual environment created with an older Python version:
+```powershell
+.\migrate-to-python314.bat
 ```
 
 ### 2. Configure Environment
 
 Copy `env.example` to `.env`:
+```powershell
+copy env.example .env
+```
+
+Then edit `.env` with your configuration:
 
 ```bash
 # Kafka Configuration
@@ -55,7 +79,17 @@ LOG_LEVEL=INFO
 
 ### 3. Start the Service
 
-```bash
+**Option A: Using run script**
+```powershell
+.\run.bat
+```
+
+**Option B: Manual start**
+```powershell
+# Activate virtual environment (if not already activated)
+.\venv\Scripts\Activate.ps1
+
+# Run the service
 python app.py
 ```
 
@@ -263,12 +297,32 @@ kafka-broker-api-versions --bootstrap-server localhost:9092
 
 ### "Validators not installed"
 
-Install from Guardrails Hub:
+**On Windows:** Use the PowerShell script to handle encoding issues:
 
-```bash
+```powershell
+.\install-hub-validators.ps1
+```
+
+**On Linux/Mac or Manual Installation:**
+
+Set UTF-8 encoding and install:
+
+```powershell
+# Windows PowerShell
+$env:PYTHONIOENCODING="utf-8"
+$env:PYTHONUTF8="1"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 guardrails hub install hub://guardrails/toxic_language
 guardrails hub install hub://guardrails/detect_pii
 ```
+
+```bash
+# Linux/Mac
+guardrails hub install hub://guardrails/toxic_language
+guardrails hub install hub://guardrails/detect_pii
+```
+
+**Note:** On Windows, if you see a `charmap codec can't encode character` error, it's due to Windows console encoding. The PowerShell script above handles this automatically.
 
 ## Requirements
 

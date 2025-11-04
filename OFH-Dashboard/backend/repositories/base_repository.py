@@ -5,8 +5,8 @@ Provides common CRUD operations for all repositories
 """
 
 from typing import List, Optional, Type, TypeVar, Dict, Any
-from sqlalchemy.orm import Session # type: ignore
-from sqlalchemy import and_, or_, desc, asc # type: ignore
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, desc, asc
 from datetime import datetime, timedelta
 import logging
 

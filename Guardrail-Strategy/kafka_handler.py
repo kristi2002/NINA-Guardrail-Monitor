@@ -4,19 +4,18 @@ Kafka Handler for Guardrails AI
 Custom on_fail handler that sends guardrail failures to Kafka
 """
 
-import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict
-from guardrails.validator_base import FailResult # type: ignore 
+from typing import Any, Dict, Optional
+from guardrails.validator_base import FailResult 
 
 logger = logging.getLogger(__name__)
 
 # Initialize Kafka producer (singleton)
 _kafka_producer = None
 
-def get_kafka_producer() -> GuardrailKafkaProducer: # type: ignore
+def get_kafka_producer():  # Removed type annotation to avoid forward reference error
     """Get or create Kafka producer instance"""
     global _kafka_producer
     if _kafka_producer is None:
@@ -25,7 +24,7 @@ def get_kafka_producer() -> GuardrailKafkaProducer: # type: ignore
         _kafka_producer = GuardrailKafkaProducer()
     return _kafka_producer
 
-def send_alert_to_kafka(value: str, fail_result: FailResult, metadata: Dict[str, Any] = None, **kwargs) -> str:
+def send_alert_to_kafka(value: str, fail_result: FailResult, metadata: Optional[Dict[str, Any]] = None, **kwargs) -> str:
     """
     Custom on_fail handler for Guardrails AI.
     
@@ -44,17 +43,18 @@ def send_alert_to_kafka(value: str, fail_result: FailResult, metadata: Dict[str,
     logger.warning(f"🔥 Guardrail failure detected! Sending to Kafka...")
     
     # Get conversation_id from various possible sources
+    # Generate a valid conversation_id if not found
+    import uuid
     conversation_id = (
         kwargs.get('conversation_id') or
         (metadata.get('conversation_id') if metadata else None) or
-        kwargs.get('conversation_id') or
-        'unknown'
+        f"conv_{uuid.uuid4().hex[:12]}"
     )
     
     # Extract validator information
     validator_name = "unknown"
-    if hasattr(fail_result, 'validator') and fail_result.validator:
-        validator_name = fail_result.validator.__class__.__name__
+    if hasattr(fail_result, 'validator') and fail_result.validator:  # type: ignore
+        validator_name = fail_result.validator.__class__.__name__  # type: ignore
     
     # Determine event type and severity based on validator type
     event_type = "warning_triggered"  # Default

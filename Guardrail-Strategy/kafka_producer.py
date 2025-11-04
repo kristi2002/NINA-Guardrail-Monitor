@@ -7,7 +7,7 @@ Publishes guardrail events to Kafka topics
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 import os

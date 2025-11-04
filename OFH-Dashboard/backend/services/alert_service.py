@@ -179,8 +179,8 @@ class AlertService(BaseService):
             if not event:
                 return self.format_response(success=False, message="Alert not found")
             
-            if event.status == 'dismissed':
-                return self.format_response(success=False, message=f"Alert is already dismissed")
+            if event.status == 'RESOLVED':
+                return self.format_response(success=False, message=f"Alert is already resolved")
             
             # Use the model's acknowledge method
             event.acknowledge(operator_id)

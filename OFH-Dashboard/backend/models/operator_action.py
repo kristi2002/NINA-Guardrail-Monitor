@@ -104,17 +104,24 @@ class OperatorAction(BaseModel):
     
     def is_high_impact(self):
         """Check if action has high impact"""
-        return self.impact_level in ['high', 'critical']
+        impact_val: str = str(self.impact_level).lower() if self.impact_level is not None else ''  # type: ignore
+        return impact_val in ['high', 'critical']
     
     def needs_followup(self):
         """Check if action needs follow-up"""
-        return self.requires_followup and not self.followup_completed
+        requires_followup_val: bool = bool(self.requires_followup) if self.requires_followup is not None else False  # type: ignore
+        followup_completed_val: bool = bool(self.followup_completed) if self.followup_completed is not None else False  # type: ignore
+        return requires_followup_val and not followup_completed_val
     
     def is_followup_overdue(self):
         """Check if follow-up is overdue"""
-        if not self.requires_followup or self.followup_completed:
+        requires_followup_val: bool = bool(self.requires_followup) if self.requires_followup is not None else False  # type: ignore
+        followup_completed_val: bool = bool(self.followup_completed) if self.followup_completed is not None else False  # type: ignore
+        if not requires_followup_val or followup_completed_val:
             return False
-        return self.followup_due_date and datetime.utcnow() > self.followup_due_date
+        if self.followup_due_date is not None:
+            return datetime.utcnow() > self.followup_due_date
+        return False
     
     def start_action(self):
         """Mark action as in progress"""
@@ -130,7 +137,7 @@ class OperatorAction(BaseModel):
             self.result_notes = notes
         
         # Calculate resolution time if we have the start time
-        if self.action_timestamp:
+        if self.action_timestamp is not None and self.completion_time is not None:
             delta = self.completion_time - self.action_timestamp
             self.resolution_time_minutes = int(delta.total_seconds() / 60)
     
@@ -158,7 +165,7 @@ class OperatorAction(BaseModel):
     
     def calculate_response_time(self):
         """Calculate response time in minutes"""
-        if self.action_timestamp and self.created_at:
+        if self.action_timestamp is not None and self.created_at is not None:
             delta = self.action_timestamp - self.created_at
             return int(delta.total_seconds() / 60)
         return None

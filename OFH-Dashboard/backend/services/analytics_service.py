@@ -6,7 +6,7 @@ Handles business logic for analytics and reporting
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session # type: ignore
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .base_service import BaseService
 from repositories.conversation_repository import ConversationRepository
 from repositories.user_repository import UserRepository
@@ -114,18 +114,70 @@ class AnalyticsService(BaseService):
         try:
             hours = self._parse_time_range_to_hours(time_range)
             
-            # Get alert statistics from GuardrailEvent
-            alert_stats = self._get_guardrail_event_statistics(hours)
+            # Get alert statistics from GuardrailEvent - handle errors
+            try:
+                alert_stats = self._get_guardrail_event_statistics(hours)
+            except Exception as e:
+                self.logger.error(f"Error getting guardrail event statistics: {e}")
+                alert_stats = {
+                    'total_alerts': 0,
+                    'critical_alerts': 0,
+                    'active_alerts': 0,
+                    'severity_distribution': {},
+                    'status_distribution': {},
+                    'type_distribution': {}
+                }
             
-            # Get response time metrics from GuardrailEvent
-            response_metrics = self._get_guardrail_event_response_metrics(hours)
+            # Get response time metrics from GuardrailEvent - handle errors
+            try:
+                response_metrics = self._get_guardrail_event_response_metrics(hours)
+            except Exception as e:
+                self.logger.error(f"Error getting response metrics: {e}")
+                response_metrics = {
+                    'average_response_time_minutes': 0,
+                    'average_resolution_time_minutes': 0,
+                    'response_time_by_severity': {}
+                }
             
             # Get recent alerts from GuardrailEvent
+            # Use explicit column selection to avoid loading missing columns
             from sqlalchemy import func # type: ignore
+            session = self.get_session()
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-            recent_alerts_raw = self.db.query(self.GuardrailEvent).filter(
-                self.GuardrailEvent.created_at >= cutoff_time
-            ).order_by(self.GuardrailEvent.created_at.desc()).limit(50).all()
+            
+            # Try to load recent alerts, but handle errors gracefully
+            recent_alerts_raw = []
+            try:
+                recent_alerts_raw = session.query(self.GuardrailEvent).filter(
+                    self.GuardrailEvent.created_at >= cutoff_time
+                ).order_by(self.GuardrailEvent.created_at.desc()).limit(50).all()
+            except Exception as e:
+                self.logger.warning(f"Error loading recent alerts: {e}")
+                recent_alerts_raw = []
+            
+            # Build recent alerts list safely
+            recent_alerts = []
+            for event in recent_alerts_raw:
+                try:
+                    recent_alerts.append({
+                        'id': getattr(event, 'id', None) or getattr(event, 'event_id', None),
+                        'title': getattr(event, 'message_content', None) or 'Alert',
+                        'severity': getattr(event, 'severity', 'low') or 'low',
+                        'status': getattr(event, 'status', 'PENDING') or 'PENDING',
+                        'detected_at': event.created_at.isoformat() if hasattr(event, 'created_at') and event.created_at else datetime.utcnow().isoformat(),
+                        'response_time': getattr(event, 'response_time_minutes', None)
+                    })
+                except Exception as e:
+                    self.logger.warning(f"Error processing alert event: {e}")
+                    continue
+            
+            # Get resolution trends safely
+            resolution_trends = []
+            try:
+                resolution_trends = self._get_resolution_time_trends(hours)
+            except Exception as e:
+                self.logger.warning(f"Error getting resolution trends: {e}")
+                resolution_trends = []
             
             analytics = {
                 'time_range': time_range,
@@ -136,31 +188,19 @@ class AnalyticsService(BaseService):
                     'active_alerts': alert_stats.get('active_alerts', 0),
                     'average_response_time': response_metrics.get('average_response_time_minutes', 0),
                     'average_resolution_time': response_metrics.get('average_resolution_time_minutes', 0),
-                    'fastest_response_time_minutes': self._get_fastest_response_time(hours),
+                    'fastest_response_time_minutes': self._get_fastest_response_time(hours) or 0,
                     'improvement_percentage': None  # Skipped for now
                 },
                 'distributions': {
                     'by_severity': alert_stats.get('severity_distribution', {}),
                     'by_status': alert_stats.get('status_distribution', {}),
-                    'by_event_type': alert_stats.get('type_distribution', {})  # <-- FIX
+                    'by_event_type': alert_stats.get('type_distribution', {})
                 },
                 'performance_metrics': {
                     'response_time_by_severity': response_metrics.get('response_time_by_severity', {}),
-                    'resolution_time_trends': self._get_resolution_time_trends(hours)
+                    'resolution_time_trends': resolution_trends
                 },
-                'recent_alerts': [
-                    {
-                        'id': event.id,
-                        # --- FIX: Campo corretto ---
-                        'title': event.message_content, 
-                        'severity': event.severity,
-                        'status': event.status,
-                        'detected_at': event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),
-                        # --- FIX: Campo corretto ---
-                        'response_time': getattr(event, 'response_time_minutes', None) 
-                    }
-                    for event in recent_alerts_raw
-                ]
+                'recent_alerts': recent_alerts
             }
             
             self.log_operation('alert_analytics_requested', details={
@@ -175,6 +215,7 @@ class AnalyticsService(BaseService):
             )
             
         except Exception as e:
+            self.logger.error(f"Critical error in get_alert_analytics: {e}", exc_info=True)
             return self.handle_exception(e, 'get_alert_analytics')
     
     def get_conversation_analytics(self, time_range: str = '7d') -> Dict[str, Any]:
@@ -343,10 +384,16 @@ class AnalyticsService(BaseService):
             
             # Get alert statistics which serve as notifications from GuardrailEvent
             alert_stats = self._get_guardrail_event_statistics(hours)
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-            recent_alerts = self.db.query(self.GuardrailEvent).filter(
-                self.GuardrailEvent.created_at >= cutoff_time
-            ).order_by(self.GuardrailEvent.created_at.desc()).limit(100).all()
+            session = self.get_session()
+            # Use timezone-aware datetime to match database timestamps
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+            try:
+                recent_alerts = session.query(self.GuardrailEvent).filter(
+                    self.GuardrailEvent.created_at >= cutoff_time
+                ).order_by(self.GuardrailEvent.created_at.desc()).limit(100).all()
+            except Exception as e:
+                self.logger.warning(f"Error loading recent alerts for notifications: {e}")
+                recent_alerts = []
             
             # Calculate notification metrics based on alerts
             total_notifications = alert_stats.get('total_alerts', 0)
@@ -357,20 +404,31 @@ class AnalyticsService(BaseService):
             
             # Track notification trends (daily breakdown)
             trends = []
-            current_date = datetime.now()
+            # Use timezone-aware datetime to match database timestamps
+            current_date = datetime.now(timezone.utc)
             for i in range(min(7, hours // 24)):
-                day_start = current_date - timedelta(days=i)
-                day_end = current_date - timedelta(days=i-1)
+                day_start = (current_date - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+                day_end = (current_date - timedelta(days=i-1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                # Normalize datetimes for comparison - convert to timezone-aware if needed
+                def normalize_datetime(dt):
+                    """Convert datetime to timezone-aware if it's naive"""
+                    if dt is None:
+                        return None
+                    if dt.tzinfo is None:
+                        # Assume naive datetime is UTC
+                        return dt.replace(tzinfo=timezone.utc)
+                    return dt
                 
                 day_alerts = len([a for a in recent_alerts 
-                                 if a.created_at and day_start <= a.created_at < day_end])
+                                 if a.created_at and normalize_datetime(day_start) <= normalize_datetime(a.created_at) < normalize_datetime(day_end)])
                 trends.insert(0, {
                     'date': day_start.strftime('%Y-%m-%d'),
                     'count': day_alerts
                 })
             
             # --- FIX: Stato corretto ---
-            sent_count = by_status.get('dismissed', 0) + by_status.get('ACKNOWLEDGED', 0)
+            sent_count = by_status.get('RESOLVED', 0) + by_status.get('ACKNOWLEDGED', 0)
             pending_count = by_status.get('PENDING', 0)
             # --- FINE FIX ---
             
@@ -412,87 +470,152 @@ class AnalyticsService(BaseService):
     
     def _get_guardrail_event_statistics(self, hours: int) -> Dict[str, Any]:
         """Helper to get stats from GuardrailEvent table"""
-        from sqlalchemy import func # type: ignore
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
-        base_query = self.db.query(self.GuardrailEvent).filter(
-            self.GuardrailEvent.created_at >= cutoff_time
-        )
-        
-        total_alerts = base_query.count()
-        critical_alerts = base_query.filter(
-            self.GuardrailEvent.severity.in_(['CRITICAL', 'critical'])
-        ).count()
-        active_alerts = base_query.filter(
-            self.GuardrailEvent.status == 'PENDING'
-        ).count()
-        
-        severity_dist = base_query.with_entities(
-            self.GuardrailEvent.severity, func.count(self.GuardrailEvent.id)
-        ).group_by(self.GuardrailEvent.severity).all()
-        
-        status_dist = base_query.with_entities(
-            self.GuardrailEvent.status, func.count(self.GuardrailEvent.id)
-        ).group_by(self.GuardrailEvent.status).all()
-        
-        type_dist = base_query.with_entities(
-            self.GuardrailEvent.event_type, func.count(self.GuardrailEvent.id)
-        ).group_by(self.GuardrailEvent.event_type).all()
-        
-        return {
-            'total_alerts': total_alerts,
-            'critical_alerts': critical_alerts,
-            'active_alerts': active_alerts,
-            'severity_distribution': {s: c for s, c in severity_dist},
-            'status_distribution': {s: c for s, c in status_dist},
-            'type_distribution': {t: c for t, c in type_dist if t},
-        }
+        try:
+            from sqlalchemy import func # type: ignore
+            from sqlalchemy import and_ # type: ignore
+            session = self.get_session()
+            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            
+            # Use func.count to avoid loading all columns (including missing ones)
+            # Add is_deleted filter to exclude deleted events
+            base_filter = and_(
+                self.GuardrailEvent.created_at >= cutoff_time,
+                self.GuardrailEvent.is_deleted.is_(False)
+            )
+            
+            total_alerts = session.query(func.count(self.GuardrailEvent.id)).filter(
+                base_filter
+            ).scalar() or 0
+            
+            critical_alerts = session.query(func.count(self.GuardrailEvent.id)).filter(
+                base_filter,
+                self.GuardrailEvent.severity.in_(['CRITICAL', 'critical'])
+            ).scalar() or 0
+            
+            active_alerts = session.query(func.count(self.GuardrailEvent.id)).filter(
+                base_filter,
+                self.GuardrailEvent.status == 'PENDING'
+            ).scalar() or 0
+            
+            severity_dist = []
+            try:
+                severity_dist = session.query(
+                    self.GuardrailEvent.severity, func.count(self.GuardrailEvent.id)
+                ).filter(base_filter).group_by(self.GuardrailEvent.severity).all()
+            except Exception as e:
+                self.logger.warning(f"Error getting severity distribution: {e}")
+                severity_dist = []
+            
+            status_dist = []
+            try:
+                status_dist = session.query(
+                    self.GuardrailEvent.status, func.count(self.GuardrailEvent.id)
+                ).filter(base_filter).group_by(self.GuardrailEvent.status).all()
+            except Exception as e:
+                self.logger.warning(f"Error getting status distribution: {e}")
+                status_dist = []
+            
+            type_dist = []
+            try:
+                type_dist = session.query(
+                    self.GuardrailEvent.event_type, func.count(self.GuardrailEvent.id)
+                ).filter(base_filter).group_by(self.GuardrailEvent.event_type).all()
+            except Exception as e:
+                self.logger.warning(f"Error getting type distribution: {e}")
+                type_dist = []
+            
+            return {
+                'total_alerts': total_alerts,
+                'critical_alerts': critical_alerts,
+                'active_alerts': active_alerts,
+                'severity_distribution': {s: c for s, c in severity_dist if s},
+                'status_distribution': {s: c for s, c in status_dist if s},
+                'type_distribution': {t: c for t, c in type_dist if t},
+            }
+        except Exception as e:
+            self.logger.error(f"Error in _get_guardrail_event_statistics: {e}", exc_info=True)
+            return {
+                'total_alerts': 0,
+                'critical_alerts': 0,
+                'active_alerts': 0,
+                'severity_distribution': {},
+                'status_distribution': {},
+                'type_distribution': {},
+            }
 
     def _get_guardrail_event_response_metrics(self, hours: int) -> Dict[str, Any]:
         """Helper to get response/resolution metrics from GuardrailEvent"""
-        from sqlalchemy import func # type: ignore
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
-        base_query = self.db.query(self.GuardrailEvent).filter(
-            self.GuardrailEvent.created_at >= cutoff_time
-        )
-        
-        # Average response time (reviewed_at - created_at)
-        avg_response_time = base_query.filter(
-            self.GuardrailEvent.reviewed_at.isnot(None)
-        ).with_entities(
-            func.avg(func.extract('epoch', self.GuardrailEvent.reviewed_at - self.GuardrailEvent.created_at) / 60)
-        ).scalar()
-        
-        # Average resolution time (dismissed events)
-        avg_resolution_time_query = base_query.filter(
-            self.GuardrailEvent.status == 'dismissed',
-            self.GuardrailEvent.reviewed_at.isnot(None)
-        ).with_entities(
-            func.avg(func.extract('epoch', self.GuardrailEvent.reviewed_at - self.GuardrailEvent.created_at) / 60)
-        ).scalar()
-        
-        # Response time by severity
-        response_by_severity = base_query.filter(
-            self.GuardrailEvent.reviewed_at.isnot(None)
-        ).group_by(self.GuardrailEvent.severity).with_entities(
-            self.GuardrailEvent.severity,
-            func.avg(func.extract('epoch', self.GuardrailEvent.reviewed_at - self.GuardrailEvent.created_at) / 60)
-        ).all()
-        
-        return {
-            'average_response_time_minutes': float(avg_response_time) if avg_response_time else 0,
-            'average_resolution_time_minutes': float(avg_resolution_time_query) if avg_resolution_time_query else 0,
-            'response_time_by_severity': {s: float(c) for s, c in response_by_severity}
-        }
+        try:
+            from sqlalchemy import func # type: ignore
+            session = self.get_session()
+            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            
+            base_filter = self.GuardrailEvent.created_at >= cutoff_time
+            
+            # Average response time (reviewed_at - created_at)
+            # Use with_entities to only select needed columns, avoiding missing ones
+            avg_response_time = None
+            try:
+                avg_response_time = session.query(
+                    func.avg(func.extract('epoch', self.GuardrailEvent.reviewed_at - self.GuardrailEvent.created_at) / 60)
+                ).filter(
+                    base_filter,
+                    self.GuardrailEvent.reviewed_at.isnot(None)
+                ).scalar()
+            except Exception as e:
+                self.logger.warning(f"Error calculating average response time: {e}")
+                avg_response_time = None
+            
+            # Average resolution time (resolved events)
+            # Only select columns that exist (resolved_at may not exist yet, but we check with isnot(None))
+            avg_resolution_time_query = None
+            try:
+                avg_resolution_time_query = session.query(
+                    func.avg(func.extract('epoch', self.GuardrailEvent.resolved_at - self.GuardrailEvent.created_at) / 60)
+                ).filter(
+                    base_filter,
+                    self.GuardrailEvent.status == 'RESOLVED',
+                    self.GuardrailEvent.resolved_at.isnot(None)
+                ).scalar()
+            except Exception as e:
+                self.logger.warning(f"Error calculating average resolution time: {e}")
+                avg_resolution_time_query = None
+            
+            # Response time by severity - only select severity and calculated time
+            response_by_severity = []
+            try:
+                response_by_severity = session.query(
+                    self.GuardrailEvent.severity,
+                    func.avg(func.extract('epoch', self.GuardrailEvent.reviewed_at - self.GuardrailEvent.created_at) / 60)
+                ).filter(
+                    base_filter,
+                    self.GuardrailEvent.reviewed_at.isnot(None)
+                ).group_by(self.GuardrailEvent.severity).all()
+            except Exception as e:
+                self.logger.warning(f"Error calculating response time by severity: {e}")
+                response_by_severity = []
+            
+            return {
+                'average_response_time_minutes': float(avg_response_time) if avg_response_time else 0,
+                'average_resolution_time_minutes': float(avg_resolution_time_query) if avg_resolution_time_query else 0,
+                'response_time_by_severity': {s: float(c) for s, c in response_by_severity if c is not None}
+            }
+        except Exception as e:
+            self.logger.error(f"Error in _get_guardrail_event_response_metrics: {e}")
+            return {
+                'average_response_time_minutes': 0,
+                'average_resolution_time_minutes': 0,
+                'response_time_by_severity': {}
+            }
     
     def _get_fastest_response_time(self, hours: int) -> Optional[float]:
         """Get fastest response time from GuardrailEvent"""
         try:
             from sqlalchemy import func # type: ignore
+            session = self.get_session()
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
-            fastest = self.db.query(
+            fastest = session.query(
                 func.min(func.extract('epoch', self.GuardrailEvent.reviewed_at - self.GuardrailEvent.created_at) / 60)
             ).filter(
                 self.GuardrailEvent.reviewed_at.isnot(None),
@@ -523,10 +646,11 @@ class AnalyticsService(BaseService):
         """Get alert distribution by event type from GuardrailEvent"""
         try:
             from sqlalchemy import func # type: ignore
+            session = self.get_session()
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
             # Get events grouped by event_type
-            type_stats = self.db.query(
+            type_stats = session.query(
                 self.GuardrailEvent.event_type,
                 func.count(self.GuardrailEvent.id).label('count')
             ).filter(
@@ -547,32 +671,45 @@ class AnalyticsService(BaseService):
             
             # Get events with reviewed_at timestamps, grouped by day
             # GuardrailEvent doesn't have resolved_at, so we use reviewed_at as a proxy
-            reviewed_events = self.db.query(self.GuardrailEvent).filter(
-                self.GuardrailEvent.reviewed_at.isnot(None),
-                self.GuardrailEvent.created_at >= cutoff_time
-            ).all()
+            session = self.get_session()
+            try:
+                reviewed_events = session.query(self.GuardrailEvent).filter(
+                    self.GuardrailEvent.reviewed_at.isnot(None),
+                    self.GuardrailEvent.created_at >= cutoff_time
+                ).all()
+            except Exception as e:
+                self.logger.warning(f"Error loading reviewed events: {e}")
+                return []
             
             # Group by date and calculate average resolution time per day
             trends_dict = {}
             for event in reviewed_events:
-                if event.created_at and event.reviewed_at:
-                    date_key = event.created_at.date().isoformat()
-                    resolution_minutes = (event.reviewed_at - event.created_at).total_seconds() / 60
-                    
-                    if date_key not in trends_dict:
-                        trends_dict[date_key] = {'date': date_key, 'total': 0, 'sum': 0}
-                    trends_dict[date_key]['total'] += 1
-                    trends_dict[date_key]['sum'] += resolution_minutes
+                try:
+                    if event.created_at and event.reviewed_at:
+                        date_key = event.created_at.date().isoformat()
+                        resolution_minutes = (event.reviewed_at - event.created_at).total_seconds() / 60
+                        
+                        if date_key not in trends_dict:
+                            trends_dict[date_key] = {'date': date_key, 'total': 0, 'sum': 0}
+                        trends_dict[date_key]['total'] += 1
+                        trends_dict[date_key]['sum'] += resolution_minutes
+                except Exception as e:
+                    self.logger.warning(f"Error processing event for trends: {e}")
+                    continue
             
             # Convert to list with average resolution time
             trends = []
             for date_key, data in sorted(trends_dict.items()):
-                avg_time = data['sum'] / data['total'] if data['total'] > 0 else 0
-                trends.append({
-                    'date': date_key,
-                    'average_resolution_time_minutes': round(avg_time, 2),
-                    'count': data['total']
-                })
+                try:
+                    avg_time = data['sum'] / data['total'] if data['total'] > 0 else 0
+                    trends.append({
+                        'date': date_key,
+                        'average_resolution_time_minutes': round(avg_time, 2),
+                        'count': data['total']
+                    })
+                except Exception as e:
+                    self.logger.warning(f"Error calculating trend for date {date_key}: {e}")
+                    continue
             
             return trends
         except Exception as e:

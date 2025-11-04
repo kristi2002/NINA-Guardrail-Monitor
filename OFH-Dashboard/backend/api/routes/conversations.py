@@ -33,7 +33,7 @@ def get_repositories():
             'session': session  # Return session for cleanup
         }
     except Exception as e:
-        logger.error(f"Error getting repositories: {e}")
+        logger.error(f"Error getting repositories: {e}", exc_info=True)
         return None
 
 @conversations_bp.route('', methods=['GET'])
@@ -68,51 +68,135 @@ def get_conversations():
         # Transform conversations to API format
         conversations_data = []
         for conv in conversations:
-            # Get related guardrail events (alerts are now GuardrailEvents)
-            guardrail_events = guardrail_repo.get_by_conversation_id(conv.id)
-            
-            # Calculate statistics
-            events_by_severity = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
-            for event in guardrail_events:
-                severity = event.severity.lower() if event.severity else 'low'
-                if severity in events_by_severity:
-                    events_by_severity[severity] += 1
-            
-            # Calculate session duration
-            session_duration = 0
-            if conv.session_start and conv.session_end:
-                duration = conv.session_end - conv.session_start
-                session_duration = int(duration.total_seconds() / 60)
-            elif conv.session_start:
-                duration = datetime.utcnow() - conv.session_start
-                session_duration = int(duration.total_seconds() / 60)
-            
-            conversation_data = {
-                'id': conv.id,
-                'patient_id': conv.patient_id or 'unknown',
-                'patientInfo': {
-                    'name': conv.patient_name or 'Unknown Patient',
-                    'age': conv.patient_age or 0,
-                    'gender': conv.patient_gender or 'U',
-                    'pathology': conv.patient_pathology or 'Unknown'
-                },
-                'status': conv.status or 'UNKNOWN',
-                'situation': conv.situation or 'No description',
-                'situationLevel': conv.risk_level or 'low',
-                'created_at': conv.created_at.isoformat() if conv.created_at else datetime.utcnow().isoformat(),
-                'updated_at': conv.updated_at.isoformat() if conv.updated_at else conv.created_at.isoformat() if conv.created_at else datetime.utcnow().isoformat(),
-                'session_start': conv.session_start.isoformat() if conv.session_start else None,
-                'session_end': conv.session_end.isoformat() if conv.session_end else None,
-                'session_duration_minutes': session_duration,
-                'total_messages': conv.total_messages or 0,
-                'guardrail_violations': len(guardrail_events),
-                'statistics': {
-                    'total_events': len(guardrail_events),
-                    'events_by_severity': events_by_severity,
-                    'guardrail_violations': len(guardrail_events)
+            try:
+                # Get related guardrail events (alerts are now GuardrailEvents)
+                guardrail_events = guardrail_repo.get_by_conversation_id(conv.id) if guardrail_repo else []
+                
+                # Calculate statistics
+                events_by_severity = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+                for event in guardrail_events:
+                    severity = (event.severity.lower() if event.severity else 'low').strip()
+                    if severity in events_by_severity:
+                        events_by_severity[severity] += 1
+                
+                # Calculate session duration
+                session_duration = 0
+                try:
+                    def normalize_datetime(dt):
+                        """Convert datetime to timezone-aware if it's naive"""
+                        if dt is None:
+                            return None
+                        if dt.tzinfo is None:
+                            # Assume naive datetime is UTC
+                            from datetime import timezone
+                            return dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    
+                    if conv.session_start and conv.session_end:
+                        start = normalize_datetime(conv.session_start)
+                        end = normalize_datetime(conv.session_end)
+                        duration = end - start
+                        session_duration = int(duration.total_seconds() / 60)
+                    elif conv.session_start:
+                        from datetime import timezone
+                        start = normalize_datetime(conv.session_start)
+                        now = datetime.now(timezone.utc)
+                        duration = now - start
+                        session_duration = int(duration.total_seconds() / 60)
+                except Exception as e:
+                    logger.warning(f"Error calculating session duration for {conv.id}: {e}")
+                    session_duration = 0
+                
+                # Get patient info safely
+                patient_info = {}
+                if hasattr(conv, 'patient_info') and isinstance(conv.patient_info, dict):
+                    patient_info = conv.patient_info
+                elif hasattr(conv, 'patient_info') and conv.patient_info:
+                    try:
+                        import json
+                        if isinstance(conv.patient_info, str):
+                            patient_info = json.loads(conv.patient_info)
+                        else:
+                            patient_info = conv.patient_info
+                    except:
+                        patient_info = {}
+                
+                # Use properties if available, otherwise use patient_info dict
+                patient_name = None
+                patient_age = 0
+                patient_gender = 'U'
+                patient_pathology = 'Unknown'
+                
+                try:
+                    if hasattr(conv, 'patient_name') and callable(conv.patient_name):
+                        patient_name = conv.patient_name
+                    else:
+                        patient_name = patient_info.get('name', f'Patient {conv.id}')
+                except:
+                    patient_name = patient_info.get('name', f'Patient {conv.id}')
+                
+                try:
+                    if hasattr(conv, 'patient_age') and callable(conv.patient_age):
+                        patient_age = conv.patient_age
+                    else:
+                        patient_age = patient_info.get('age', 0)
+                except:
+                    patient_age = patient_info.get('age', 0)
+                
+                try:
+                    if hasattr(conv, 'patient_gender') and callable(conv.patient_gender):
+                        patient_gender = conv.patient_gender
+                    else:
+                        patient_gender = patient_info.get('gender', 'U')
+                except:
+                    patient_gender = patient_info.get('gender', 'U')
+                
+                try:
+                    if hasattr(conv, 'patient_pathology') and callable(conv.patient_pathology):
+                        patient_pathology = conv.patient_pathology
+                    else:
+                        patient_pathology = patient_info.get('pathology', 'Unknown')
+                except:
+                    patient_pathology = patient_info.get('pathology', 'Unknown')
+                
+                # Map backend status to frontend expected status
+                # Backend uses: ACTIVE, COMPLETED, TERMINATED, ESCALATED
+                # Frontend expects: IN_PROGRESS, COMPLETED, etc.
+                backend_status = (conv.status or 'UNKNOWN').upper()
+                frontend_status = backend_status
+                if backend_status == 'ACTIVE':
+                    frontend_status = 'IN_PROGRESS'  # Map ACTIVE to IN_PROGRESS for frontend
+                
+                conversation_data = {
+                    'id': conv.id or 'unknown',
+                    'patient_id': conv.patient_id or f'patient_{conv.id}',
+                    'patientInfo': {
+                        'name': patient_name or f'Patient {conv.id}',
+                        'age': patient_age or 0,
+                        'gender': patient_gender or 'U',
+                        'pathology': patient_pathology or 'Unknown'
+                    },
+                    'status': frontend_status,
+                    'situation': conv.situation or 'No description',
+                    'situationLevel': (conv.risk_level or 'low').lower(),
+                    'created_at': conv.created_at.isoformat() if conv.created_at else datetime.utcnow().isoformat(),
+                    'updated_at': conv.updated_at.isoformat() if conv.updated_at else (conv.created_at.isoformat() if conv.created_at else datetime.utcnow().isoformat()),
+                    'session_start': conv.session_start.isoformat() if conv.session_start else None,
+                    'session_end': conv.session_end.isoformat() if conv.session_end else None,
+                    'session_duration_minutes': session_duration,
+                    'total_messages': conv.total_messages or 0,
+                    'guardrail_violations': len(guardrail_events),
+                    'statistics': {
+                        'total_events': len(guardrail_events),
+                        'events_by_severity': events_by_severity,
+                        'guardrail_violations': len(guardrail_events)
+                    }
                 }
-            }
-            conversations_data.append(conversation_data)
+                conversations_data.append(conversation_data)
+            except Exception as e:
+                logger.error(f"Error processing conversation {conv.id}: {e}", exc_info=True)
+                # Continue with other conversations even if one fails
+                continue
         
         logger.info(f"Retrieved {len(conversations_data)} conversations for user {get_current_user()}")
         
@@ -212,6 +296,12 @@ def get_conversation_details(conversation_id):
                 'description': action.description or 'No description'
             })
         
+        # Map backend status to frontend expected status
+        backend_status = (conversation.status or 'UNKNOWN').upper()
+        frontend_status = backend_status
+        if backend_status == 'ACTIVE':
+            frontend_status = 'IN_PROGRESS'  # Map ACTIVE to IN_PROGRESS for frontend
+        
         conversation_details = {
             'id': conversation.id,
             'patient_id': conversation.patient_id or 'unknown',
@@ -221,7 +311,7 @@ def get_conversation_details(conversation_id):
                 'gender': conversation.patient_gender or 'U',
                 'pathology': conversation.patient_pathology or 'Unknown'
             },
-            'status': conversation.status or 'UNKNOWN',
+            'status': frontend_status,
             'situation': conversation.situation or 'No description',
             'situationLevel': conversation.risk_level or 'low',
             'created_at': conversation.created_at.isoformat() if conversation.created_at else datetime.utcnow().isoformat(),

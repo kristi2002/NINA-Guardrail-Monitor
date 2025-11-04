@@ -33,6 +33,10 @@ class ConversationRepository(BaseRepository):
             ).order_by(desc(ConversationSession.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting conversations for patient {patient_id}: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_by_status(self, status: str, limit: int = 100) -> List[ConversationSession]:
@@ -44,6 +48,10 @@ class ConversationRepository(BaseRepository):
             ).order_by(desc(ConversationSession.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting conversations by status {status}: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_by_risk_level(self, risk_levels: List[str], limit: int = 100) -> List[ConversationSession]:
@@ -56,6 +64,10 @@ class ConversationRepository(BaseRepository):
             ).order_by(desc(ConversationSession.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting conversations by risk level {risk_levels}: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_conversations_needing_attention(self, limit: int = 100) -> List[ConversationSession]:
@@ -71,6 +83,10 @@ class ConversationRepository(BaseRepository):
             ).order_by(desc(ConversationSession.created_at)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting conversations needing attention: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_recent_conversations(self, hours: int = 24, limit: int = 100) -> List[ConversationSession]:
@@ -83,6 +99,10 @@ class ConversationRepository(BaseRepository):
             ).order_by(desc(ConversationSession.session_start)).limit(limit).all()
         except Exception as e:
             logger.error(f"Error getting recent conversations: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_conversation_statistics(self, hours: int = 24) -> Dict[str, Any]:
@@ -90,41 +110,46 @@ class ConversationRepository(BaseRepository):
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
-            base_query = self.db.query(ConversationSession).filter(
+            base_filter = and_(
                 ConversationSession.session_start >= cutoff_time,
                 ConversationSession.is_deleted.is_(False)
             )
             
-            total_conversations = base_query.count()
+            # Use func.count() to avoid loading all columns (including patient_info which might not exist)
+            total_conversations = self.db.query(func.count(ConversationSession.id)).filter(base_filter).scalar() or 0
             
-            active_conversations = base_query.filter(
+            active_conversations = self.db.query(func.count(ConversationSession.id)).filter(
+                base_filter,
                 ConversationSession.status == 'ACTIVE'
-            ).count()
+            ).scalar() or 0
             
             # --- FIX: Query the real database column ---
-            high_risk_conversations = base_query.filter(
+            high_risk_conversations = self.db.query(func.count(ConversationSession.id)).filter(
+                base_filter,
                 ConversationSession.risk_level.in_(['HIGH', 'CRITICAL'])
-            ).count()
+            ).scalar() or 0
             
             # --- FIX: Query the real database column ---
-            risk_stats = base_query.with_entities(
+            risk_stats = self.db.query(
                 ConversationSession.risk_level,
                 func.count(ConversationSession.id).label('count')
-            ).group_by(ConversationSession.risk_level).all()
+            ).filter(base_filter).group_by(ConversationSession.risk_level).all()
             
-            status_stats = base_query.with_entities(
+            status_stats = self.db.query(
                 ConversationSession.status,
                 func.count(ConversationSession.id).label('count')
-            ).group_by(ConversationSession.status).all()
+            ).filter(base_filter).group_by(ConversationSession.status).all()
             
-            avg_duration = base_query.filter(
+            avg_duration = self.db.query(func.avg(ConversationSession.session_duration_minutes)).filter(
+                base_filter,
                 ConversationSession.session_duration_minutes.isnot(None)
-            ).with_entities(func.avg(ConversationSession.session_duration_minutes)).scalar()
+            ).scalar()
             
             # --- FIX: Query the real database column ---
-            escalated_conversations = base_query.filter(
+            escalated_conversations = self.db.query(func.count(ConversationSession.id)).filter(
+                base_filter,
                 ConversationSession.escalated == True
-            ).count()
+            ).scalar() or 0
             
             escalation_rate = (escalated_conversations / total_conversations) if total_conversations > 0 else 0
             
@@ -141,6 +166,10 @@ class ConversationRepository(BaseRepository):
             }
         except Exception as e:
             logger.error(f"Error getting conversation statistics: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise
     
     def get_conversation_metrics(self, hours: int = 24) -> Dict[str, Any]:
@@ -148,33 +177,37 @@ class ConversationRepository(BaseRepository):
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             
-            base_query = self.db.query(ConversationSession).filter(
+            base_filter = and_(
                 ConversationSession.session_start >= cutoff_time,
                 ConversationSession.is_deleted.is_(False)
             )
 
             # --- FIX: Query the real database columns ---
-            avg_sentiment = base_query.filter(
+            avg_sentiment = self.db.query(func.avg(ConversationSession.sentiment_score)).filter(
+                base_filter,
                 ConversationSession.sentiment_score.isnot(None)
-            ).with_entities(func.avg(ConversationSession.sentiment_score)).scalar()
+            ).scalar()
             
-            avg_engagement = base_query.filter(
+            avg_engagement = self.db.query(func.avg(ConversationSession.engagement_score)).filter(
+                base_filter,
                 ConversationSession.engagement_score.isnot(None)
-            ).with_entities(func.avg(ConversationSession.engagement_score)).scalar()
-
-            avg_satisfaction = base_query.filter(
-                ConversationSession.satisfaction_score.isnot(None)
-            ).with_entities(func.avg(ConversationSession.satisfaction_score)).scalar()
-
-            total_violations = base_query.with_entities(
-                func.sum(ConversationSession.guardrail_violations)
             ).scalar()
 
-            high_risk_count = base_query.filter(
+            avg_satisfaction = self.db.query(func.avg(ConversationSession.satisfaction_score)).filter(
+                base_filter,
+                ConversationSession.satisfaction_score.isnot(None)
+            ).scalar()
+
+            total_violations = self.db.query(func.sum(ConversationSession.guardrail_violations)).filter(
+                base_filter
+            ).scalar()
+
+            high_risk_count = self.db.query(func.count(ConversationSession.id)).filter(
+                base_filter,
                 ConversationSession.risk_level.in_(['HIGH', 'CRITICAL'])
-            ).count()
+            ).scalar() or 0
             
-            total_conversations = base_query.count()
+            total_conversations = self.db.query(func.count(ConversationSession.id)).filter(base_filter).scalar() or 0
             
             high_risk_rate = (high_risk_count / total_conversations) if total_conversations > 0 else 0
             
@@ -189,4 +222,8 @@ class ConversationRepository(BaseRepository):
             }
         except Exception as e:
             logger.error(f"Error getting conversation metrics: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             raise

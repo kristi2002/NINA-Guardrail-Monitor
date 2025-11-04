@@ -224,12 +224,12 @@ class OperatorActionRepository(BaseRepository):
                 OperatorAction.is_deleted.is_(False)
             ).group_by(OperatorAction.priority).all()
             
-            # Completed actions
-            completed_actions = self.db.query(OperatorAction).filter(
+            # Completed actions - use func.count() to avoid loading all columns
+            completed_actions = self.db.query(func.count(OperatorAction.id)).filter(
                 OperatorAction.status == 'completed',
                 OperatorAction.action_timestamp >= cutoff_time,
                 OperatorAction.is_deleted.is_(False)
-            ).count()
+            ).scalar() or 0
             
             # Average response time
             avg_response_time = self.db.query(
