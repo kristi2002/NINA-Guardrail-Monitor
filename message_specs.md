@@ -85,7 +85,6 @@ Guardrail events are published whenever a message validation fails or a monitori
 | `event_type` | string | Event type (see enum below) |
 | `severity` | string | Severity level (see enum below) |
 | `message` | string | Human-readable description |
-| `event_id` | string | Unique identifier |
 
 #### Event Types
 
