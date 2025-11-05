@@ -23,7 +23,7 @@ The OFH Dashboard is a full-stack monitoring solution that provides real-time in
 
 **Security & Authentication**:
 - JWT authentication
-- Role-based access control (Admin, Operator, Viewer, Auditor)
+- Admin role with full system access
 - Protected routes and middleware
 
 **Testing & Quality**:
@@ -213,7 +213,6 @@ SECRET_KEY=your-super-secure-secret-key-minimum-32-characters-long
 JWT_SECRET_KEY=your-super-secure-jwt-secret-key-minimum-32-characters-long
 APP_DEBUG=False
 ADMIN_PASSWORD=your_secure_admin_password
-OPERATOR_PASSWORD=your_secure_operator_password
 ```
 
 📖 **For complete production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
@@ -234,14 +233,14 @@ OPERATOR_PASSWORD=your_secure_operator_password
 #### **📈 Analytics Dashboard**
 - **Overview Tab**: Key metrics, performance trends, system health
 - **Notifications Tab**: Delivery rates, time series data, failure analysis
-- **Operators Tab**: Performance metrics, workload distribution, quality scores
+- **Admin Performance Tab**: Performance metrics, workload distribution, quality scores
 - **Alert Trends Tab**: Alert types, geographic analysis, trend analysis
 - **Response Times Tab**: SLA compliance, average times, performance trends
 - **Escalations Tab**: Escalation rates, auto-escalation, resolution times
 - **Time Range Filtering**: 24 hours, 7 days, 30 days
 - **Data Export**: JSON export with custom time ranges
 
-#### **🛡️ Security Dashboard** (Admin/Auditor Access)
+#### **🛡️ Security Dashboard** (Admin Access)
 - **Overview Tab**: Security score, threats blocked, system status, recent events
 - **Threats Tab**: Threat detection, types, geographic analysis, response times
 - **Access Control Tab**: Authentication metrics, user activity, MFA adoption
@@ -251,7 +250,7 @@ OPERATOR_PASSWORD=your_secure_operator_password
 
 #### **🔐 Authentication & Security**
 - **JWT Authentication**: Secure token-based authentication
-- **Role-based Access Control**: Admin, Operator, Viewer, Auditor roles
+- **Admin Access Control**: Admin role with full system access
 - **Protected Routes**: Route-level permission checking
 - **Session Management**: Automatic token refresh and validation
 
@@ -285,7 +284,7 @@ OPERATOR_PASSWORD=your_secure_operator_password
 |----------|--------|-------------|
 | `/api/analytics/overview` | GET | Dashboard overview metrics |
 | `/api/analytics/notifications` | GET | Notification analytics |
-| `/api/analytics/operators` | GET | Operator performance data |
+| `/api/analytics/admin-performance` | GET | Admin performance data |
 | `/api/analytics/alert-trends` | GET | Alert trend analysis |
 | `/api/analytics/response-times` | GET | Response time metrics |
 | `/api/analytics/escalations` | GET | Escalation analytics |
@@ -360,7 +359,7 @@ npm run format:check
 
 #### **Analytics Dashboard**
 - **Delivery Rate**: Success rate of notifications
-- **Operator Performance**: Response times and efficiency metrics
+- **Admin Performance**: Response times and efficiency metrics
 - **Alert Trends**: Patterns in guardrail violations
 - **Escalation Rates**: Percentage of alerts requiring escalation
 

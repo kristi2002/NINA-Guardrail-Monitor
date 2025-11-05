@@ -146,7 +146,7 @@
 
 .status-text {
   font-weight: 600;
-  color: #1976d2;
+  /* Color is set dynamically via inline style based on status value */
 }
 
 /* Alert Box */
@@ -198,7 +198,8 @@
 
 .btn-stop-report,
 .btn-complete,
-.btn-unreliable-alarm {
+.btn-unreliable-alarm,
+.btn-cancel {
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 8px;
@@ -244,6 +245,17 @@
 .btn-unreliable-alarm:hover:not(:disabled) {
   background: #e0e0e0;
   transform: translateY(-1px);
+}
+
+.btn-cancel {
+  background: linear-gradient(135deg, #616161 0%, #757575 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(97, 97, 97, 0.3);
+}
+
+.btn-cancel:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(97, 97, 97, 0.4);
 }
 
 .btn-icon {

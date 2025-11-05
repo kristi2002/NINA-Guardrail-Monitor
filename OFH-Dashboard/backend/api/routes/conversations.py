@@ -451,10 +451,10 @@ def stop_conversation_monitoring(conversation_id):
         current_user = get_current_user()
         data = request.get_json() or {}
         
-        # Extract operator message and reason from request
-        operator_message = data.get('message', 'Conversation stopped by operator')
-        stop_reason = data.get('reason', 'operator_intervention')
-        final_message = data.get('final_message', 'This conversation has been terminated by an operator.')
+        # Extract admin message and reason from request
+        operator_message = data.get('message', 'Conversation stopped by admin')
+        stop_reason = data.get('reason', 'admin_intervention')
+        final_message = data.get('final_message', 'This conversation has been terminated by an admin.')
         
         logger.info(f"Stopping monitoring for conversation {conversation_id} by {current_user}")
         
@@ -658,14 +658,14 @@ def complete_conversation(conversation_id):
                 action_category='conversation',
                 operator_id=current_user,
                 title='Conversazione completata',
-                description=f'Conversazione marcata come completata dall\'operatore',
+                description=f'Conversazione marcata come completata dall\'amministratore',
                 action_timestamp=datetime.now(timezone.utc),
                 status='completed',
                 result='success',
                 action_data={
                     'previous_status': conversation.status,
                     'new_status': 'COMPLETED',
-                    'reason': 'operator_manual_completion'
+                    'reason': 'admin_manual_completion'
                 }
             )
         except Exception as e:
@@ -690,6 +690,116 @@ def complete_conversation(conversation_id):
         return jsonify({
             'success': False,
             'error': 'Failed to complete conversation',
+            'message': str(e)
+        }), 500
+    finally:
+        # Clean up database session
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/cancel', methods=['POST'])
+@token_required
+def cancel_conversation(conversation_id):
+    """
+    Cancel a conversation (mark as CANCELLED)
+    This is different from STOPPED which indicates operator intervention during active session
+    and COMPLETED which indicates natural completion
+    """
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        # Extract cancellation reason from request
+        cancel_reason = data.get('reason', 'admin_cancelled')
+        operator_message = data.get('message', 'Conversation cancelled by admin')
+        
+        logger.info(f"Cancelling conversation {conversation_id} by {current_user}")
+        
+        # Get repositories
+        repos = get_repositories()
+        if not repos:
+            logger.error("Database repositories not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection failed',
+                'message': 'Unable to connect to database'
+            }), 503
+        
+        # Get conversation from database
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({
+                'success': False,
+                'error': 'Conversation not found',
+                'message': f'No conversation found with ID: {conversation_id}'
+            }), 404
+        
+        # Update conversation status to CANCELLED
+        from datetime import timezone
+        old_status = conversation.status
+        conversation.status = 'CANCELLED'
+        if not conversation.session_end:
+            conversation.session_end = datetime.now(timezone.utc)
+        
+        # Calculate duration if not already set
+        if conversation.session_start and conversation.session_end:
+            def normalize_datetime(dt):
+                if dt is None:
+                    return None
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt
+            
+            start = normalize_datetime(conversation.session_start)
+            end = normalize_datetime(conversation.session_end)
+            duration = end - start
+            conversation.session_duration_minutes = int(duration.total_seconds() / 60)
+        
+        # Record operator action in database
+        try:
+            import uuid
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='cancel_conversation',
+                action_category='conversation',
+                operator_id=current_user,
+                title='Conversazione annullata',
+                description=operator_message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={
+                    'previous_status': old_status,
+                    'new_status': 'CANCELLED',
+                    'reason': cancel_reason,
+                    'cancelled_by': current_user
+                }
+            )
+            logger.info(f"Recorded operator action for cancelling conversation {conversation_id}")
+        except Exception as e:
+            logger.warning(f"Failed to record operator action for cancellation: {e}")
+        
+        # Commit changes
+        repos['session'].commit()
+        
+        logger.info(f"Conversation {conversation_id} marked as CANCELLED by {current_user}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conversation marked as cancelled',
+            'conversation_id': conversation_id,
+            'status': 'CANCELLED'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error cancelling conversation {conversation_id}: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to cancel conversation',
             'message': str(e)
         }), 500
     finally:
@@ -761,7 +871,7 @@ def update_conversation_situation(conversation_id):
                 action_category='alert',
                 operator_id=current_user,
                 title='Allarme marcato come non attendibile',
-                description=f'Operatore ha marcato l\'allarme come non attendibile. Situazione aggiornata a: {situation}',
+                description=f'Amministratore ha marcato l\'allarme come non attendibile. Situazione aggiornata a: {situation}',
                 action_timestamp=datetime.now(timezone.utc),
                 status='completed',
                 result='success',
@@ -770,7 +880,7 @@ def update_conversation_situation(conversation_id):
                     'new_situation': situation,
                     'old_risk_level': old_risk_level,
                     'new_risk_level': risk_level,
-                    'reason': 'operator_judgment'
+                    'reason': 'admin_judgment'
                 }
             )
             logger.info(f"Created operator action for false alarm on conversation {conversation_id}")
@@ -793,7 +903,7 @@ def update_conversation_situation(conversation_id):
                 success = kafka_service.send_false_alarm_feedback(
                     conversation_id=conversation_id,
                     original_event_id=None,  # Could be enhanced to track specific event
-                    feedback=f"Operator marked alarm as unreliable. Situation: {situation}, Level: {risk_level}"
+                    feedback=f"Admin marked alarm as unreliable. Situation: {situation}, Level: {risk_level}"
                 )
                 if not success:
                     kafka_warning = 'Failed to send feedback to guardrail service via Kafka'

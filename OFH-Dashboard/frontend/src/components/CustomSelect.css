@@ -124,10 +124,21 @@
   background-color: #f3f4f6;
 }
 
+/* Ensure colors are preserved on hover */
+.custom-select-option:hover[style*="color"] {
+  /* Color is preserved via inline style */
+}
+
 .custom-select-option.selected {
   background-color: #e3f2fd;
-  color: #1976d2;
   font-weight: 600;
+  /* Default color for selected option without custom color */
+  color: #1976d2;
+}
+
+/* Preserve custom color for selected option if it has one (inline style takes precedence) */
+.custom-select-option.selected[style*="color"] {
+  /* Color is preserved via inline style - inline styles have higher specificity */
 }
 
 .custom-select-option:first-child {

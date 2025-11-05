@@ -23,7 +23,7 @@ function Analytics() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'notifications', label: 'Notifications', icon: '📧' },
-    { id: 'operators', label: 'Users', icon: '👥' },
+    { id: 'users', label: 'Admin Performance', icon: '👥' },
     { id: 'alerts', label: 'Alert Trends', icon: '📈' },
     { id: 'response', label: 'Response Times', icon: '⏱️' },
     { id: 'escalations', label: 'Escalations', icon: '⬆️' }
@@ -177,7 +177,7 @@ function Analytics() {
       const config = signal ? { signal } : {}
 
       let response
-      const endpoint = `/api/analytics/${activeTab === 'overview' ? 'overview' : activeTab === 'operators' ? 'operators' : activeTab === 'notifications' ? 'notifications' : activeTab === 'alerts' ? 'alert-trends' : activeTab === 'response' ? 'response-times' : 'escalations'}?timeRange=${timeRange}`
+      const endpoint = `/api/analytics/${activeTab === 'overview' ? 'overview' : activeTab === 'users' ? 'admin-performance' : activeTab === 'notifications' ? 'notifications' : activeTab === 'alerts' ? 'alert-trends' : activeTab === 'response' ? 'response-times' : 'escalations'}?timeRange=${timeRange}`
       console.log(`[ANALYTICS] Making request to: ${endpoint}`)
       
       // This switch statement is the same as you had
@@ -188,8 +188,8 @@ function Analytics() {
         case 'notifications':
           response = await axios.get(`/api/analytics/notifications?timeRange=${timeRange}`, config)
           break
-        case 'operators':
-          response = await axios.get(`/api/analytics/operators?timeRange=${timeRange}`, config)
+        case 'users':
+          response = await axios.get(`/api/analytics/admin-performance?timeRange=${timeRange}`, config)
           break
         case 'alerts':
           response = await axios.get(`/api/analytics/alert-trends?timeRange=${timeRange}`, config)
@@ -350,7 +350,7 @@ function Analytics() {
     </div>
   )
 
-  const OperatorsSkeleton = () => (
+  const UsersSkeleton = () => (
     <div className="analytics-tab-skeleton">
       <div className="skeleton-team-metrics"></div>
       <div className="skeleton-leaderboard"></div>
@@ -607,13 +607,13 @@ function Analytics() {
     }
   }
 
-  const renderOperatorsTab = () => {
+  const renderUsersTab = () => {
     // 1. Check for null data FIRST (this means "we are fetching")
-    if (!analyticsData) return <OperatorsSkeleton />
+    if (!analyticsData) return <UsersSkeleton />
     
     // 2. Check for empty data SECOND (this means "fetch finished, nothing found")
     if (Object.keys(analyticsData).length === 0) {
-      return <div className="analytics-loading">No users data available. Try refreshing.</div>
+      return <div className="analytics-loading">No admin performance data available. Try refreshing.</div>
     }
 
     // 3. Wrap the rest in a try...catch
@@ -629,14 +629,14 @@ function Analytics() {
       <div className="analytics-tab">
         <div className="team-metrics">
           <div className="team-summary">
-            <h3>👥 Team Performance Summary</h3>
+            <h3>👥 Admin Performance Summary</h3>
             <div className="team-stats">
               <div className="team-stat">
-                <span className="stat-label">Total Users</span>
+                <span className="stat-label">Total Admins</span>
                 <span className="stat-value">{summary.total_users || 0}</span>
               </div>
               <div className="team-stat">
-                <span className="stat-label">Active Users</span>
+                <span className="stat-label">Active Admins</span>
                 <span className="stat-value">{summary.active_users || 0}</span>
               </div>
               <div className="team-stat">
@@ -651,21 +651,23 @@ function Analytics() {
           </div>
         </div>
 
-        <div className="role-distribution">
-          <h3>📊 Role Distribution</h3>
-          <div className="role-grid">
-            {Object.entries(roleDistribution).map(([role, count]) => (
-              <div key={role} className="role-card">
-                <div className="role-name">{role}</div>
-                <div className="role-count">{count}</div>
-              </div>
-            ))}
+        {Object.keys(roleDistribution).length > 0 && (
+          <div className="role-distribution">
+            <h3>📊 Admin Role Distribution</h3>
+            <div className="role-grid">
+              {Object.entries(roleDistribution).map(([role, count]) => (
+                <div key={role} className="role-card">
+                  <div className="role-name">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
+                  <div className="role-count">{count}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="charts-grid">
           <div className="chart-container">
-            <h3>User Activity Over Time</h3>
+            <h3>Admin Activity Over Time</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.recent_activity || []}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -673,32 +675,50 @@ function Analytics() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="active_users" stroke="#3b82f6" name="Active Users" />
+                <Line type="monotone" dataKey="active_users" stroke="#3b82f6" name="Active Admins" />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="chart-container">
-            <h3>Role Distribution</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={Object.entries(roleDistribution).map(([role, count]) => ({ name: role, value: count }))}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  dataKey="value"
-                  nameKey="name"
-                  label={({name, value}) => `${name}: ${value}`}
-                >
-                  {Object.entries(roleDistribution).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#3b82f6', '#22c55e', '#f59e0b', '#dc2626'][index % 4]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {Object.keys(roleDistribution).length > 0 && (
+            <div className="chart-container">
+              <h3>Admin Role Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={Object.entries(roleDistribution).map(([role, count]) => ({ name: role.charAt(0).toUpperCase() + role.slice(1), value: count }))}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    dataKey="value"
+                    nameKey="name"
+                    label={({name, value}) => `${name}: ${value}`}
+                  >
+                    {Object.entries(roleDistribution).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#3b82f6', '#22c55e', '#f59e0b', '#dc2626'][index % 4]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {Object.keys(roleDistribution).length === 0 && (
+            <div className="chart-container">
+              <h3>Admin Login Frequency</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={data.recent_activity || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="timestamp" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="login_frequency" stroke="#22c55e" name="Login Frequency" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
       )
@@ -1110,7 +1130,7 @@ function Analytics() {
         )}
         {activeTab === 'overview' && renderOverviewTab()}
         {activeTab === 'notifications' && renderNotificationsTab()}
-        {activeTab === 'operators' && renderOperatorsTab()}
+        {activeTab === 'users' && renderUsersTab()}
         {activeTab === 'alerts' && renderAlertsTab()}
         {activeTab === 'response' && renderResponseTimesTab()}
         {activeTab === 'escalations' && renderEscalationsTab()}

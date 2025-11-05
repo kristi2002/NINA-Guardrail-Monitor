@@ -1,6 +1,6 @@
 # NINA Guardrail Monitor
 
-A comprehensive real-time monitoring and validation system for AI chatbot conversations, specifically designed for healthcare applications. The system validates AI responses, detects violations (PII, toxicity, compliance issues), and provides a dashboard for operators to monitor and respond to guardrail events.
+A comprehensive real-time monitoring and validation system for AI chatbot conversations, specifically designed for healthcare applications. The system validates AI responses, detects violations (PII, toxicity, compliance issues), and provides a dashboard for admins to monitor and respond to guardrail events.
 
 ## 🏗️ Architecture Overview
 
@@ -36,7 +36,7 @@ The system consists of three main components working together:
    - **Frontend** (React + Vite) - Port 3000
      - Real-time conversation monitoring
      - Analytics and reporting
-     - Operator intervention tools
+     - Admin intervention tools
    - **Backend** (Flask) - Port 5000
      - Consumes Kafka events
      - RESTful API for frontend
@@ -221,9 +221,9 @@ VITE_WS_URL=ws://localhost:5000
    - Receives guardrail event
    - Saves to database
    - Updates frontend via WebSocket
-   - Operator sees alert in dashboard
+   - Admin sees alert in dashboard
 
-4. **Operator** can respond:
+4. **Admin** can respond:
    - Acknowledge the violation
    - Escalate to supervisor
    - Send action to AI agent (via `operator_actions` topic)
@@ -368,8 +368,8 @@ See `OFH-Dashboard/API_DOCUMENTATION.md` for complete API documentation.
 
 - **conversation_sessions** - Conversation metadata
 - **guardrail_events** - Guardrail violations and events
-- **operator_actions** - Operator interventions
-- **users** - System users (admin, operator roles)
+- **operator_actions** - Admin interventions
+- **users** - System users (admin role)
 - **chat_messages** - Conversation messages
 
 See `OFH-Dashboard/backend/models/` for complete schema definitions.
@@ -378,9 +378,7 @@ See `OFH-Dashboard/backend/models/` for complete schema definitions.
 
 ### User Roles
 
-- **Admin** - Full system access, user management, configuration
-- **Operator** - Monitor conversations, acknowledge alerts, respond to violations
-- **Viewer** - Read-only access to dashboards
+- **Admin** - Full system access, user management, configuration, monitoring, and alert management
 
 ### Authentication
 
@@ -568,9 +566,9 @@ For issues or questions:
 ✅ **Toxicity Detection** - Identifies inappropriate or harmful content  
 ✅ **Compliance Checking** - Enforces healthcare compliance rules  
 ✅ **Real-time Dashboard** - Live monitoring of conversations  
-✅ **Operator Intervention** - Tools for human oversight  
+✅ **Admin Intervention** - Tools for human oversight  
 ✅ **Analytics** - Comprehensive reporting and statistics  
-✅ **Role-based Access** - Admin, Operator, Viewer roles  
+✅ **Admin Access Control** - Admin role for full system access  
 ✅ **Audit Logging** - Complete audit trail  
 ✅ **Kafka Integration** - Scalable message queue architecture  
 

@@ -6,7 +6,7 @@ export const it = {
     tabs: {
       overview: { label: 'Panoramica', icon: '📊' },
       notifications: { label: 'Notifiche', icon: '📧' },
-      operators: { label: 'Operatori', icon: '👥' },
+      operators: { label: 'Amministratori', icon: '👥' },
       alerts: { label: 'Tendenze Allarmi', icon: '📈' },
       response: { label: 'Tempi di Risposta', icon: '⏱️' },
       escalations: { label: 'Escalation', icon: '⬆️' }
@@ -44,7 +44,7 @@ export const it = {
         alertProcessing: 'Elaborazione Allarmi nel Tempo',
         performanceSummary: 'Riepilogo Prestazioni',
         systemUptime: 'Tempo di Attività del Sistema',
-        operatorUtilization: 'Utilizzo Operatori',
+        operatorUtilization: 'Utilizzo Amministratori',
         peakResponseTime: 'Tempo di Risposta di Picco'
       },
       legend: {
@@ -75,14 +75,14 @@ export const it = {
     },
     operators: {
       summary: {
-        title: '👥 Riepilogo Prestazioni Team',
-        activeOperators: 'Operatori Attivi',
+        title: '👥 Riepilogo Prestazioni Amministratori',
+        activeOperators: 'Amministratori Attivi',
         totalAlertsHandled: 'Allarmi Totali Gestiti',
         teamAvgResponse: 'Risposta Media Team',
         topPerformer: 'Miglior Performer'
       },
       leaderboard: {
-        title: '🏆 Classifica Prestazioni Operatori',
+        title: '🏆 Classifica Prestazioni Amministratori',
         alerts: 'Allarmi:',
         response: 'Risposta:',
         resolution: 'Risoluzione:'
@@ -93,7 +93,7 @@ export const it = {
         avgResponseTime: 'Tempo di Risposta Medio (s)',
         resolutionRate: 'Tasso di Risoluzione %'
       },
-      noData: 'Nessun dato operatori disponibile'
+      noData: 'Nessun dato amministratori disponibile'
     },
     alerts: {
       metrics: {

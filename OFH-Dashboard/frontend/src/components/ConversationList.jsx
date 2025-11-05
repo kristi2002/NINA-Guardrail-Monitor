@@ -388,6 +388,51 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
     }
   }
 
+  const handleCancelConversation = async (conversationId) => {
+    // Confirm before cancelling
+    const confirmed = window.confirm(
+      'Sei sicuro di voler annullare questa conversazione?\n\n' +
+      'Questa azione segnerà la conversazione come annullata. ' +
+      'Questa azione è diversa da "Ferma e segnala" che indica un intervento durante la sessione.'
+    )
+    
+    if (!confirmed) {
+      return
+    }
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversationId}/cancel`, {}, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione annullata con successo')
+        if (onConversationsRefresh) {
+          onConversationsRefresh()
+        }
+      } else {
+        const errorMessage = response.data.message || response.data.error || 'Errore nell\'annullare la conversazione'
+        alert(`Errore nell'annullare la conversazione:\n${errorMessage}`)
+      }
+    } catch (error) {
+      console.error('Failed to cancel conversation:', error)
+      let errorMessage = 'Errore nell\'annullare la conversazione'
+      if (error.response?.data?.message) {
+        errorMessage += `\n${error.response.data.message}`
+      } else if (error.response?.data?.error) {
+        errorMessage += `\n${error.response.data.error}`
+      } else if (error.message) {
+        errorMessage += `\n${error.message}`
+      }
+      alert(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleActionMenu = (conversationId, action) => {
     setOpenDropdownId(null) // Close dropdown after action
     switch (action) {
@@ -396,6 +441,9 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
         break
       case 'complete':
         handleCompleteConversation(conversationId)
+        break
+      case 'cancel':
+        handleCancelConversation(conversationId)
         break
       default:
         console.log('Unknown action:', action)
@@ -541,11 +589,11 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                   placeholder="Tutti"
                   options={[
                     { value: 'all', label: 'Tutti' },
-                    { value: 'IN_PROGRESS', label: 'In corso' },
-                    { value: 'COMPLETED', label: 'Terminata' },
-                    { value: 'STOPPED', label: 'Fermata' },
-                    { value: 'NEW', label: 'Nuova' },
-                    { value: 'CANCELLED', label: 'Annullata' }
+                    { value: 'IN_PROGRESS', label: 'In corso', color: '#f57c00' },
+                    { value: 'COMPLETED', label: 'Terminata', color: '#2e7d32' },
+                    { value: 'STOPPED', label: 'Fermata', color: '#d32f2f' },
+                    { value: 'NEW', label: 'Nuova', color: '#2e7d32' },
+                    { value: 'CANCELLED', label: 'Annullata', color: '#616161' }
                   ]}
                 />
               </div>
@@ -560,9 +608,9 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                   placeholder="Tutte"
                   options={[
                     { value: 'all', label: 'Tutte' },
-                    { value: 'regular', label: 'Regolare' },
-                    { value: 'warning', label: 'Segni di autolesionismo' },
-                    { value: 'danger', label: 'Gesti pericolosi' }
+                    { value: 'regular', label: 'Regolare', color: '#4caf50' },
+                    { value: 'warning', label: 'Segni di autolesionismo', color: '#ff9800' },
+                    { value: 'danger', label: 'Gesti pericolosi', color: '#f44336' }
                   ]}
                 />
               </div>
@@ -752,6 +800,16 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                           >
                             <span className="menu-icon">✅</span>
                             Completa conversazione
+                          </button>
+                          <button
+                            className="action-menu-item"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleActionMenu(conversation.id, 'cancel')
+                            }}
+                          >
+                            <span className="menu-icon">❌</span>
+                            Annulla conversazione
                           </button>
                         </div>
                       )}

@@ -341,6 +341,60 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     }
   }
 
+  const handleCancelConversation = async () => {
+    // Confirm before cancelling
+    const confirmed = window.confirm(
+      'Sei sicuro di voler annullare questa conversazione?\n\n' +
+      'Questa azione segnerà la conversazione come annullata. ' +
+      'Questa azione è diversa da "Ferma e segnala" che indica un intervento durante la sessione.'
+    )
+    
+    if (!confirmed) {
+      return
+    }
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/cancel`, {}, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione annullata con successo')
+        
+        // Update conversation status
+        const updatedConversation = {
+          ...conversation,
+          status: 'CANCELLED'
+        }
+        
+        if (onConversationUpdated) {
+          onConversationUpdated(updatedConversation)
+        }
+        
+        onClose()
+      } else {
+        const errorMessage = response.data.message || response.data.error || 'Errore nell\'annullare la conversazione'
+        alert(`Errore nell'annullare la conversazione:\n${errorMessage}`)
+      }
+    } catch (error) {
+      console.error('Failed to cancel conversation:', error)
+      let errorMessage = 'Errore nell\'annullare la conversazione'
+      if (error.response?.data?.message) {
+        errorMessage += `\n${error.response.data.message}`
+      } else if (error.response?.data?.error) {
+        errorMessage += `\n${error.response.data.error}`
+      } else if (error.message) {
+        errorMessage += `\n${error.message}`
+      }
+      alert(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleUnreliableAlarm = async () => {
     try {
       setLoading(true)
@@ -499,6 +553,35 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     }
   }
 
+  const getStatusColor = (status) => {
+    if (!status) return '#1976d2' // Default blue
+    
+    const statusUpper = status.toUpperCase()
+    
+    // Successfully completed - Green
+    if (statusUpper === 'TERMINATED' || statusUpper === 'COMPLETED') {
+      return '#059669' // Green
+    }
+    
+    // Stopped unexpectedly - Red/Orange
+    if (statusUpper === 'STOPPED') {
+      return '#dc2626' // Red
+    }
+    
+    // Cancelled - Gray
+    if (statusUpper === 'CANCELLED' || statusUpper === 'CANCELED') {
+      return '#6b7280' // Gray
+    }
+    
+    // Active/In Progress - Blue
+    if (statusUpper === 'IN_PROGRESS' || statusUpper === 'ACTIVE') {
+      return '#1976d2' // Blue
+    }
+    
+    // Default - Blue
+    return '#1976d2'
+  }
+
   const createdDate = formatDateTime(
     displayConversation.created_at || 
     displayConversation.createdAt || 
@@ -552,7 +635,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           
           <div className="conversation-info">
             <h4>Conversazione del {createdDate.date}</h4>
-            <p>Inizio ore {createdDate.time} - Stato: <span className="status-text">{displayConversation.status}</span> (Durata {displayConversation.duration || displayConversation.session_duration_minutes || 0} min)</p>
+            <p>Inizio ore {createdDate.time} - Stato: <span className="status-text" style={{ color: getStatusColor(displayConversation.status) }}>{displayConversation.status}</span> (Durata {displayConversation.duration || displayConversation.session_duration_minutes || 0} min)</p>
           </div>
         </div>
 
@@ -609,6 +692,24 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           >
             <span className="btn-icon">👤</span>
             Allarme non attendibile
+          </button>
+          
+          <button 
+            className="btn-cancel"
+            onClick={handleCancelConversation}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                Elaborazione...
+              </>
+            ) : (
+              <>
+                <span className="btn-icon">❌</span>
+                Annulla conversazione
+              </>
+            )}
           </button>
         </div>
 

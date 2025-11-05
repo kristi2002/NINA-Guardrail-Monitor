@@ -196,27 +196,27 @@ def get_notifications_analytics():
             'message': str(e)
         }), 500
 
-@analytics_bp.route('/operators', methods=['GET'])
+@analytics_bp.route('/admin-performance', methods=['GET'])
 @token_required
-def get_operators_analytics():
-    """Get user analytics data"""
+def get_admin_performance_analytics():
+    """Get admin performance analytics data"""
     try:
         time_range = request.args.get('timeRange', '7d')
         current_user = get_current_user()
         
-        logger.info(f"User analytics requested by {current_user} for range: {time_range}")
+        logger.info(f"Admin performance analytics requested by {current_user} for range: {time_range}")
         
         # Use the service with a database session
         with get_session_context() as session:
             service = AnalyticsService(session)
-            # Use user analytics which includes operator/user data
+            # Use user analytics which includes admin/user data
             response_data = service.get_user_analytics(time_range)
         
         status_code = 200 if response_data.get('success') else 500
         return jsonify(response_data), status_code
     
     except Exception as e:
-        logger.error(f"Critical error in operators route: {e}", exc_info=True)
+        logger.error(f"Critical error in admin-performance route: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': 'Critical internal error',
