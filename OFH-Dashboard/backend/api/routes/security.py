@@ -278,10 +278,8 @@ def get_security_access():
             for user in all_users:
                 # Determine permissions based on role
                 permissions = ['read']
-                if user.role in ['operator', 'admin']:
-                    permissions.append('write')
                 if user.role == 'admin':
-                    permissions.extend(['admin', 'security'])
+                    permissions.extend(['write', 'admin', 'security', 'acknowledge_alerts'])
                 
                 user_info = {
                     'id': user.id,

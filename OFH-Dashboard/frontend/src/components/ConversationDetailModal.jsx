@@ -6,6 +6,7 @@ import './ConversationDetailModal.css'
 
 function ConversationDetailModal({ conversation, isOpen, onClose, onConversationUpdated }) {
   const [loading, setLoading] = useState(false)
+  const [fetchingDetails, setFetchingDetails] = useState(false)
   const [events, setEvents] = useState([])
   const [showReportModal, setShowReportModal] = useState(false)
   const [reportData, setReportData] = useState(null)
@@ -16,12 +17,17 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     const fetchConversationDetails = async () => {
       if (!conversation || !isOpen) return
       
+      // Reset loading state when modal opens
+      setLoading(false)
+      
       try {
-        setLoading(true)
+        setFetchingDetails(true)
         const response = await axios.get(`/api/conversations/${conversation.id}`)
         
         if (response.data.success) {
           const detailedConversation = response.data.conversation
+          console.log('Fetched conversation details:', detailedConversation)
+          console.log('Patient info:', detailedConversation.patientInfo)
           setFullConversation(detailedConversation)
           // Get events from the detailed conversation
           setEvents(detailedConversation.events || detailedConversation.recent_events || [])
@@ -36,7 +42,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         setEvents(conversation.events || [])
         setFullConversation(conversation)
       } finally {
-        setLoading(false)
+        setFetchingDetails(false)
       }
     }
     
@@ -85,6 +91,72 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     }
   }
 
+  const formatEventDetails = (details) => {
+    if (!details) {
+      return 'Nessun dettaglio disponibile'
+    }
+
+    // If it's a string, try to parse it as JSON
+    let detailsObj = details
+    if (typeof details === 'string') {
+      try {
+        detailsObj = JSON.parse(details)
+      } catch (e) {
+        // If it's not JSON, return the string as-is
+        return details
+      }
+    }
+
+    // If it's an object, filter out null/undefined values and format nicely
+    if (typeof detailsObj === 'object' && detailsObj !== null && !Array.isArray(detailsObj)) {
+      const filtered = Object.fromEntries(
+        Object.entries(detailsObj).filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      )
+
+      if (Object.keys(filtered).length === 0) {
+        return 'Nessun dettaglio disponibile'
+      }
+
+      // Format as a user-friendly list instead of raw JSON
+      return (
+        <div className="event-details-list">
+          {Object.entries(filtered).map(([key, value]) => {
+            // Format key labels
+            const label = key
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, l => l.toUpperCase())
+            
+            // Format values nicely
+            let displayValue = value
+            if (typeof value === 'object' && value !== null) {
+              displayValue = JSON.stringify(value, null, 2)
+            } else if (typeof value === 'number') {
+              if (key.includes('score') || key.includes('confidence')) {
+                displayValue = `${(value * 100).toFixed(1)}%`
+              } else if (key.includes('time') || key.includes('duration')) {
+                displayValue = `${value}ms`
+              } else {
+                displayValue = value.toString()
+              }
+            } else {
+              displayValue = String(value)
+            }
+
+            return (
+              <div key={key} className="event-detail-item">
+                <span className="detail-label">{label}:</span>
+                <span className="detail-value">{displayValue}</span>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+
+    // Fallback for arrays or other types
+    return JSON.stringify(detailsObj, null, 2)
+  }
+
   const getSituationConfig = (situation, level) => {
     const configs = {
       'Regolare': { 
@@ -109,7 +181,21 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         color: '#f44336'
       }
     }
-    return configs[situation] || configs['Regolare']
+    
+    // If situation text matches a known config, use it
+    if (situation && configs[situation]) {
+      return configs[situation]
+    }
+    
+    // Otherwise, use risk level to determine situation
+    const normalizedLevel = (level || 'low').toLowerCase()
+    if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
+      return configs['Gesti pericolosi']
+    } else if (normalizedLevel === 'medium') {
+      return configs['Segni di autolesionismo']
+    } else {
+      return configs['Regolare']
+    }
   }
 
   const getEventTypeConfig = (eventType, severity) => {
@@ -139,6 +225,16 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const handleStopAndReport = async () => {
+    // Confirm before stopping
+    const confirmed = window.confirm(
+      'Sei sicuro di voler fermare e segnalare questa conversazione?\n\n' +
+      'Questa azione fermerà la conversazione e la segnalerà come interrotta dall\'amministratore.'
+    )
+    
+    if (!confirmed) {
+      return
+    }
+    
     try {
       setLoading(true)
       const response = await axios.post(`/api/conversations/${conversation.id}/stop`, {}, {
@@ -148,7 +244,14 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
       })
       
       if (response.data.success) {
-        alert('Conversazione fermata e segnalata con successo')
+        let message = 'Conversazione fermata e segnalata con successo'
+        
+        // Show warning if Kafka failed but operation succeeded
+        if (response.data.warning) {
+          message += `\n\n⚠️ Avviso: ${response.data.warning}`
+        }
+        
+        alert(message)
         
         // Update conversation status
         const updatedConversation = {
@@ -162,11 +265,77 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         
         onClose()
       } else {
-        alert('Errore nel fermare la conversazione')
+        // Show specific error message from backend
+        const errorMessage = response.data.message || response.data.error || 'Errore nel fermare la conversazione'
+        alert(`Errore nel fermare la conversazione:\n${errorMessage}`)
       }
     } catch (error) {
       console.error('Failed to stop conversation:', error)
-      alert('Errore nel fermare la conversazione')
+      
+      // Show detailed error message
+      let errorMessage = 'Errore nel fermare la conversazione'
+      if (error.response?.data?.message) {
+        errorMessage += `\n${error.response.data.message}`
+      } else if (error.response?.data?.error) {
+        errorMessage += `\n${error.response.data.error}`
+      } else if (error.message) {
+        errorMessage += `\n${error.message}`
+      }
+      
+      alert(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCompleteConversation = async () => {
+    // Confirm before completing
+    const confirmed = window.confirm(
+      'Sei sicuro di voler completare questa conversazione?\n\n' +
+      'Questa azione segnerà la conversazione come completata.'
+    )
+    
+    if (!confirmed) {
+      return
+    }
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/complete`, {}, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione completata con successo')
+        
+        // Update conversation status
+        const updatedConversation = {
+          ...conversation,
+          status: 'COMPLETED'
+        }
+        
+        if (onConversationUpdated) {
+          onConversationUpdated(updatedConversation)
+        }
+        
+        onClose()
+      } else {
+        const errorMessage = response.data.message || response.data.error || 'Errore nel completare la conversazione'
+        alert(`Errore nel completare la conversazione:\n${errorMessage}`)
+      }
+    } catch (error) {
+      console.error('Failed to complete conversation:', error)
+      let errorMessage = 'Errore nel completare la conversazione'
+      if (error.response?.data?.message) {
+        errorMessage += `\n${error.response.data.message}`
+      } else if (error.response?.data?.error) {
+        errorMessage += `\n${error.response.data.error}`
+      } else if (error.message) {
+        errorMessage += `\n${error.message}`
+      }
+      alert(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -185,13 +354,22 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
       })
       
       if (response.data.success) {
-        alert('Allarme marcato come non attendibile')
+        let message = 'Allarme marcato come non attendibile'
+        
+        // Show warning if Kafka failed but operation succeeded
+        if (response.data.warning) {
+          message += `\n\n⚠️ Avviso: ${response.data.warning}`
+        }
+        
+        alert(message)
         
         // Update conversation situation
         const updatedConversation = {
           ...conversation,
           situation: 'Regolare',
-          situationLevel: 'low'
+          situationLevel: 'low',
+          risk_level: 'LOW',
+          requires_attention: false
         }
         
         if (onConversationUpdated) {
@@ -200,11 +378,24 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         
         onClose()
       } else {
-        alert('Errore nel marcare l\'allarme come non attendibile')
+        // Show specific error message from backend
+        const errorMessage = response.data.message || response.data.error || 'Errore nel marcare l\'allarme come non attendibile'
+        alert(`Errore nel marcare l'allarme come non attendibile:\n${errorMessage}`)
       }
     } catch (error) {
       console.error('Failed to mark alarm as unreliable:', error)
-      alert('Errore nel marcare l\'allarme come non attendibile')
+      
+      // Show detailed error message
+      let errorMessage = 'Errore nel marcare l\'allarme come non attendibile'
+      if (error.response?.data?.message) {
+        errorMessage += `\n${error.response.data.message}`
+      } else if (error.response?.data?.error) {
+        errorMessage += `\n${error.response.data.error}`
+      } else if (error.message) {
+        errorMessage += `\n${error.message}`
+      }
+      
+      alert(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -334,11 +525,27 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
               <span className="patient-badge">1</span>
             </div>
             <div className="patient-details">
-              <h3>{displayConversation.patientInfo?.name || `Paziente ${displayConversation.patientId || displayConversation.patient_id}`}</h3>
+              <h3>
+                {displayConversation.patientInfo?.name 
+                  ? displayConversation.patientInfo.name 
+                  : `Paziente ${displayConversation.patientId || displayConversation.patient_id || displayConversation.id}`}
+              </h3>
               <div className="patient-meta">
-                <span>Età: {displayConversation.patientInfo?.age || 'N/A'} anni</span>
-                <span>Sesso: {displayConversation.patientInfo?.gender || 'N/A'}</span>
-                <span>Patologia: {displayConversation.patientInfo?.pathology || 'N/A'}</span>
+                <span>Età: {
+                  (displayConversation.patientInfo?.age !== null && displayConversation.patientInfo?.age !== undefined && displayConversation.patientInfo.age !== 0) 
+                    ? `${displayConversation.patientInfo.age} anni` 
+                    : 'N/A anni'
+                }</span>
+                <span>Sesso: {
+                  (displayConversation.patientInfo?.gender && displayConversation.patientInfo.gender !== 'U' && displayConversation.patientInfo.gender !== null) 
+                    ? displayConversation.patientInfo.gender 
+                    : 'N/A'
+                }</span>
+                <span>Patologia: {
+                  (displayConversation.patientInfo?.pathology && displayConversation.patientInfo.pathology !== 'Unknown' && displayConversation.patientInfo.pathology !== null) 
+                    ? displayConversation.patientInfo.pathology 
+                    : 'N/A'
+                }</span>
               </div>
             </div>
           </div>
@@ -350,7 +557,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         </div>
 
         {/* Alert Box */}
-        {displayConversation.situation !== 'Regolare' && (
+        {situationConfig.class !== 'situation-regular' && (
           <div className={`alert-box ${situationConfig.class}`}>
             <div className="alert-icon">{situationConfig.icon}</div>
             <div className="alert-content">
@@ -374,6 +581,24 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
               </>
             ) : (
               'Ferma e segnala'
+            )}
+          </button>
+          
+          <button 
+            className="btn-complete"
+            onClick={handleCompleteConversation}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                Elaborazione...
+              </>
+            ) : (
+              <>
+                <span className="btn-icon">✅</span>
+                Completa conversazione
+              </>
             )}
           </button>
           
@@ -444,7 +669,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                           {event.description || event.message_content || event.message || 'No description available'}
                         </td>
                         <td className="event-details">
-                          {event.details || event.context || '-'}
+                          {formatEventDetails(event.details || event.context)}
                         </td>
                       </tr>
                     )

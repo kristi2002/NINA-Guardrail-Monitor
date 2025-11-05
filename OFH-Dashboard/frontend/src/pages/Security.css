@@ -1,32 +1,17 @@
 /* ==============================================
-   UNIFIED THEME SYSTEM - ORIGINAL SECURITY
+   SECURITY PAGE STYLES
    ============================================== */
 :root {
-  /* Primary Colors - Bright Security Theme */
+  /* Security-specific theme variables */
   --primary-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  --secondary-bg: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
-  
-  /* Card Colors - Bright with subtle transparency */
   --card-bg: rgba(255, 255, 255, 0.9);
   --card-bg-hover: rgba(255, 255, 255, 0.95);
   --card-border: rgba(0, 0, 0, 0.1);
   --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
-  
-  /* Text Colors */
   --text-primary: #1a202c;
   --text-secondary: rgba(26, 32, 44, 0.8);
   --text-muted: rgba(26, 32, 44, 0.6);
-  
-  /* Metric Card Colors */
-  --metric-value-color: #1a202c;
-  --metric-value-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  
-  /* Status Colors */
-  --success-color: #22c55e;
-  --warning-color: #f59e0b;
-  --error-color: #ef4444;
-  --info-color: #3b82f6;
 }
 
 /* Security Dashboard Styles */

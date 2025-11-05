@@ -1,30 +1,38 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import MetricCard from '../components/MetricCard'
+import MetricCardSkeleton from '../components/MetricCardSkeleton'
 import GuardrailChart from '../components/GuardrailChart'
 import ConversationList from '../components/ConversationList'
+import ConversationListSkeleton from '../components/ConversationListSkeleton'
 import ConversationStatus from '../components/ConversationStatus'
+import ConversationStatusSkeleton from '../components/ConversationStatusSkeleton'
 import Sidebar from '../components/Sidebar'
+import TimeAgo from '../components/TimeAgo'
 import notificationService from '../services/notificationService'
 import './Dashboard.css'
 
 function Dashboard() {
   const [metrics, setMetrics] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [conversations, setConversations] = useState([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(new Date())
-  const [updateCounter, setUpdateCounter] = useState(0)
   const [realtimeActive, setRealtimeActive] = useState(false)
+  const [previousMetrics, setPreviousMetrics] = useState(null)
 
   useEffect(() => {
-    fetchMetrics()
-    fetchAlerts()
-    fetchConversations()
+    // 1. Create an AbortController
+    const controller = new AbortController()
+    const signal = controller.signal
+
+    // 2. Pass the signal to your fetch functions
+    fetchMetrics(signal)
+    fetchAlerts(signal)
+    fetchConversations(signal)
     
-    // Connect to WebSocket via notification service
+    // Connect to WebSocket (this is already async, which is good)
     notificationService.connect().then(() => {
       console.log('✅ Connected to notification service')
     }).catch(err => {
@@ -34,7 +42,7 @@ function Dashboard() {
     // Subscribe to notifications (covers guardrail events)
     const unsubscribeNotification = notificationService.subscribe('notification', (data) => {
       console.log('🔔 Received notification:', data)
-      // Refresh alerts when new event arrives
+      // Refresh alerts when new event arrives (no signal needed for these - they're user-triggered)
       fetchAlerts()
       fetchConversations()
     })
@@ -63,66 +71,101 @@ function Dashboard() {
       }
     }, 30000)
     
-    // Update timer display every second
-    const timeInterval = setInterval(() => {
-      setUpdateCounter(prev => prev + 1)
-    }, 1000)
-    
+    // 3. Return a cleanup function
     return () => {
+      // This runs on unmount
+      console.log('🧹 Cleaning up Dashboard: aborting requests...')
+      controller.abort() // This cancels all 3 pending requests
+      
       clearInterval(interval)
-      clearInterval(timeInterval)
       unsubscribeNotification()
       unsubscribeEscalation()
       unsubscribeStatus()
     }
   }, [])
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (signal) => {
     try {
-      const response = await axios.get('/api/metrics')
-      setMetrics(response.data)
+      // Pass the signal to axios
+      const response = await axios.get('/api/metrics', { signal })
+      const currentData = response.data
+      
+      // Store previous metrics for trend calculation
+      if (metrics) {
+        setPreviousMetrics(metrics)
+      }
+      
+      setMetrics(currentData)
       setLastUpdated(new Date())
-      setLoading(false)
     } catch (err) {
-      setError('Failed to load metrics. Make sure the backend is running.')
-      setLoading(false)
+      // Don't set an error if the request was intentionally aborted
+      if (err.name !== 'CanceledError' && !axios.isCancel(err)) {
+        console.error('Failed to load metrics:', err)
+        setError('Failed to load metrics. Make sure the backend is running.')
+      }
     }
   }
 
-  const fetchAlerts = async () => {
+  // Calculate trend percentage between current and previous value
+  // Returns undefined if no meaningful comparison can be made (to hide the trend indicator)
+  const calculateTrend = (current, previous) => {
+    // If no previous data, don't show trend
+    if (previous === null || previous === undefined) return undefined
+    // If previous was 0 and current is also 0, don't show trend
+    if (previous === 0 && current === 0) return undefined
+    // If values are the same, return 0 (no change)
+    if (current === previous) return 0
+    // If previous was 0 but current has value, can't calculate meaningful percentage
+    if (previous === 0 && current > 0) return undefined
+    // Calculate percentage change
+    const change = ((current - previous) / previous) * 100
+    return Math.round(change * 10) / 10 // Round to 1 decimal place
+  }
+
+  const fetchAlerts = async (signal) => {
     try {
-      const response = await axios.get('/api/alerts')
+      // Pass the signal to axios
+      const response = await axios.get('/api/alerts', { signal })
       setAlerts(response.data.alerts || [])
     } catch (err) {
-      console.error('Failed to load alerts:', err)
+      // Don't log an error if aborted
+      if (err.name !== 'CanceledError' && !axios.isCancel(err)) {
+        console.error('Failed to load alerts:', err)
+      }
     }
   }
 
-  const fetchConversations = async () => {
+  const fetchConversations = async (signal) => {
     try {
-      const response = await axios.get('/api/conversations')
+      // Pass the signal to axios
+      const response = await axios.get('/api/conversations', { signal })
       setConversations(response.data.conversations || [])
       console.log('📞 Fetched conversations:', response.data.conversations?.length || 0)
     } catch (err) {
-      console.error('Failed to load conversations:', err)
-      // Fallback to empty array if API fails
-      setConversations([])
+      // Don't log an error if aborted
+      if (err.name !== 'CanceledError' && !axios.isCancel(err)) {
+        console.error('Failed to load conversations:', err)
+        // Fallback to empty array if API fails
+        setConversations([])
+      }
     }
   }
 
-  const getTimeSinceUpdate = () => {
-    const seconds = Math.floor((new Date() - lastUpdated) / 1000)
-    if (seconds < 60) return `${seconds}s ago`
-    const minutes = Math.floor(seconds / 60)
-    return `${minutes}m ago`
-  }
+  // ✅ Memoize expensive calculations
+  const activeConversations = useMemo(() => {
+    return conversations.filter(c => c.status === 'IN_PROGRESS').length
+  }, [conversations]) // Only re-runs when 'conversations' changes
 
+  const criticalAlerts = useMemo(() => {
+    return conversations.filter(c => c.situationLevel === 'high' || c.situationLevel === 'critical').length
+  }, [conversations]) // Only re-runs when 'conversations' changes
 
-  if (loading) {
-    return <div className="loading">Loading dashboard...</div>
-  }
+  const totalConversations = useMemo(() => {
+    return conversations.length
+  }, [conversations]) // Only re-runs when 'conversations' changes
 
-  if (error) {
+  // This error check is still good
+  if (error && !metrics && conversations.length === 0) {
     return <div className="error">{error}</div>
   }
 
@@ -157,7 +200,7 @@ function Dashboard() {
             <span className="status-text">System Online</span>
             <span className="status-divider">|</span>
             {/* Real-time indicator removed as requested */}
-            <span className="last-updated">Updated {getTimeSinceUpdate()}</span>
+            <TimeAgo timestamp={lastUpdated} />
           </div>
         </div>
         
@@ -166,42 +209,76 @@ function Dashboard() {
         </div>
       </div>
       
-      {/* Conversation Status Overview */}
-      <ConversationStatus conversations={conversations} />
+      {/* --- SKELETON LOGIC --- */}
+      {/* Show a skeleton if data isn't ready yet */}
+      {!metrics ? (
+        <ConversationStatusSkeleton />
+      ) : (
+        <ConversationStatus conversations={conversations} />
+      )}
 
-      {/* Conversation Monitoring Section */}
-      <ConversationList 
-        conversations={conversations}
-        onConversationsRefresh={fetchConversations}
-      />
+      {/* Check for conversations OR !metrics as the trigger */}
+      {!metrics && conversations.length === 0 ? (
+        <ConversationListSkeleton />
+      ) : (
+        <ConversationList 
+          conversations={conversations}
+          onConversationsRefresh={fetchConversations}
+        />
+      )}
 
-      {/* Optional: Keep some metrics for system health */}
+      {/* --- SKELETON LOGIC --- */}
       <div className="metrics-grid">
-        <MetricCard 
-          title="Conversazioni Attive"
-          value={conversations.filter(c => c.status === 'IN_PROGRESS').length}
-          icon="💬"
-          trend={0}
-        />
-        <MetricCard 
-          title="Allarmi Critici"
-          value={conversations.filter(c => c.situationLevel === 'high').length}
-          icon="🚨"
-          trend={0}
-          isAlert={true}
-        />
-        <MetricCard 
-          title="Conversazioni Oggi"
-          value={conversations.length}
-          icon="📅"
-          trend={0}
-        />
-        <MetricCard 
-          title="Sistema Online"
-          value="100%"
-          icon="✅"
-          trend={0}
-        />
+        {!metrics ? (
+          <>
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+          </>
+        ) : (
+          <>
+            <MetricCard 
+              title="Conversazioni Attive"
+              value={activeConversations}
+              icon="💬"
+              trend={previousMetrics ? calculateTrend(
+                activeConversations,
+                previousMetrics.conversation_metrics?.active_sessions || 0
+              ) : undefined}
+            />
+            <MetricCard 
+              title="Allarmi Critici"
+              value={criticalAlerts}
+              icon="🚨"
+              trend={previousMetrics ? calculateTrend(
+                criticalAlerts,
+                previousMetrics.alert_metrics?.critical_alerts || 0
+              ) : undefined}
+              isAlert={true}
+            />
+            <MetricCard 
+              title="Conversazioni Oggi"
+              value={totalConversations}
+              icon="📅"
+              trend={previousMetrics ? calculateTrend(
+                totalConversations,
+                previousMetrics.conversation_metrics?.total_sessions || 0
+              ) : undefined}
+            />
+            <MetricCard 
+              title="Durata Media"
+              value={metrics?.conversation_metrics?.average_session_duration 
+                ? `${Math.round(metrics.conversation_metrics.average_session_duration)} min`
+                : 'N/A'}
+              icon="⏱️"
+              trend={previousMetrics ? calculateTrend(
+                metrics?.conversation_metrics?.average_session_duration || 0,
+                previousMetrics.conversation_metrics?.average_session_duration || 0
+              ) : undefined}
+            />
+          </>
+        )}
       </div>
 
       {/* Sidebar */}

@@ -109,7 +109,7 @@ class UserService(BaseService):
             # Set default values
             sanitized_data.setdefault('is_active', True)
             sanitized_data.setdefault('is_admin', False)
-            sanitized_data.setdefault('role', 'operator')
+            sanitized_data.setdefault('role', 'admin')
             sanitized_data.setdefault('login_attempts', 0)
             
             # Create user

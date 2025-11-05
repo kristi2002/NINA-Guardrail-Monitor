@@ -67,45 +67,6 @@ def create_initial_admin_user():
         session.close()
 
 
-def create_initial_operator_user():
-    """Create initial operator user if it doesn't exist"""
-    db_manager = get_database_manager()
-
-    session = db_manager.get_session()
-    try:
-        # Check if operator user exists
-        operator = session.query(User).filter(User.username == "operator").first()
-
-        if not operator:
-            logger.info("Creating initial operator user...")
-
-            # Create operator user with hashed password
-            password = os.getenv("OPERATOR_PASSWORD", "operator123")
-            hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-
-            operator = User(
-                username="operator",
-                email="operator@ofh-dashboard.local",
-                password_hash=hashed_password.decode("utf-8"),
-                role="operator",
-                is_active=True,
-                is_admin=False,
-            )
-
-            session.add(operator)
-            session.commit()
-            logger.info("✅ Operator user created successfully")
-            logger.info(f"   Username: operator")
-            logger.info(f"   Password: {password}")
-            logger.warning("⚠️  Please change the operator password in production!")
-        else:
-            logger.info("Operator user already exists")
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error creating operator user: {e}")
-        raise
-    finally:
-        session.close()
 
 
 def main():
@@ -138,7 +99,6 @@ def main():
         # Create initial users
         logger.info("\nCreating initial users...")
         create_initial_admin_user()
-        create_initial_operator_user()
 
         logger.info("\n" + "=" * 60)
         logger.info("✅ Database initialization completed successfully!")

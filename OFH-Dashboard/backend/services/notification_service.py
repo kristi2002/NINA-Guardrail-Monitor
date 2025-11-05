@@ -90,13 +90,13 @@ class NotificationService(BaseService):
             return self.handle_exception(e, 'delete_notification')
     
     def send_alert_notification(self, alert_id: str, alert_data: Dict[str, Any], recipients: List[str] = None) -> Dict[str, Any]:
-        """Send alert notification to operators"""
+        """Send alert notification to admins"""
         try:
             # Determine recipients
             if not recipients:
-                # Get all active operators
-                operators = self.user_repo.get_by_filters({'is_active': True, 'role': 'operator'})
-                recipients = [op.username for op in operators]
+                # Get all active admins
+                admins = self.user_repo.get_by_filters({'is_active': True, 'role': 'admin'})
+                recipients = [admin.username for admin in admins]
             
             # Create notification for each recipient
             notifications_sent = []
@@ -141,9 +141,9 @@ class NotificationService(BaseService):
         try:
             # Determine recipients
             if not recipients:
-                # Get all active operators
-                operators = self.user_repo.get_by_filters({'is_active': True, 'role': 'operator'})
-                recipients = [op.username for op in operators]
+                # Get all active admins
+                admins = self.user_repo.get_by_filters({'is_active': True, 'role': 'admin'})
+                recipients = [admin.username for admin in admins]
             
             # Create notification for each recipient
             notifications_sent = []

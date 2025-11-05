@@ -5,8 +5,9 @@ Handles conversation management, monitoring, and reporting
 """
 
 from flask import Blueprint, request, jsonify, current_app # type: ignore
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
+import uuid
 from api.middleware.auth_middleware import token_required, get_current_user
 from repositories.conversation_repository import ConversationRepository
 # from repositories.alert_repository import AlertRepository  # OBSOLETE - No longer used
@@ -50,9 +51,9 @@ def get_conversations():
                 'message': 'Unable to connect to database'
             }), 500
         
+        session = repos['session']  # Get session for status updates
         conversation_repo = repos['conversation_repo']
         guardrail_repo = repos['guardrail_repo']  # Fixed: Use GuardrailEventRepository instead of AlertRepository
-        session = repos['session']
         
         # Get query parameters
         status = request.args.get('status')
@@ -164,7 +165,18 @@ def get_conversations():
                 # Frontend expects: IN_PROGRESS, COMPLETED, etc.
                 backend_status = (conv.status or 'UNKNOWN').upper()
                 frontend_status = backend_status
-                if backend_status == 'ACTIVE':
+                
+                # If conversation has session_end but status is still ACTIVE, mark as COMPLETED
+                if backend_status == 'ACTIVE' and conv.session_end is not None:
+                    frontend_status = 'COMPLETED'
+                    # Update the database status to reflect reality
+                    try:
+                        conv.status = 'COMPLETED'
+                        session.commit()
+                    except:
+                        session.rollback()
+                        pass
+                elif backend_status == 'ACTIVE':
                     frontend_status = 'IN_PROGRESS'  # Map ACTIVE to IN_PROGRESS for frontend
                 
                 conversation_data = {
@@ -299,17 +311,32 @@ def get_conversation_details(conversation_id):
         # Map backend status to frontend expected status
         backend_status = (conversation.status or 'UNKNOWN').upper()
         frontend_status = backend_status
-        if backend_status == 'ACTIVE':
+        
+        # If conversation has session_end but status is still ACTIVE, mark as COMPLETED
+        if backend_status == 'ACTIVE' and conversation.session_end is not None:
+            frontend_status = 'COMPLETED'
+            # Update the database status to reflect reality
+            try:
+                conversation.status = 'COMPLETED'
+                session.commit()
+            except:
+                session.rollback()
+                pass
+        elif backend_status == 'ACTIVE':
             frontend_status = 'IN_PROGRESS'  # Map ACTIVE to IN_PROGRESS for frontend
+        
+        # Build patientInfo from patient_info JSON if available, otherwise use defaults
+        patient_info = conversation.patient_info if conversation.patient_info else {}
+        patient_info_dict = patient_info if isinstance(patient_info, dict) else {}
         
         conversation_details = {
             'id': conversation.id,
             'patient_id': conversation.patient_id or 'unknown',
             'patientInfo': {
-                'name': conversation.patient_name or 'Unknown Patient',
-                'age': conversation.patient_age or 0,
-                'gender': conversation.patient_gender or 'U',
-                'pathology': conversation.patient_pathology or 'Unknown'
+                'name': patient_info_dict.get('name') or conversation.patient_name or 'Unknown Patient',
+                'age': patient_info_dict.get('age') if patient_info_dict.get('age') is not None and patient_info_dict.get('age') != 0 else None,
+                'gender': patient_info_dict.get('gender') if patient_info_dict.get('gender') and patient_info_dict.get('gender') != 'U' else None,
+                'pathology': patient_info_dict.get('pathology') if patient_info_dict.get('pathology') and patient_info_dict.get('pathology') != 'Unknown' else None
             },
             'status': frontend_status,
             'situation': conversation.situation or 'No description',
@@ -419,6 +446,7 @@ def start_conversation_monitoring(conversation_id):
 @token_required
 def stop_conversation_monitoring(conversation_id):
     """Stop monitoring a conversation and send stop command to guardrail via Kafka"""
+    repos = None
     try:
         current_user = get_current_user()
         data = request.get_json() or {}
@@ -430,119 +458,516 @@ def stop_conversation_monitoring(conversation_id):
         
         logger.info(f"Stopping monitoring for conversation {conversation_id} by {current_user}")
         
+        # Always update database first, regardless of Kafka status
+        repos = get_repositories()
+        if not repos:
+            logger.error("Database repositories not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection failed',
+                'message': 'Unable to connect to database'
+            }), 503
+        
+        # Update conversation status in database
+        try:
+            conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+            if conversation:
+                conversation.status = 'STOPPED'
+                from datetime import timezone
+                # Ensure timezone-aware datetime for session_end
+                conversation.session_end = datetime.now(timezone.utc)
+                if conversation.session_start:
+                    # Normalize both datetimes to timezone-aware before subtracting
+                    def normalize_datetime(dt):
+                        """Convert datetime to timezone-aware if it's naive"""
+                        if dt is None:
+                            return None
+                        if dt.tzinfo is None:
+                            # Assume naive datetime is UTC
+                            return dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    
+                    start = normalize_datetime(conversation.session_start)
+                    end = normalize_datetime(conversation.session_end)
+                    duration = end - start
+                    conversation.session_duration_minutes = int(duration.total_seconds() / 60)
+                
+                # Record operator action in database
+                try:
+                    import uuid
+                    from datetime import timezone
+                    repos['operator_action_repo'].create(
+                        action_id=str(uuid.uuid4()),
+                        conversation_id=conversation_id,
+                        action_type='stop_conversation',
+                        action_category='conversation',
+                        operator_id=current_user,
+                        title='Conversazione fermata e segnalata',
+                        description=operator_message,
+                        action_timestamp=datetime.now(timezone.utc),
+                        status='completed',
+                        result='success',
+                        action_data={
+                            'reason': stop_reason,
+                            'final_message': final_message,
+                            'stopped_by': current_user
+                        }
+                    )
+                    logger.info(f"Recorded operator action for stopping conversation {conversation_id}")
+                except Exception as action_error:
+                    logger.warning(f"Failed to record operator action: {action_error}", exc_info=True)
+                    # Continue even if action recording fails
+                
+                repos['session'].commit()
+                logger.info(f"Updated conversation {conversation_id} status to STOPPED in database")
+            else:
+                logger.warning(f"Conversation {conversation_id} not found in database")
+                return jsonify({
+                    'success': False,
+                    'error': 'Conversation not found',
+                    'message': f'No conversation found with ID: {conversation_id}'
+                }), 404
+        except Exception as db_error:
+            logger.error(f"Error updating conversation in database: {db_error}")
+            repos['session'].rollback()
+            raise  # Re-raise to be caught by outer try-except
+        
+        # Try to send via Kafka (but don't fail if it doesn't work)
+        kafka_message_sent = False
+        kafka_warning = None
+        
         # Get Kafka service from Flask app context
         from flask import current_app
         kafka_service = getattr(current_app, 'kafka_service', None)
         
-        if not kafka_service:
-            logger.error("Kafka service not available for sending stop command")
-            return jsonify({
-                'success': False,
-                'error': 'Kafka service not available',
-                'message': 'Cannot send stop command to guardrail'
-            }), 503
+        if kafka_service:
+            try:
+                # Send via Kafka producer
+                success = kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='stop_conversation',
+                    message=operator_message,
+                    reason=stop_reason,
+                    operator_id=current_user
+                )
+                
+                if success:
+                    logger.info(f"Stop command sent to guardrail for conversation {conversation_id}")
+                    kafka_message_sent = True
+                    # Stop monitoring in our system
+                    kafka_service.stop_conversation_monitoring(conversation_id)
+                else:
+                    logger.warning(f"Failed to send stop command to guardrail for conversation {conversation_id}")
+                    kafka_warning = 'Failed to send stop command to guardrail via Kafka'
+                    
+            except Exception as kafka_error:
+                logger.error(f"Kafka error when stopping conversation {conversation_id}: {kafka_error}")
+                kafka_warning = f'Kafka error: {str(kafka_error)}'
+        else:
+            logger.warning("Kafka service not available for sending stop command")
+            kafka_warning = 'Kafka service not available - conversation stopped locally but guardrail may not be notified'
         
-        # Send operator action via Kafka to guardrail
-        try:
-            # Create operator action message for guardrail
-            operator_action = {
-                'action_type': 'stop_conversation',
-                'conversation_id': conversation_id,
-                'operator_id': current_user,
-                'message': operator_message,
-                'stop_reason': stop_reason,
-                'timestamp': datetime.now().isoformat(),
-                'command': {
-                    'type': 'STOP',
-                    'reason': stop_reason,
-                    'final_message': final_message
-                }
-            }
-            
-            # Send via Kafka producer
-            success = kafka_service.send_operator_action(
-                conversation_id=conversation_id,
-                action_type='stop_conversation',
-                message=operator_message,
-                reason=stop_reason,
-                operator_id=current_user
-            )
-            
-            if success:
-                logger.info(f"Stop command sent to guardrail for conversation {conversation_id}")
-                
-                # Stop monitoring in our system
-                kafka_service.stop_conversation_monitoring(conversation_id)
-                
-                response = {
-                    'success': True,
-                    'message': f'Conversation {conversation_id} stopped and command sent to guardrail',
-                    'conversation_id': conversation_id,
-                    'stopped_by': current_user,
-                    'stopped_at': datetime.now().isoformat(),
-                    'status': 'conversation_stopped',
-                    'kafka_message_sent': True
-                }
-            else:
-                logger.error(f"Failed to send stop command to guardrail for conversation {conversation_id}")
-                response = {
-                    'success': False,
-                    'error': 'Failed to send stop command to guardrail',
-                    'message': 'Conversation monitoring stopped locally but guardrail may not be notified'
-                }
-                
-        except Exception as kafka_error:
-            logger.error(f"Kafka error when stopping conversation {conversation_id}: {kafka_error}")
-            response = {
-                'success': False,
-                'error': 'Failed to send stop command via Kafka',
-                'message': str(kafka_error)
-            }
+        # Always return success since database was updated
+        response = {
+            'success': True,
+            'message': f'Conversation {conversation_id} stopped successfully',
+            'conversation_id': conversation_id,
+            'stopped_by': current_user,
+            'stopped_at': datetime.now().isoformat(),
+            'status': 'STOPPED',
+            'kafka_message_sent': kafka_message_sent
+        }
+        
+        if kafka_warning:
+            response['warning'] = kafka_warning
         
         return jsonify(response)
         
     except Exception as e:
-        logger.error(f"Error stopping monitoring for conversation {conversation_id}: {e}")
+        logger.error(f"Error stopping monitoring for conversation {conversation_id}: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
         return jsonify({
             'success': False,
             'error': 'Failed to stop conversation monitoring',
             'message': str(e)
         }), 500
+    finally:
+        # Clean up database session
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/complete', methods=['POST'])
+@token_required
+def complete_conversation(conversation_id):
+    """
+    Mark a conversation as COMPLETED (naturally ended)
+    This is different from STOPPED which indicates operator intervention
+    """
+    repos = None
+    try:
+        current_user = get_current_user()
+        
+        logger.info(f"Completing conversation {conversation_id} by {current_user}")
+        
+        # Get repositories
+        repos = get_repositories()
+        if not repos:
+            logger.error("Database repositories not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection failed',
+                'message': 'Unable to connect to database'
+            }), 503
+        
+        # Get conversation from database
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({
+                'success': False,
+                'error': 'Conversation not found',
+                'message': f'No conversation found with ID: {conversation_id}'
+            }), 404
+        
+        # Update conversation status to COMPLETED
+        from datetime import timezone
+        conversation.status = 'COMPLETED'
+        if not conversation.session_end:
+            conversation.session_end = datetime.now(timezone.utc)
+        
+        # Calculate duration if not already set
+        if conversation.session_start and conversation.session_end:
+            def normalize_datetime(dt):
+                if dt is None:
+                    return None
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt
+            
+            start = normalize_datetime(conversation.session_start)
+            end = normalize_datetime(conversation.session_end)
+            duration = end - start
+            conversation.session_duration_minutes = int(duration.total_seconds() / 60)
+        
+        # Record operator action in database
+        try:
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='complete_conversation',
+                action_category='conversation',
+                operator_id=current_user,
+                title='Conversazione completata',
+                description=f'Conversazione marcata come completata dall\'operatore',
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={
+                    'previous_status': conversation.status,
+                    'new_status': 'COMPLETED',
+                    'reason': 'operator_manual_completion'
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action for completion: {e}")
+        
+        # Commit changes
+        repos['session'].commit()
+        
+        logger.info(f"Conversation {conversation_id} marked as COMPLETED by {current_user}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conversation marked as completed',
+            'conversation_id': conversation_id,
+            'status': 'COMPLETED'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error completing conversation {conversation_id}: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to complete conversation',
+            'message': str(e)
+        }), 500
+    finally:
+        # Clean up database session
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/situation', methods=['PUT'])
+@token_required
+def update_conversation_situation(conversation_id):
+    """Update conversation situation and risk level (e.g., mark alarm as unreliable/false alarm)"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        # Extract situation and level from request
+        situation = data.get('situation', 'Regolare')
+        level = data.get('level', 'low').upper()
+        
+        # Map level to risk_level
+        level_mapping = {
+            'LOW': 'LOW',
+            'MEDIUM': 'MEDIUM',
+            'HIGH': 'HIGH',
+            'CRITICAL': 'CRITICAL'
+        }
+        risk_level = level_mapping.get(level, 'LOW')
+        
+        logger.info(f"Updating situation for conversation {conversation_id} by {current_user}: situation={situation}, level={risk_level}")
+        
+        # Get repositories
+        repos = get_repositories()
+        if not repos:
+            logger.error("Database repositories not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection failed',
+                'message': 'Unable to connect to database'
+            }), 503
+        
+        # Get conversation from database
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({
+                'success': False,
+                'error': 'Conversation not found',
+                'message': f'No conversation found with ID: {conversation_id}'
+            }), 404
+        
+        # Store old values for logging
+        old_situation = conversation.situation
+        old_risk_level = conversation.risk_level
+        
+        # Update conversation
+        from datetime import timezone
+        conversation.situation = situation
+        conversation.risk_level = risk_level
+        conversation.requires_attention = risk_level in ['HIGH', 'CRITICAL']
+        conversation.updated_at = datetime.now(timezone.utc)
+        
+        # Record operator action (false alarm)
+        try:
+            import uuid
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='false_alarm',
+                action_category='alert',
+                operator_id=current_user,
+                title='Allarme marcato come non attendibile',
+                description=f'Operatore ha marcato l\'allarme come non attendibile. Situazione aggiornata a: {situation}',
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={
+                    'old_situation': old_situation,
+                    'new_situation': situation,
+                    'old_risk_level': old_risk_level,
+                    'new_risk_level': risk_level,
+                    'reason': 'operator_judgment'
+                }
+            )
+            logger.info(f"Created operator action for false alarm on conversation {conversation_id}")
+        except Exception as action_error:
+            logger.warning(f"Failed to create operator action: {action_error}", exc_info=True)
+            # Continue even if action recording fails
+        
+        # Commit database changes
+        repos['session'].commit()
+        logger.info(f"Updated conversation {conversation_id} situation to '{situation}' with risk level '{risk_level}'")
+        
+        # Try to send feedback via Kafka (optional - don't fail if Kafka is unavailable)
+        kafka_warning = None
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        
+        if kafka_service:
+            try:
+                # Send false alarm feedback
+                success = kafka_service.send_false_alarm_feedback(
+                    conversation_id=conversation_id,
+                    original_event_id=None,  # Could be enhanced to track specific event
+                    feedback=f"Operator marked alarm as unreliable. Situation: {situation}, Level: {risk_level}"
+                )
+                if not success:
+                    kafka_warning = 'Failed to send feedback to guardrail service via Kafka'
+            except Exception as kafka_error:
+                logger.warning(f"Kafka error when sending false alarm feedback: {kafka_error}")
+                kafka_warning = f'Kafka error: {str(kafka_error)}'
+        else:
+            kafka_warning = 'Kafka service not available - feedback not sent to guardrail service'
+        
+        response = {
+            'success': True,
+            'message': f'Conversation situation updated successfully',
+            'conversation_id': conversation_id,
+            'updated_by': current_user,
+            'updated_at': datetime.now().isoformat(),
+            'situation': situation,
+            'risk_level': risk_level,
+            'requires_attention': conversation.requires_attention
+        }
+        
+        if kafka_warning:
+            response['warning'] = kafka_warning
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Error updating conversation situation for {conversation_id}: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to update conversation situation',
+            'message': str(e)
+        }), 500
+    finally:
+        # Clean up database session
+        if repos and repos.get('session'):
+            repos['session'].close()
 
 @conversations_bp.route('/<conversation_id>/report', methods=['GET'])
 @token_required
 def generate_conversation_report(conversation_id):
-    """Generate a report for a conversation"""
+    """Generate a report for a conversation using real database data"""
+    repos = None
     try:
         current_user = get_current_user()
         
         logger.info(f"Generating report for conversation {conversation_id} by {current_user}")
         
-        # Mock report data
+        # Get repositories
+        repos = get_repositories()
+        if not repos:
+            logger.error("Database repositories not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection failed',
+                'message': 'Unable to connect to database'
+            }), 503
+        
+        # Get conversation from database
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({
+                'success': False,
+                'error': 'Conversation not found',
+                'message': f'No conversation found with ID: {conversation_id}'
+            }), 404
+        
+        # Get guardrail events for this conversation
+        guardrail_events = repos['guardrail_repo'].get_by_conversation_id(conversation_id)
+        
+        # Calculate session duration
+        session_duration = 0
+        if conversation.session_start and conversation.session_end:
+            duration = conversation.session_end - conversation.session_start
+            session_duration = int(duration.total_seconds() / 60)
+        elif conversation.session_start:
+            from datetime import timezone
+            duration = datetime.now(timezone.utc) - conversation.session_start
+            session_duration = int(duration.total_seconds() / 60)
+        
+        # Build patientInfo from patient_info JSON if available
+        patient_info = conversation.patient_info if conversation.patient_info else {}
+        patient_info_dict = patient_info if isinstance(patient_info, dict) else {}
+        
+        # Format dates (use Italian locale if available)
+        created_date = conversation.session_start if conversation.session_start else conversation.created_at
+        if created_date:
+            try:
+                import locale
+                locale.setlocale(locale.LC_TIME, 'it_IT.UTF-8')
+                conversation_date = created_date.strftime('%d %B %Y')
+            except:
+                # Fallback to English if Italian locale not available
+                conversation_date = created_date.strftime('%d %B %Y')
+            conversation_time = created_date.strftime('%H:%M')
+        else:
+            conversation_date = 'N/A'
+            conversation_time = 'N/A'
+        
+        # Count events by type and severity (matching frontend mapEventTypeToDisplay logic)
+        def categorize_event(event):
+            """Categorize event as WARNING, ALERT, or INFO based on event_type and severity"""
+            event_type = (event.event_type or '').lower()
+            severity = (event.severity or '').lower()
+            
+            # Info level events
+            info_types = ['conversation_started', 'conversation_ended', 'validation_passed']
+            # Warning level events
+            warning_types = ['warning_triggered', 'inappropriate_content', 'compliance_check']
+            # Alert level events
+            alert_types = ['alarm_triggered', 'privacy_violation_prevented', 'medication_warning', 
+                          'emergency_protocol', 'operator_intervention', 'system_alert', 'validation_failed']
+            
+            if event_type in info_types:
+                return 'INFO'
+            elif event_type in warning_types:
+                return 'WARNING'
+            elif event_type in alert_types:
+                return 'ALERT'
+            else:
+                # Fallback to severity-based categorization
+                if severity in ['critical', 'high']:
+                    return 'ALERT'
+                elif severity in ['medium', 'warning']:
+                    return 'WARNING'
+                else:
+                    return 'INFO'
+        
+        warning_events = sum(1 for e in guardrail_events if categorize_event(e) == 'WARNING')
+        alert_events = sum(1 for e in guardrail_events if categorize_event(e) == 'ALERT')
+        
+        # Build report data from real database data
         report_data = {
+            'id': conversation.id,
             'conversation_id': conversation_id,
-            'patient_id': f'patient_{conversation_id.split("_")[1]}',
+            'patient_id': conversation.patient_id or conversation_id,
+            'patientId': conversation.patient_id or conversation_id,
             'patientInfo': {
-                'name': f'Paziente {conversation_id.split("_")[1]}',
-                'age': 28,
-                'gender': 'F',
-                'pathology': 'Disturbo depressivo maggiore'
+                'name': patient_info_dict.get('name') or conversation.patient_name or f'Paziente {conversation.patient_id or conversation_id}',
+                'age': patient_info_dict.get('age') if patient_info_dict.get('age') is not None and patient_info_dict.get('age') != 0 else None,
+                'gender': patient_info_dict.get('gender') if patient_info_dict.get('gender') and patient_info_dict.get('gender') != 'U' else None,
+                'pathology': patient_info_dict.get('pathology') if patient_info_dict.get('pathology') and patient_info_dict.get('pathology') != 'Unknown' else None
             },
-            'session_duration': 60,
-            'total_messages': 45,
-            'guardrail_violations': 2,
-            'risk_level': 'high',
-            'summary': 'Conversation showed signs of self-harm ideation requiring immediate attention',
-            'recommendations': [
-                'Immediate psychiatric evaluation recommended',
-                'Consider hospitalization for safety',
-                'Follow up with patient within 24 hours'
+            'conversationDate': conversation_date,
+            'conversationTime': conversation_time,
+            'duration': session_duration,
+            'status': conversation.status or 'UNKNOWN',
+            'situation': conversation.situation or 'Normale',
+            'situationLevel': conversation.risk_level.lower() if conversation.risk_level else 'low',
+            'risk_level': conversation.risk_level or 'low',
+            'events': [
+                {
+                    'type': e.event_type or 'guardrail_violation',
+                    'event_type': e.event_type or 'guardrail_violation',
+                    'timestamp': e.created_at.isoformat() if e.created_at else datetime.utcnow().isoformat(),
+                    'description': e.message_content or e.description or 'No description',
+                    'details': e.details if hasattr(e, 'details') and e.details else None,
+                    'severity': e.severity or 'low'
+                }
+                for e in guardrail_events
             ],
-            'generated_at': datetime.now().isoformat(),
+            'summary': {
+                'totalEvents': len(guardrail_events),
+                'warningEvents': warning_events,
+                'alertEvents': alert_events,
+                'riskLevel': conversation.risk_level.lower() if conversation.risk_level else 'low'
+            },
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'generatedAt': datetime.now(timezone.utc).isoformat(),  # Also send camelCase for frontend compatibility
             'generated_by': current_user
         }
         
-        logger.info(f"Report generated for conversation {conversation_id}")
+        logger.info(f"Report generated for conversation {conversation_id} with {len(guardrail_events)} events")
         
         return jsonify({
             'success': True,
@@ -550,9 +975,15 @@ def generate_conversation_report(conversation_id):
         })
         
     except Exception as e:
-        logger.error(f"Error generating report for conversation {conversation_id}: {e}")
+        logger.error(f"Error generating report for conversation {conversation_id}: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
         return jsonify({
             'success': False,
             'error': 'Failed to generate conversation report',
             'message': str(e)
         }), 500
+    finally:
+        # Clean up database session
+        if repos and repos.get('session'):
+            repos['session'].close()

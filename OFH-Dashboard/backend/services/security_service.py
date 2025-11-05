@@ -43,12 +43,8 @@ class SecurityService:
         # User roles and permissions
         self.roles = {
             'admin': {
-                'permissions': ['read', 'write', 'delete', 'admin', 'audit'],
+                'permissions': ['read', 'write', 'delete', 'admin', 'audit', 'acknowledge_alerts'],
                 'description': 'Full system access'
-            },
-            'operator': {
-                'permissions': ['read', 'write', 'acknowledge_alerts'],
-                'description': 'Monitor and manage alerts'
             },
             'viewer': {
                 'permissions': ['read'],
@@ -66,13 +62,6 @@ class SecurityService:
                 'password_hash': generate_password_hash('admin123'),
                 'role': 'admin',
                 'email': 'admin@hospital.com',
-                'active': True,
-                'created_at': datetime.now().isoformat()
-            },
-            'operator': {
-                'password_hash': generate_password_hash('operator123'),
-                'role': 'operator',
-                'email': 'operator@hospital.com',
                 'active': True,
                 'created_at': datetime.now().isoformat()
             },

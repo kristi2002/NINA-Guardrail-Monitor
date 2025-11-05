@@ -31,8 +31,8 @@ class User(BaseModel):
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     role = Column(
-        String(20), default="operator", nullable=False
-    )  # admin, operator, viewer
+        String(20), default="admin", nullable=False
+    )  # admin, viewer, auditor
 
     # Authentication tracking
     last_login = Column(DateTime(timezone=True), nullable=True)

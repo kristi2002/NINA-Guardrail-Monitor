@@ -45,10 +45,9 @@ def main():
     # Reuse existing initialization to seed users
     try:
         # Import from parent directory
-        from init_database import create_initial_admin_user, create_initial_operator_user
+        from init_database import create_initial_admin_user
         logger.info("Seeding initial users...")
         create_initial_admin_user()
-        create_initial_operator_user()
     except Exception as e:
         logger.warning(f"Seeding users failed or unavailable: {e}")
 

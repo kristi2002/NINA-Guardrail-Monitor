@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
+import TimeAgo from '../components/TimeAgo'
 import './Security.css'
 
 const Security = () => {
@@ -12,6 +13,11 @@ const Security = () => {
   const [securityData, setSecurityData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
+  
+  // ✅ Refs to track the *previous* state
+  const prevTimeRange = useRef(timeRange)
+  const prevActiveTab = useRef(activeTab)
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '🛡️' },
@@ -27,65 +33,92 @@ const Security = () => {
     { value: '30d', label: 'Last 30 Days' }
   ]
 
-  // Effect for time range changes - show loading state
-  useEffect(() => {
-    fetchSecurityData(true) // true = show full-page loader
-    
-    // Auto-refresh security data every 5 minutes
-    const interval = setInterval(() => fetchSecurityData(true), 300000)
-    return () => clearInterval(interval)
-  }, [timeRange]) // This ONLY runs on timeRange change
-
   // =================================================================
   // 1. THIS IS THE NEW CLICK HANDLER
   // =================================================================
   const handleTabClick = (tabId) => {
     if (tabId === activeTab) return // Don't re-fetch if tab is the same
 
-    // Set BOTH states at once. This causes a re-render
-    // where activeTab is new AND securityData is null.
+    // JUST set the active tab. The useEffect will handle the data change.
     setActiveTab(tabId)
-    setSecurityData(null)
   }
 
   // =================================================================
-  // 2. THIS IS THE MODIFIED useEffect for [activeTab]
+  // 2. THIS IS THE COMBINED useEffect for [timeRange, activeTab]
   // =================================================================
-  // Separate effect for tab changes - fetch data without full loading state
+  // ✅ ONE useEffect to rule them all - prevents duplicate requests
   useEffect(() => {
-    // We only fetch data. `setSecurityData(null)` was moved to the click handler.
-    // This will run *after* the re-render from handleTabClick,
-    // which correctly showed the loading state.
-    fetchSecurityData(false) // false = do not show full-page loader
-  }, [activeTab]) // This ONLY runs on activeTab change
+    // 1. Create the AbortController
+    const controller = new AbortController()
+    const signal = controller.signal
 
-  const fetchSecurityData = async (showLoadingSpinner = true) => {
+    // 2. Check what changed
+    const timeRangeChanged = prevTimeRange.current !== timeRange
+    const tabChanged = prevActiveTab.current !== activeTab
+
+    // 3. Decide on loading state
+    if (timeRangeChanged) {
+      // Time range changed: Show full loader, then fetch
+      fetchSecurityData(true, signal)
+    } else if (tabChanged) {
+      // Tab changed: Instantly show skeletons, then fetch (no full loader)
+      setSecurityData(null)
+      fetchSecurityData(false, signal)
+    } else {
+      // This is the initial mount (or Strict Mode's 2nd mount)
+      // Show the full loader
+      fetchSecurityData(true, signal)
+    }
+
+    // 4. Update the refs *after* the logic
+    prevTimeRange.current = timeRange
+    prevActiveTab.current = activeTab
+
+    // 5. Set up the interval
+    const interval = setInterval(() => {
+      console.log('[SECURITY] Auto-refreshing security data...')
+      // Auto-refresh is always silent, no signal or loader needed
+      fetchSecurityData(false)
+    }, 300000) // 5 minutes
+
+    // 6. Return ONE cleanup function
+    return () => {
+      console.log('🧹 Cleaning up Security: aborting requests...')
+      controller.abort()
+      clearInterval(interval)
+    }
+  }, [timeRange, activeTab]) // ✅ DEPENDS ON BOTH
+
+  const fetchSecurityData = async (showLoadingSpinner = true, signal = null) => {
     try {
       if (showLoadingSpinner) {
         setLoading(true) // Show full-page loader (for time range changes)
       }
       setError(null) // Always clear old errors on a new fetch
 
+      // Build the request config with abort signal
+      const config = signal ? { signal } : {}
+
       let response
       // This switch statement is the same as you had
       switch (activeTab) {
         case 'overview':
-          response = await axios.get(`/api/security/overview`)
+          response = await axios.get(`/api/security/overview`, config)
           break
         case 'threats':
-          response = await axios.get(`/api/security/threats?timeRange=${timeRange}`)
+          response = await axios.get(`/api/security/threats?timeRange=${timeRange}`, config)
           break
         case 'access':
-          response = await axios.get(`/api/security/access?timeRange=${timeRange}`)
+          response = await axios.get(`/api/security/access?timeRange=${timeRange}`, config)
           break
         case 'compliance':
-          response = await axios.get(`/api/security/compliance`)
+          response = await axios.get(`/api/security/compliance`, config)
           break
         case 'incidents':
-          response = await axios.get(`/api/security/incidents?timeRange=${timeRange}`)
+          response = await axios.get(`/api/security/incidents?timeRange=${timeRange}`, config)
           break
         default:
-          response = await axios.get(`/api/security/overview`)
+          response = await axios.get(`/api/security/overview`, config)
       }
 
       // Handle both direct data and wrapped responses with safe fallbacks
@@ -102,7 +135,14 @@ const Security = () => {
       } else {
         setSecurityData({})
       }
+      setLastUpdated(new Date()) // ✅ Update last updated timestamp
     } catch (err) {
+      // Don't set error if request was intentionally cancelled
+      if (err.name === 'CanceledError' || axios.isCancel(err)) {
+        console.log('[SECURITY] Request was cancelled')
+        return
+      }
+      
       // Set an error regardless of loading type
       if (err.response) {
         setError(`Failed to load ${activeTab} data: ${err.response.status} ${err.response.statusText}`)
@@ -111,10 +151,86 @@ const Security = () => {
       } else {
         setError(`Failed to load ${activeTab} data: ${err.message}`)
       }
+      // ✅✅ THIS IS THE CRITICAL FIX ✅✅
+      // Set empty data to prevent render crashes
+      setSecurityData({})
     } finally {
-      if (showLoadingSpinner) {
-        setLoading(false) // Only turn off full-page loader if we turned it on
-      }
+      // ✅ SIMPLIFY THIS - Always turn off loading
+      setLoading(false)
+    }
+  }
+
+  // Helper function to safely access and default security data
+  const getSecurityData = () => {
+    // 1. Define the full default structure
+    const defaults = {
+      summary: {
+        security_score: 0,
+        total_threats: 0,
+        resolved_threats: 0,
+        active_threats: 0,
+      },
+      recent_incidents: [],
+      threat_distribution: {},
+      access_control: {
+        active_sessions: 0,
+      },
+      compliance: {
+        gdpr_compliance: 0,
+        hipaa_compliance: 0,
+        pci_compliance: 0,
+      },
+      threat_data: {
+        trends: [],
+      },
+      threat_summary: {
+        total_threats: 0,
+        threats_blocked: 0,
+        threats_resolved: 0,
+        average_response_time: 'N/A',
+      },
+      // ✅ Added 'threat_types' and 'threat_analysis' to defaults
+      threat_types: [],
+      threat_analysis: {
+        top_threats: [],
+      },
+      access_data: {
+        trends: [],
+      },
+      access_summary: {
+        success_rate: 0,
+        failed_attempts: 0,
+        mfa_adoption_rate: 0,
+        suspicious_activities: 0,
+      },
+      user_patterns: [],
+      frameworks: {
+        GDPR: { score: 0, status: 'N/A', requirements_met: 0, total_requirements: 0 },
+        HIPAA: { score: 0, status: 'N/A', requirements_met: 0, total_requirements: 0 },
+        SOC2: { score: 0, status: 'N/A', requirements_met: 0, total_requirements: 0 },
+      },
+      security_controls: {},
+      audit_history: [],
+      overall_compliance_score: 0,
+      incident_data: {
+        trends: [],
+      },
+      incident_summary: {
+        total_incidents: 0,
+        resolved_incidents: 0,
+        resolution_rate: 0,
+        average_response_time: 'N/A',
+      },
+    }
+
+    // 2. Get the current data (which might be null, or a slim object)
+    const currentData = securityData ? (securityData.data || securityData) : {}
+
+    // 3. Return the defaults *merged* with the current data
+    // This ensures all keys always exist.
+    return {
+      ...defaults,
+      ...currentData,
     }
   }
 
@@ -207,38 +323,30 @@ const Security = () => {
   )
 
   const renderOverviewTab = () => {
+    // ✅ 1. Call the helper. This can NEVER be null.
+    const data = getSecurityData()
+    
+    // ✅ 2. Check for skeleton state *after* getting data
+    if (!securityData) return <OverviewSkeleton />
+
     try {
-      if (loading) return <div className="security-loading">Loading security overview...</div>
-      if (error && !securityData) return <div className="security-error">{error}</div>
-      if (!securityData) return <OverviewSkeleton />
-
-      // Add safety checks for data structure
-      if (!securityData || typeof securityData !== 'object') {
-        return <div className="security-loading">Loading security data...</div>
-      }
-
-      // Handle the actual backend data structure
-      const { summary = {}, recent_incidents = [], threat_distribution = {}, access_control = {}, compliance = {} } = securityData
-      
-      // Add safety checks for summary
-      if (!summary || typeof summary !== 'object') {
-        return <div className="security-loading">Loading security data...</div>
-      }
+      // ✅ 3. Destructure *safely*. 'data' is guaranteed to have these keys.
+      const { summary, recent_incidents, threat_distribution, access_control, compliance } = data
 
     return (
       <div className="security-tab">
         <div className="metrics-grid">
-          {renderMetricCard('Security Score', `${summary.security_score || 0}%`, 'Overall security rating', '🛡️')}
-          {renderMetricCard('Total Threats', summary.total_threats || 0, 'This period', '🚫')}
-          {renderMetricCard('Active Sessions', access_control.active_sessions || 0, 'Being monitored', '👁️')}
-          {renderMetricCard('Resolved Threats', summary.resolved_threats || 0, 'Successfully resolved', '✅')}
+          {renderMetricCard('Security Score', `${summary.security_score}%`, 'Overall security rating', '🛡️')}
+          {renderMetricCard('Total Threats', summary.total_threats, 'This period', '🚫')}
+          {renderMetricCard('Active Sessions', access_control.active_sessions, 'Being monitored', '👁️')}
+          {renderMetricCard('Resolved Threats', summary.resolved_threats, 'Successfully resolved', '✅')}
         </div>
 
         <div className="charts-grid">
           <div className="chart-container">
             <h3>Recent Security Incidents</h3>
             <div className="events-list">
-              {(recent_incidents || []).slice(0, 5).map((incident, index) => (
+              {recent_incidents.slice(0, 5).map((incident, index) => (
                 <div key={incident.id || index} className={`event-item ${(incident.severity || 'unknown').toLowerCase()}`}>
                   <div className="event-header">
                     <span className="event-type">{incident.type || 'Unknown Incident'}</span>
@@ -275,25 +383,25 @@ const Security = () => {
             <div className="status-item">
               <span className="status-label">GDPR Compliance</span>
               <span className={`status-value ${compliance.gdpr_compliance >= 90 ? 'good' : compliance.gdpr_compliance >= 70 ? 'warning' : 'critical'}`}>
-                {compliance.gdpr_compliance || 0}%
+                {compliance.gdpr_compliance}%
               </span>
             </div>
             <div className="status-item">
               <span className="status-label">HIPAA Compliance</span>
               <span className={`status-value ${compliance.hipaa_compliance >= 90 ? 'good' : compliance.hipaa_compliance >= 70 ? 'warning' : 'critical'}`}>
-                {compliance.hipaa_compliance || 0}%
+                {compliance.hipaa_compliance}%
               </span>
             </div>
             <div className="status-item">
               <span className="status-label">PCI Compliance</span>
               <span className={`status-value ${compliance.pci_compliance >= 90 ? 'good' : compliance.pci_compliance >= 70 ? 'warning' : 'critical'}`}>
-                {compliance.pci_compliance || 0}%
+                {compliance.pci_compliance}%
               </span>
             </div>
             <div className="status-item">
               <span className="status-label">Active Threats</span>
-              <span className={`status-value ${(summary.active_threats || 0) === 0 ? 'good' : (summary.active_threats || 0) <= 2 ? 'warning' : 'critical'}`}>
-                {summary.active_threats || 0}
+              <span className={`status-value ${summary.active_threats === 0 ? 'good' : summary.active_threats <= 2 ? 'warning' : 'critical'}`}>
+                {summary.active_threats}
               </span>
             </div>
           </div>
@@ -312,35 +420,30 @@ const Security = () => {
   }
 
   const renderThreatsTab = () => {
-    try {
-      if (loading) return <div className="security-loading">Loading threats data...</div>
-      if (error) return <div className="security-error">{error}</div>
-      if (!securityData) return <ThreatsSkeleton />
+    // ✅ 1. Call the helper. This can NEVER be null.
+    const data = getSecurityData()
+    
+    // ✅ 2. Check for skeleton state *after* getting data
+    if (!securityData) return <ThreatsSkeleton />
 
-      // Handle different possible data structures
-      const data = securityData.data || securityData
-      
-      // Add safety checks for required data
-      if (!data || typeof data !== 'object') {
-        return <div className="security-loading">Loading threats data...</div>
-      }
-      
-      const { threat_data = {}, threat_summary = {}, threat_types = [], threat_analysis = {} } = data
+    try {
+      // ✅ 3. Destructure *safely*. 'data' is guaranteed to have these keys.
+      const { threat_data, threat_summary, threat_types, threat_analysis } = data
 
       return (
         <div className="security-tab">
           <div className="metrics-grid">
-            {renderMetricCard('Total Threats', threat_summary.total_threats || 0, 'Detected this period', '⚠️')}
-            {renderMetricCard('Threats Blocked', threat_summary.threats_blocked || 0, 'Successfully blocked', '🛡️')}
-            {renderMetricCard('Resolution Rate', `${Math.round(((threat_summary.threats_resolved || 0) / Math.max(threat_summary.total_threats || 1, 1)) * 100)}%`, 'Threats resolved', '✅')}
-            {renderMetricCard('Avg Response', threat_summary.average_response_time || 'N/A', 'Time to respond', '⏱️')}
+            {renderMetricCard('Total Threats', threat_summary.total_threats, 'Detected this period', '⚠️')}
+            {renderMetricCard('Threats Blocked', threat_summary.threats_blocked, 'Successfully blocked', '🛡️')}
+            {renderMetricCard('Resolution Rate', `${Math.round((threat_summary.threats_resolved / Math.max(threat_summary.total_threats, 1)) * 100)}%`, 'Threats resolved', '✅')}
+            {renderMetricCard('Avg Response', threat_summary.average_response_time, 'Time to respond', '⏱️')}
           </div>
 
           <div className="charts-grid">
             <div className="chart-container">
               <h3>Threat Trends Over Time</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={threat_data?.trends || []}>
+                <LineChart data={threat_data.trends}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="timestamp" tickFormatter={(value) => new Date(value).toLocaleTimeString()} />
                   <YAxis />
@@ -359,7 +462,7 @@ const Security = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={threat_analysis?.top_threats || []}
+                    data={threat_analysis.top_threats}
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
@@ -367,7 +470,7 @@ const Security = () => {
                     nameKey="type"
                     label={({type, count}) => `${type}: ${count}`}
                   >
-                    {threat_analysis?.top_threats?.map((entry, index) => (
+                    {threat_analysis.top_threats.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={['#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4', '#10b981'][index]} />
                     ))}
                   </Pie>
@@ -390,35 +493,30 @@ const Security = () => {
   }
 
   const renderAccessTab = () => {
-    try {
-      if (loading) return <div className="security-loading">Loading access data...</div>
-      if (error) return <div className="security-error">{error}</div>
-      if (!securityData) return <AccessSkeleton />
+    // ✅ 1. Call the helper. This can NEVER be null.
+    const data = getSecurityData()
+    
+    // ✅ 2. Check for skeleton state *after* getting data
+    if (!securityData) return <AccessSkeleton />
 
-      // Handle different possible data structures
-      const data = securityData.data || securityData
-      
-      // Add safety checks for required data
-      if (!data || typeof data !== 'object') {
-        return <div className="security-loading">Loading access data...</div>
-      }
-      
-      const { access_data = {}, access_summary = {}, user_patterns = [] } = data
+    try {
+      // ✅ 3. Destructure *safely*. 'data' is guaranteed to have these keys.
+      const { access_data, access_summary, user_patterns } = data
 
       return (
         <div className="security-tab">
           <div className="metrics-grid">
-            {renderMetricCard('Success Rate', `${access_summary.success_rate || 0}%`, 'Authentication success', '✅')}
-            {renderMetricCard('Failed Attempts', access_summary.failed_attempts || 0, 'Failed logins', '❌')}
-            {renderMetricCard('MFA Adoption', `${access_summary.mfa_adoption_rate || 0}%`, 'Multi-factor auth', '🔐')}
-            {renderMetricCard('Suspicious Activity', access_summary.suspicious_activities || 0, 'Detected activities', '👁️')}
+            {renderMetricCard('Success Rate', `${access_summary.success_rate}%`, 'Authentication success', '✅')}
+            {renderMetricCard('Failed Attempts', access_summary.failed_attempts, 'Failed logins', '❌')}
+            {renderMetricCard('MFA Adoption', `${access_summary.mfa_adoption_rate}%`, 'Multi-factor auth', '🔐')}
+            {renderMetricCard('Suspicious Activity', access_summary.suspicious_activities, 'Detected activities', '👁️')}
           </div>
 
           <div className="charts-grid">
             <div className="chart-container">
               <h3>Authentication Trends</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={access_data?.trends || []}>
+                <AreaChart data={access_data.trends}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="timestamp" tickFormatter={(value) => new Date(value).toLocaleTimeString()} />
                   <YAxis />
@@ -433,7 +531,7 @@ const Security = () => {
             <div className="chart-container">
               <h3>User Access Patterns</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={user_patterns || []}>
+                <BarChart data={user_patterns}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="user_type" />
                   <YAxis />
@@ -457,28 +555,23 @@ const Security = () => {
   }
 
   const renderComplianceTab = () => {
-    try {
-      if (loading) return <div className="security-loading">Loading compliance data...</div>
-      if (error) return <div className="security-error">{error}</div>
-      if (!securityData) return <ComplianceSkeleton />
+    // ✅ 1. Call the helper. This can NEVER be null.
+    const data = getSecurityData()
+    
+    // ✅ 2. Check for skeleton state *after* getting data
+    if (!securityData) return <ComplianceSkeleton />
 
-      // Handle different possible data structures
-      const data = securityData.data || securityData
-      
-      // Add safety checks for required data
-      if (!data || typeof data !== 'object') {
-        return <div className="security-loading">Loading compliance data...</div>
-      }
-      
-      const { frameworks = {}, security_controls = {}, audit_history = [], overall_compliance_score = 0 } = data
+    try {
+      // ✅ 3. Destructure *safely*. 'data' is guaranteed to have these keys.
+      const { frameworks, security_controls, audit_history, overall_compliance_score } = data
 
       return (
         <div className="security-tab">
           <div className="metrics-grid">
             {renderMetricCard('Overall Score', `${overall_compliance_score}%`, 'Compliance rating', '📊')}
-            {renderMetricCard('GDPR Score', `${frameworks.GDPR?.score || 0}%`, 'GDPR compliance', '🇪🇺')}
-            {renderMetricCard('HIPAA Score', `${frameworks.HIPAA?.score || 0}%`, 'HIPAA compliance', '🏥')}
-            {renderMetricCard('SOC2 Score', `${frameworks.SOC2?.score || 0}%`, 'SOC2 compliance', '🔒')}
+            {renderMetricCard('GDPR Score', `${frameworks.GDPR.score}%`, 'GDPR compliance', '🇪🇺')}
+            {renderMetricCard('HIPAA Score', `${frameworks.HIPAA.score}%`, 'HIPAA compliance', '🏥')}
+            {renderMetricCard('SOC2 Score', `${frameworks.SOC2.score}%`, 'SOC2 compliance', '🔒')}
           </div>
 
           <div className="charts-grid">
@@ -545,35 +638,30 @@ const Security = () => {
   }
 
   const renderIncidentsTab = () => {
-    try {
-      if (loading) return <div className="security-loading">Loading incidents data...</div>
-      if (error) return <div className="security-error">{error}</div>
-      if (!securityData) return <IncidentsSkeleton />
+    // ✅ 1. Call the helper. This can NEVER be null.
+    const data = getSecurityData()
+    
+    // ✅ 2. Check for skeleton state *after* getting data
+    if (!securityData) return <IncidentsSkeleton />
 
-      // Handle different possible data structures
-      const data = securityData.data || securityData
-      
-      // Add safety checks for required data
-      if (!data || typeof data !== 'object') {
-        return <div className="security-loading">Loading incidents data...</div>
-      }
-      
-      const { incident_data = {}, incident_summary = {}, recent_incidents = [] } = data
+    try {
+      // ✅ 3. Destructure *safely*. 'data' is guaranteed to have these keys.
+      const { incident_data, incident_summary, recent_incidents } = data
 
       return (
         <div className="security-tab">
           <div className="metrics-grid">
-            {renderMetricCard('Total Incidents', incident_summary.total_incidents || 0, 'This period', '🚨')}
-            {renderMetricCard('Resolved', incident_summary.resolved_incidents || 0, 'Successfully resolved', '✅')}
-            {renderMetricCard('Resolution Rate', `${incident_summary.resolution_rate || 0}%`, 'Incidents resolved', '📊')}
-            {renderMetricCard('Avg Response', incident_summary.average_response_time || 'N/A', 'Response time', '⏱️')}
+            {renderMetricCard('Total Incidents', incident_summary.total_incidents, 'This period', '🚨')}
+            {renderMetricCard('Resolved', incident_summary.resolved_incidents, 'Successfully resolved', '✅')}
+            {renderMetricCard('Resolution Rate', `${incident_summary.resolution_rate}%`, 'Incidents resolved', '📊')}
+            {renderMetricCard('Avg Response', incident_summary.average_response_time, 'Response time', '⏱️')}
           </div>
 
           <div className="charts-grid">
             <div className="chart-container">
               <h3>Incident Trends</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={incident_data?.trends || []}>
+                <LineChart data={incident_data.trends}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="timestamp" tickFormatter={(value) => new Date(value).toLocaleTimeString()} />
                   <YAxis />
@@ -589,7 +677,7 @@ const Security = () => {
             <div className="chart-container">
               <h3>Recent Incidents</h3>
               <div className="incidents-list">
-                {(recent_incidents || []).slice(0, 8).map((incident) => (
+                {recent_incidents.slice(0, 8).map((incident) => (
                   <div key={incident.id} className={`incident-item ${incident.severity.toLowerCase()}`}>
                     <div className="incident-header">
                       <span className="incident-type">{incident.type}</span>
@@ -640,12 +728,9 @@ const Security = () => {
     }
   }
 
-  if (loading) {
+  // ✅ Only show full-page loading for initial load
+  if (loading && !securityData) {
     return <div className="security-loading">Loading security dashboard...</div>
-  }
-
-  if (error) {
-    return <div className="security-error">{error}</div>
   }
 
   return (
@@ -654,7 +739,7 @@ const Security = () => {
         <div className="header-left">
           <h1>🛡️ Security Dashboard</h1>
           <p className="header-subtitle">
-            Comprehensive security monitoring and threat analysis • Last updated: {new Date().toLocaleTimeString()}
+            Comprehensive security monitoring and threat analysis • Last updated: <TimeAgo timestamp={lastUpdated} />
           </p>
         </div>
         
@@ -685,6 +770,16 @@ const Security = () => {
       </div>
 
       <div className="security-content">
+        {/* ✅ ADD THIS ERROR BANNER (like Analytics.jsx) */}
+        {error && (
+          <div className="security-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c33', marginBottom: '1rem', borderRadius: '4px' }}>
+            ⚠️ {error}
+            <button onClick={() => { setError(null); fetchSecurityData(true); }} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem' }}>Retry</button>
+          </div>
+        )}
+        {loading && securityData && (
+          <div className="security-loading-indicator" style={{ padding: '1rem', textAlign: 'center' }}>Loading {activeTab} data...</div>
+        )}
         {renderActiveTab()}
       </div>
     </div>

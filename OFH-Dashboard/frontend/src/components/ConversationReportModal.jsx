@@ -1,11 +1,79 @@
 import React, { useState } from 'react';
 import html2pdf from 'html2pdf.js'; // Make sure to install this library
+import { mapEventTypeToDisplay } from '../utils/eventTypeMapper';
 import './ConversationReportModal.css';
 
 const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
   const [exporting, setExporting] = useState(false);
 
   if (!isOpen || !reportData) return null;
+
+  // Calculate summary from events if not provided
+  const calculateSummary = () => {
+    if (reportData.summary && reportData.summary.totalEvents !== undefined) {
+      return reportData.summary
+    }
+    
+    // Calculate from events if summary is missing
+    const events = reportData.events || []
+    
+    let warningEvents = 0
+    let alertEvents = 0
+    
+    events.forEach(event => {
+      const displayType = mapEventTypeToDisplay(
+        event.event_type || event.type,
+        event.severity
+      )
+      if (displayType === 'WARNING') {
+        warningEvents++
+      } else if (displayType === 'ALERT') {
+        alertEvents++
+      }
+    })
+    
+    return {
+      totalEvents: events.length,
+      warningEvents: warningEvents,
+      alertEvents: alertEvents,
+      riskLevel: reportData.situationLevel || reportData.risk_level || 'low'
+    }
+  }
+  
+  const summaryData = calculateSummary()
+
+  // Format event details - filter out null values and format nicely
+  const formatEventDetails = (details) => {
+    if (!details) {
+      return null
+    }
+
+    // If it's a string, try to parse it as JSON
+    let detailsObj = details
+    if (typeof details === 'string') {
+      try {
+        detailsObj = JSON.parse(details)
+      } catch (e) {
+        // If it's not JSON, return the string as-is
+        return details
+      }
+    }
+
+    // If it's an object, filter out null/undefined/empty values
+    if (typeof detailsObj === 'object' && detailsObj !== null && !Array.isArray(detailsObj)) {
+      const filtered = Object.fromEntries(
+        Object.entries(detailsObj).filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      )
+
+      if (Object.keys(filtered).length === 0) {
+        return null
+      }
+
+      return filtered
+    }
+
+    return detailsObj
+  }
 
   /**
    * Generates and downloads a PDF report from the reportData.
@@ -89,7 +157,55 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
           </div>` : ''}
           <div class="section">
             <div class="section-title">Cronologia Eventi</div>
-            <div class="events-section">${reportData.events && reportData.events.length > 0 ? reportData.events.map(event => `<div class="event-item"><div class="event-header">${event.type} - ${new Date(event.timestamp).toLocaleString('it-IT')}</div><div class="event-description">${event.description || 'Nessuna descrizione'}</div>${event.details ? `<div class="event-details">${event.details}</div>` : ''}</div>`).join('') : '<div class="event-item"><div class="event-description">Nessun evento registrato</div></div>'}</div>
+            <div class="events-section">${reportData.events && reportData.events.length > 0 ? reportData.events.map(event => {
+              const formatDetails = (details) => {
+                if (!details) return '';
+                
+                // If it's a string, try to parse it as JSON
+                let detailsObj = details
+                if (typeof details === 'string') {
+                  try {
+                    detailsObj = JSON.parse(details)
+                  } catch (e) {
+                    return details
+                  }
+                }
+
+                // If it's an object, filter out null/undefined/empty values
+                if (typeof detailsObj === 'object' && detailsObj !== null && !Array.isArray(detailsObj)) {
+                  const filtered = Object.fromEntries(
+                    Object.entries(detailsObj).filter(([_, value]) => value !== null && value !== undefined && value !== '')
+                  )
+
+                  if (Object.keys(filtered).length === 0) {
+                    return ''
+                  }
+
+                  // Format as a readable list for PDF
+                  return Object.entries(filtered).map(([key, value]) => {
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    let displayValue = value
+                    if (typeof value === 'object' && value !== null) {
+                      displayValue = JSON.stringify(value, null, 2)
+                    } else if (typeof value === 'number') {
+                      if (key.includes('score') || key.includes('confidence')) {
+                        displayValue = `${(value * 100).toFixed(1)}%`
+                      } else if (key.includes('time') || key.includes('duration')) {
+                        displayValue = `${value}ms`
+                      }
+                    }
+                    return `${label}: ${displayValue}`
+                  }).join('<br>')
+                }
+                
+                return typeof details === 'string' ? details : JSON.stringify(detailsObj, null, 2);
+              };
+              const eventType = event.type || event.event_type || 'Evento';
+              const eventTimestamp = event.timestamp ? new Date(event.timestamp).toLocaleString('it-IT') : 'N/A';
+              const eventDescription = event.description || 'Nessuna descrizione';
+              const eventDetails = formatDetails(event.details);
+              return `<div class="event-item"><div class="event-header">${eventType} - ${eventTimestamp}</div><div class="event-description">${eventDescription}</div>${eventDetails ? `<div class="event-details">${eventDetails}</div>` : ''}</div>`;
+            }).join('') : '<div class="event-item"><div class="event-description">Nessun evento registrato</div></div>'}</div>
           </div>
           <div class="summary-section">
             <div class="section-title">Riepilogo Eventi</div>
@@ -99,7 +215,7 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
               <div class="summary-item"><div class="summary-label">Allarmi</div><div class="summary-value">${reportData.summary?.alertEvents || 0}</div></div>
             </div>
           </div>
-          <div class="footer">Report generato il ${new Date(reportData.generatedAt).toLocaleString('it-IT')}</div>
+          <div class="footer">Report generato il ${reportData.generatedAt || reportData.generated_at ? new Date(reportData.generatedAt || reportData.generated_at).toLocaleString('it-IT') : new Date().toLocaleString('it-IT')}</div>
         </body>
       </html>
     `;
@@ -126,7 +242,7 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
 
   const getSituationConfig = (situation) => {
     const configs = {
-      'Regolare': { label: 'Regolare', class: 'situation-normal', color: '#4caf50' },
+      'Regolare': { label: 'Regolare', class: 'situation-regular', color: '#4caf50' },
       'Segni di autolesionismo': { label: 'Segni di autolesionismo', class: 'situation-warning', color: '#ff9800' },
       'Gesti pericolosi': { label: 'Gesti pericolosi', class: 'situation-danger', color: '#f44336' },
     };
@@ -165,8 +281,18 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
   };
 
   return (
-    <div className="conversation-report-modal-overlay">
-      <div className="conversation-report-modal">
+    <div 
+      className="conversation-report-modal-overlay"
+      onClick={(e) => {
+        // Stop propagation to prevent closing the detail modal
+        e.stopPropagation();
+        // Only X button should close the report modal, not clicking the overlay
+      }}
+    >
+      <div 
+        className="conversation-report-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <h2>Report Conversazione</h2>
           <div className="header-actions">
@@ -193,9 +319,6 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
             >
               <span className="btn-icon">📋</span>
               Esporta JSON
-            </button>
-            <button className="modal-close" onClick={onClose}>
-              <span>×</span>
             </button>
           </div>
         </div>
@@ -242,8 +365,8 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Stato</span>
-                <span className={`status-badge ${(reportData.status || '').toLowerCase().replace('_', '-')}`}>
-                  {reportData.status}
+                <span className={`status-badge ${(reportData.status || 'unknown').toLowerCase().replace('_', '-')}`}>
+                  {(reportData.status || 'UNKNOWN').replace('_', ' ')}
                 </span>
               </div>
             </div>
@@ -306,22 +429,69 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
             <h3 className="report-section-title">Cronologia Eventi</h3>
             <div className="events-timeline">
               {reportData.events && reportData.events.length > 0 ? (
-                reportData.events.map((event, index) => (
-                  <div key={index} className="timeline-item">
-                    <div className="event-header">
-                      <span className="event-type">{event.type}</span>
-                      <span className="event-timestamp">{formatDateTime(event.timestamp)}</span>
-                    </div>
-                    <div className="event-description">
-                      {event.description || 'Nessuna descrizione'}
-                    </div>
-                    {event.details && (
-                      <div className="event-details">
-                        {event.details}
+                reportData.events.map((event, index) => {
+                  const formattedDetails = formatEventDetails(event.details)
+                  return (
+                    <div key={index} className="timeline-item">
+                      <div className="event-main-content">
+                        <div className="event-header">
+                          <span className="event-type">{event.type || event.event_type || 'Evento'}</span>
+                          <span className="event-timestamp">{formatDateTime(event.timestamp)}</span>
+                        </div>
+                        <div className="event-description">
+                          {typeof event.description === 'string' 
+                            ? event.description 
+                            : typeof event.description === 'object' 
+                              ? JSON.stringify(event.description, null, 2)
+                              : event.description || 'Nessuna descrizione'}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))
+                      {formattedDetails ? (
+                        <div className="event-details">
+                          {typeof formattedDetails === 'object' 
+                            ? (
+                              <div className="event-details-list">
+                                {Object.entries(formattedDetails).map(([key, value]) => {
+                                  // Format key labels
+                                  const label = key
+                                    .replace(/_/g, ' ')
+                                    .replace(/\b\w/g, l => l.toUpperCase())
+                                  
+                                  // Format values nicely
+                                  let displayValue = value
+                                  if (typeof value === 'object' && value !== null) {
+                                    displayValue = JSON.stringify(value, null, 2)
+                                  } else if (typeof value === 'number') {
+                                    if (key.includes('score') || key.includes('confidence')) {
+                                      displayValue = `${(value * 100).toFixed(1)}%`
+                                    } else if (key.includes('time') || key.includes('duration')) {
+                                      displayValue = `${value}ms`
+                                    } else {
+                                      displayValue = value.toString()
+                                    }
+                                  } else {
+                                    displayValue = String(value)
+                                  }
+
+                                  return (
+                                    <div key={key} className="event-detail-item">
+                                      <span className="detail-label">{label}:</span>
+                                      <span className="detail-value">{displayValue}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )
+                            : String(formattedDetails)}
+                        </div>
+                      ) : (
+                        <div className="event-details-empty">
+                          Nessun dettaglio disponibile
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
               ) : (
                 <div className="timeline-item">
                   <div className="event-description">Nessun evento registrato</div>
@@ -336,15 +506,15 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
             <div className="summary-grid">
               <div className="summary-item">
                 <div className="summary-label">Eventi Totali</div>
-                <div className="summary-value">{reportData.summary?.totalEvents || 0}</div>
+                <div className="summary-value">{summaryData.totalEvents || 0}</div>
               </div>
               <div className="summary-item">
                 <div className="summary-label">Avvisi</div>
-                <div className="summary-value warning">{reportData.summary?.warningEvents || 0}</div>
+                <div className="summary-value warning">{summaryData.warningEvents || 0}</div>
               </div>
               <div className="summary-item">
                 <div className="summary-label">Allarmi</div>
-                <div className="summary-value danger">{reportData.summary?.alertEvents || 0}</div>
+                <div className="summary-value danger">{summaryData.alertEvents || 0}</div>
               </div>
             </div>
           </div>
@@ -362,7 +532,7 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
               </div>
               <div className="metadata-item">
                 <span className="metadata-label">Generato il</span>
-                <span className="metadata-value">{formatDateTime(reportData.generatedAt)}</span>
+                <span className="metadata-value">{formatDateTime(reportData.generatedAt || reportData.generated_at || new Date().toISOString())}</span>
               </div>
             </div>
           </div>

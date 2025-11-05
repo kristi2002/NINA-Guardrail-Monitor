@@ -260,8 +260,7 @@ body {
 }
 
 .btn-notifications-nav,
-.btn-notification-preferences,
-.btn-notification-settings {
+.btn-notification-preferences {
   position: relative;
   background: rgba(255, 255, 255, 0.15);
   border: 2px solid rgba(0, 0, 0, 0.1);
@@ -280,8 +279,7 @@ body {
 }
 
 .btn-notifications-nav:hover,
-.btn-notification-preferences:hover,
-.btn-notification-settings:hover {
+.btn-notification-preferences:hover {
   background: rgba(255, 255, 255, 0.25);
   color: #000000 !important;
   transform: translateY(-3px);
@@ -330,18 +328,6 @@ body {
   border-color: #d97706;
 }
 
-/* Special styling for user profile button */
-.btn-notification-settings {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  color: #ffffff !important;
-}
-
-.btn-notification-settings:hover {
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-  border-color: #5a67d8;
-  color: #ffffff !important;
-}
 
 /* Loading States */
 .app-loading {
@@ -506,13 +492,10 @@ body {
 /* Strong override rules for notification and user profile elements */
 .navbar .btn-notifications-nav,
 .navbar .btn-notification-preferences,
-.navbar .btn-notification-settings,
 .navbar .btn-notifications-nav:hover,
 .navbar .btn-notification-preferences:hover,
-.navbar .btn-notification-settings:hover,
 .navbar .btn-notifications-nav:focus,
-.navbar .btn-notification-preferences:focus,
-.navbar .btn-notification-settings:focus {
+.navbar .btn-notification-preferences:focus {
   color: #000000 !important;
   background: rgba(255, 255, 255, 0.1) !important;
 }

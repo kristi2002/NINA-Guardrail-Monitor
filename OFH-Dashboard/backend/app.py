@@ -244,12 +244,11 @@ if __name__ == '__main__':
                 logger.error("❌ Failed to create database tables")
                 raise Exception("Failed to create database tables")
             
-            # Create initial admin and operator users if they don't exist
+            # Create initial admin user if it doesn't exist
             try:
-                from init_database import create_initial_admin_user, create_initial_operator_user
+                from init_database import create_initial_admin_user
                 logger.info("Checking for initial users...")
                 create_initial_admin_user()
-                create_initial_operator_user()
             except Exception as user_init_error:
                 logger.warning(f"⚠️ Could not initialize users: {user_init_error}")
                 logger.warning("You may need to run init_database.py manually or create users via API")

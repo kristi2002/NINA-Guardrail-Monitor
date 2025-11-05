@@ -104,7 +104,11 @@ function ConversationStatus({ conversations = [] }) {
         <div className="status-icon">{overallStatus.icon}</div>
         <div className="status-content">
           <h3>{overallStatus.message}</h3>
-          <p>{statusCounts.total} conversazioni monitorate</p>
+          <p>
+            {statusCounts.total} conversazioni monitorate
+            {statusCounts.danger > 0 && ` • ${statusCounts.danger} in pericolo`}
+            {statusCounts.warning > 0 && statusCounts.danger === 0 && ` • ${statusCounts.warning} richiedono attenzione`}
+          </p>
         </div>
       </div>
 

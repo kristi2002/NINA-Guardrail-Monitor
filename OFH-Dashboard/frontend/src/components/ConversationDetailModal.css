@@ -197,6 +197,7 @@
 }
 
 .btn-stop-report,
+.btn-complete,
 .btn-unreliable-alarm {
   padding: 0.75rem 1.5rem;
   border: none;
@@ -221,6 +222,17 @@
 .btn-stop-report:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
+}
+
+.btn-complete {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-complete:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
 .btn-unreliable-alarm {
@@ -436,7 +448,38 @@
 .event-details {
   font-size: 0.85rem;
   color: #666;
-  font-style: italic;
+  line-height: 1.6;
+  font-style: normal;
+}
+
+.event-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.event-detail-item {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.event-detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #1976d2;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: #333;
+  word-break: break-word;
+  flex: 1;
 }
 
 .no-events {
@@ -552,6 +595,7 @@
   }
   
   .btn-stop-report,
+  .btn-complete,
   .btn-unreliable-alarm {
     justify-content: center;
   }

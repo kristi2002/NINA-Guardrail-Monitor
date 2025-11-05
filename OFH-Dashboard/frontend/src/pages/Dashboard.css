@@ -361,35 +361,8 @@
 }
 
 /* ==============================================
-   UNIFIED THEME SYSTEM - BRIGHT VERSION
+   DASHBOARD PAGE STYLES
    ============================================== */
-:root {
-  /* Primary Colors - Bright Theme */
-  --primary-bg: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
-  --secondary-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  
-  /* Card Colors - Bright with white transparency */
-  --card-bg: rgba(255, 255, 255, 0.1);
-  --card-bg-hover: rgba(255, 255, 255, 0.15);
-  --card-border: rgba(255, 255, 255, 0.2);
-  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
-  
-  /* Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.8);
-  --text-muted: rgba(255, 255, 255, 0.6);
-  
-  /* Metric Card Colors */
-  --metric-value-color: #ffffff;
-  --metric-value-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  
-  /* Status Colors */
-  --success-color: #22c55e;
-  --warning-color: #f59e0b;
-  --error-color: #ef4444;
-  --info-color: #3b82f6;
-}
 
 /* Conversation Monitoring Specific Styles */
 .dashboard {

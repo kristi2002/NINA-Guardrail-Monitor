@@ -199,12 +199,12 @@ def get_notifications_analytics():
 @analytics_bp.route('/operators', methods=['GET'])
 @token_required
 def get_operators_analytics():
-    """Get operators analytics data"""
+    """Get user analytics data"""
     try:
         time_range = request.args.get('timeRange', '7d')
         current_user = get_current_user()
         
-        logger.info(f"Operators analytics requested by {current_user} for range: {time_range}")
+        logger.info(f"User analytics requested by {current_user} for range: {time_range}")
         
         # Use the service with a database session
         with get_session_context() as session:
