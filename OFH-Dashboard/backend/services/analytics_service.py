@@ -279,16 +279,21 @@ class AnalyticsService(BaseService):
         except Exception as e:
             return self.handle_exception(e, 'get_conversation_analytics')
     
-    def get_user_analytics(self, time_range: str = '7d') -> Dict[str, Any]:
-        """Get user analytics"""
+    def get_user_analytics(self, time_range: str = '7d', admin_only: bool = False) -> Dict[str, Any]:
+        """Get user analytics
+        
+        Args:
+            time_range: Time range for analytics (e.g., '7d', '30d')
+            admin_only: If True, only return analytics for admin users
+        """
         try:
             hours = self._parse_time_range_to_hours(time_range)
             
             # Get user statistics
-            user_stats = self.user_repo.get_user_statistics()
+            user_stats = self.user_repo.get_user_statistics(admin_only=admin_only)
             
             # Get user activity metrics
-            user_activity = self._get_user_activity_metrics(hours)
+            user_activity = self._get_user_activity_metrics(hours, admin_only=admin_only)
             
             analytics = {
                 'time_range': time_range,
@@ -729,9 +734,15 @@ class AnalyticsService(BaseService):
         # TODO: Implement with actual database queries from conversation feedback
         return []
     
-    def _get_user_activity_metrics(self, hours: int) -> Dict[str, Any]:
-        """Get user activity metrics"""
+    def _get_user_activity_metrics(self, hours: int, admin_only: bool = False) -> Dict[str, Any]:
+        """Get user activity metrics
+        
+        Args:
+            hours: Number of hours to look back
+            admin_only: If True, only return metrics for admin users (not currently implemented in activity tracking)
+        """
         # TODO: Implement with actual database queries from user login and action logs
+        # For now, return basic structure - can be enhanced later with actual user activity tracking
         return {
             'recent_logins': 0,
             'activity_distribution': {

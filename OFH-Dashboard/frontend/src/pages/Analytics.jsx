@@ -619,6 +619,7 @@ function Analytics() {
     // 3. Wrap the rest in a try...catch
     try {
       // Backend returns: {summary: {...}, distributions: {...}, performance_metrics: {...}, recent_activity: [...]}
+      // Backend now filters for admin users only when admin_only=True
       const data = analyticsData.data || analyticsData
       const summary = data.summary || {}
       const distributions = data.distributions || {}

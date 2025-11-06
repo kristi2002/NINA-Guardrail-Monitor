@@ -266,3 +266,27 @@ def get_profile():
             'error': 'Internal server error',
             'message': 'An error occurred while fetching profile'
         }), 500
+
+@auth_bp.route('/remove-operator-users', methods=['POST'])
+@token_required
+@admin_required
+def remove_operator_users():
+    """Remove all operator users from the database (admin only)"""
+    try:
+        user_service = UserService()
+        result = user_service.delete_users_by_role('operator')
+        
+        if result.get('success'):
+            deleted_count = result.get('data', {}).get('deleted_count', 0)
+            logger.info(f"Removed {deleted_count} operator user(s) from database")
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logger.error(f"Error removing operator users: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'message': f'An error occurred while removing operator users: {str(e)}'
+        }), 500

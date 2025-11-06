@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Change Production Passwords Script
-Changes default passwords for admin and operator users
+Changes default password for admin user
 """
 
 import os
@@ -70,13 +70,12 @@ def change_user_password(username, new_password=None, interactive=True):
         return True
 
 def change_all_passwords():
-    """Change passwords for admin and operator users"""
+    """Change password for admin user"""
     logger.info("=" * 60)
     logger.info("OFH Dashboard - Production Password Changer")
     logger.info("=" * 60)
     logger.info()
-    logger.info("This script will change passwords for admin and operator users")
-    logger.info("You can skip any user by pressing Enter when prompted")
+    logger.info("This script will change the password for the admin user")
     logger.info()
     
     # Change admin password
@@ -84,12 +83,8 @@ def change_all_passwords():
     response = input("Change admin password? (y/n): ")
     if response.lower() == 'y':
         change_user_password('admin', interactive=True)
-    
-    # Change operator password
-    logger.info("-" * 60)
-    response = input("Change operator password? (y/n): ")
-    if response.lower() == 'y':
-        change_user_password('operator', interactive=True)
+    else:
+        logger.info("Skipping admin password change")
     
     logger.info()
     logger.info("=" * 60)
@@ -102,18 +97,16 @@ def main():
     
     parser = argparse.ArgumentParser(description='Change production passwords')
     parser.add_argument('--admin-password', help='New admin password (not recommended for security)')
-    parser.add_argument('--operator-password', help='New operator password (not recommended for security)')
-    parser.add_argument('--non-interactive', action='store_true', help='Non-interactive mode (requires --admin-password and --operator-password)')
+    parser.add_argument('--non-interactive', action='store_true', help='Non-interactive mode (requires --admin-password)')
     
     args = parser.parse_args()
     
     if args.non_interactive:
-        if not args.admin_password or not args.operator_password:
-            logger.error("❌ Non-interactive mode requires --admin-password and --operator-password")
+        if not args.admin_password:
+            logger.error("❌ Non-interactive mode requires --admin-password")
             return
         
         change_user_password('admin', args.admin_password, interactive=False)
-        change_user_password('operator', args.operator_password, interactive=False)
     else:
         change_all_passwords()
 

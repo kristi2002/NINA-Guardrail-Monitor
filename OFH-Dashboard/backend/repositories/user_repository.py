@@ -74,45 +74,66 @@ class UserRepository(BaseRepository):
             logger.error(f"Error getting recent logins: {e}")
             raise
     
-    def get_user_statistics(self) -> Dict[str, Any]:
-        """Get user statistics"""
+    def get_user_statistics(self, admin_only: bool = False) -> Dict[str, Any]:
+        """Get user statistics
+        
+        Args:
+            admin_only: If True, only count users with admin role
+        """
         try:
+            # Base filter for non-deleted users
+            base_filter = User.is_deleted.is_(False)
+            
+            # Add admin filter if requested
+            if admin_only:
+                base_filter = base_filter & (User.role == 'admin')
+            
             # Total users - use func.count() to avoid loading all columns
-            total_users = self.db.query(func.count(User.id)).filter(User.is_deleted.is_(False)).scalar() or 0
+            total_users = self.db.query(func.count(User.id)).filter(base_filter).scalar() or 0
             
             # Active users
             active_users = self.db.query(func.count(User.id)).filter(
-                User.is_active == True,
-                User.is_deleted.is_(False)
+                base_filter,
+                User.is_active == True
             ).scalar() or 0
             
             # Locked users
             locked_users = self.db.query(func.count(User.id)).filter(
+                base_filter,
                 User.locked_until.isnot(None),
-                User.locked_until > datetime.utcnow(),
-                User.is_deleted.is_(False)
+                User.locked_until > datetime.utcnow()
             ).scalar() or 0
             
-            # Users by role
-            role_stats = self.db.query(
+            # Users by role (apply admin filter if needed)
+            role_query = self.db.query(
                 User.role,
                 func.count(User.id).label('count')
-            ).filter(User.is_deleted.is_(False)).group_by(User.role).all()
+            ).filter(base_filter)
+            
+            if admin_only:
+                role_query = role_query.filter(User.role == 'admin')
+            
+            role_stats = role_query.group_by(User.role).all()
             
             # Users by department
-            department_stats = self.db.query(
+            department_query = self.db.query(
                 User.department,
                 func.count(User.id).label('count')
             ).filter(
-                User.is_deleted.is_(False),
+                base_filter,
                 User.department.isnot(None)
-            ).group_by(User.department).all()
+            )
+            
+            if admin_only:
+                department_query = department_query.filter(User.role == 'admin')
+            
+            department_stats = department_query.group_by(User.department).all()
             
             # Recent logins (last 24 hours) - use func.count() to avoid loading all columns
-            recent_logins = self.db.query(func.count(User.id)).filter(
-                User.last_login >= datetime.utcnow() - timedelta(hours=24),
-                User.is_deleted.is_(False)
-            ).scalar() or 0
+            recent_login_filter = User.last_login >= datetime.utcnow() - timedelta(hours=24)
+            recent_login_filter = recent_login_filter & base_filter
+            
+            recent_logins = self.db.query(func.count(User.id)).filter(recent_login_filter).scalar() or 0
             
             # Calculate rates
             active_user_rate = (active_users / total_users) if total_users > 0 else 0

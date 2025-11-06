@@ -192,6 +192,52 @@ class UserService(BaseService):
         except Exception as e:
             return self.handle_exception(e, 'delete_user')
     
+    def delete_users_by_role(self, role: str) -> Dict[str, Any]:
+        """Delete all users with a specific role (hard delete)"""
+        try:
+            # Get all users with this role, including soft-deleted ones
+            # We need to query directly to bypass soft-delete filter
+            from models.user import User
+            session = self.get_session()
+            users = session.query(User).filter(User.role == role).all()
+            
+            if not users:
+                return self.format_response(
+                    success=True,
+                    message=f"No users with role '{role}' found",
+                    data={'deleted_count': 0}
+                )
+            
+            deleted_count = 0
+            for user in users:
+                try:
+                    self.user_repo.hard_delete(user.id)  # Hard delete
+                    deleted_count += 1
+                    self.logger.info(f"Deleted user {user.username} (role: {role})")
+                except Exception as e:
+                    self.logger.error(f"Error deleting user {user.username}: {e}")
+            
+            # Also check for users with username matching the role
+            user_by_username = self.user_repo.get_by_username(role)
+            if user_by_username and user_by_username not in users:
+                try:
+                    self.user_repo.hard_delete(user_by_username.id)
+                    deleted_count += 1
+                    self.logger.info(f"Deleted user with username '{role}'")
+                except Exception as e:
+                    self.logger.error(f"Error deleting user with username '{role}': {e}")
+            
+            self.log_operation('users_deleted_by_role', details={'role': role, 'count': deleted_count})
+            
+            return self.format_response(
+                success=True,
+                message=f"Deleted {deleted_count} user(s) with role '{role}'",
+                data={'deleted_count': deleted_count}
+            )
+            
+        except Exception as e:
+            return self.handle_exception(e, 'delete_users_by_role')
+    
     def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
         """Authenticate user with username and password"""
         try:

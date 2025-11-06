@@ -209,8 +209,8 @@ def get_admin_performance_analytics():
         # Use the service with a database session
         with get_session_context() as session:
             service = AnalyticsService(session)
-            # Use user analytics which includes admin/user data
-            response_data = service.get_user_analytics(time_range)
+            # Get admin-only analytics for admin performance tab
+            response_data = service.get_user_analytics(time_range, admin_only=True)
         
         status_code = 200 if response_data.get('success') else 500
         return jsonify(response_data), status_code
