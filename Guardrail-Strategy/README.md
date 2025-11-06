@@ -180,32 +180,41 @@ Check service health and configuration.
 
 ```
 Guardrail-Strategy/
-├── app.py              # Flask application entry point
-├── validators.py       # Guardrails-AI integration
-├── kafka_handler.py    # on_fail handler for validators
-├── kafka_producer.py   # Kafka producer for events
-├── requirements.txt    # Python dependencies
-├── env.example         # Environment variables template
-└── README.md           # This file
+├── app.py                      # Flask application entry point
+├── services/                   # Domain-organized services
+│   ├── validation/            # Validation domain services
+│   │   ├── guardrail_validator.py  # Guardrails-AI integration
+│   │   └── __init__.py
+│   └── infrastructure/        # Infrastructure services
+│       └── kafka/             # Kafka infrastructure
+│           ├── kafka_producer.py   # Kafka producer for events
+│           ├── kafka_handler.py     # on_fail handler for validators
+│           └── __init__.py
+├── scripts/                   # Test and utility scripts
+│   └── test_validation.py
+├── core/                      # Core infrastructure (for future use)
+├── requirements.txt           # Python dependencies
+├── env.example                # Environment variables template
+└── README.md                  # This file
 ```
 
 ## Key Components
 
-### validators.py
+### services/validation/guardrail_validator.py
 
 Uses Guardrails-AI with validators from Guardrails Hub:
 - **ToxicLanguage**: Detects toxic/inappropriate content
 - **DetectPII**: Finds personally identifiable information
 - **Compliance**: Custom regex patterns for compliance
 
-### kafka_handler.py
+### services/infrastructure/kafka/kafka_handler.py
 
 Custom `on_fail` handler that:
 1. Formats violation details
 2. Sends event to Kafka
 3. Returns failure message to caller
 
-### kafka_producer.py
+### services/infrastructure/kafka/kafka_producer.py
 
 Kafka producer that:
 - Connects to Kafka broker

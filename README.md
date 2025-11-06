@@ -226,7 +226,7 @@ VITE_WS_URL=ws://localhost:5000
 4. **Admin** can respond:
    - Acknowledge the violation
    - Escalate to supervisor
-   - Send action to AI agent (via `operator_actions` topic)
+   - Send action to AI agent (via `operator_actions` topic - note: field name is legacy, represents admin actions)
 
 ## 🧪 Testing
 
@@ -482,22 +482,37 @@ NINA Guardrail-Monitor/
 │   └── scripts/                 # Test scripts
 │
 ├── OFH-Dashboard/
-│   ├── backend/                 # Flask backend
+│   ├── backend/                 # Flask backend (Domain-Driven Architecture)
 │   │   ├── app.py              # Main application
 │   │   ├── api/                # REST API routes
-│   │   ├── models/             # Database models
-│   │   ├── services/           # Business logic
-│   │   │   ├── kafka_consumer.py
-│   │   │   └── database_service.py
-│   │   ├── repositories/       # Data access layer
+│   │   ├── models/             # Database models (domain-organized)
+│   │   │   └── notifications/  # Notification domain models
+│   │   ├── services/           # Business logic (domain-organized)
+│   │   │   ├── notifications/  # Notification domain services
+│   │   │   └── infrastructure/ # Infrastructure services
+│   │   │       └── kafka/      # Kafka services
+│   │   ├── repositories/       # Data access layer (domain-organized)
+│   │   │   └── notifications/  # Notification domain repositories
 │   │   ├── schemas/            # JSON schemas
-│   │   └── scripts/           # Test scripts
+│   │   ├── scripts/            # Utility scripts
+│   │   │   ├── management/     # Management scripts
+│   │   │   ├── testing/        # Test scripts
+│   │   │   └── utils/          # Utility scripts
+│   │   └── docs/               # Documentation
 │   │
-│   └── frontend/               # React frontend
+│   └── frontend/               # React frontend (Domain-Organized)
 │       ├── src/
-│       │   ├── components/     # React components
+│       │   ├── components/     # Domain-organized components
+│       │   │   ├── conversations/
+│       │   │   ├── notifications/
+│       │   │   ├── analytics/
+│       │   │   ├── ui/
+│       │   │   └── common/
 │       │   ├── pages/         # Page components
-│       │   └── services/      # API clients
+│       │   ├── services/      # Domain-organized services
+│       │   │   ├── api/
+│       │   │   └── notifications/
+│       │   └── contexts/      # React contexts
 │       └── package.json
 │
 ├── message_specs.md            # Kafka message specifications

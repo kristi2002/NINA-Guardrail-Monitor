@@ -1,0 +1,1010 @@
+/* ==============================================
+   ANALYTICS PAGE STYLES
+   ============================================== */
+:root {
+  /* Analytics-specific theme variables */
+  --primary-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-bg-hover: rgba(255, 255, 255, 0.95);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --text-primary: #1a202c;
+  --text-secondary: rgba(26, 32, 44, 0.8);
+  --text-muted: rgba(26, 32, 44, 0.6);
+}
+
+/* Analytics Page */
+.analytics-page {
+  min-height: 100vh;
+  background: var(--primary-bg);
+  color: var(--text-primary);
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: left; /* Ensure default text alignment is left */
+}
+
+/* Header and Tabs styles moved to component CSS files:
+   - AnalyticsHeader.css for header styles
+   - AnalyticsTabs.css for tabs styles
+*/
+
+/* Content Area */
+.analytics-content {
+  padding: 2rem;
+  text-align: left; /* Ensure content text alignment is left */
+}
+
+.analytics-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Metrics Grid - Only grid layout, card styles handled by MetricCard component */
+.analytics-page .metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Ensure metric cards in analytics have consistent styling with dashboard */
+.analytics-page .metrics-grid .metric-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #1a202c !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+.analytics-page .metrics-grid .metric-card * {
+  color: #1a202c !important;
+}
+
+/* Charts Grid */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chart-container {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
+}
+
+.chart-container:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.chart-container h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Recent Conversations */
+.recent-conversations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.recent-conversations::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recent-conversations::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.recent-conversations::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.recent-conversations::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.conversation-item {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.conversation-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%);
+}
+
+.conv-id {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conv-id::before {
+  content: '💬';
+  font-size: 0.875rem;
+}
+
+.conv-risk {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conv-risk::before {
+  content: '⚠️';
+  font-size: 0.75rem;
+}
+
+.conv-status {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conv-status::before {
+  content: '📊';
+  font-size: 0.75rem;
+}
+
+/* Risk level specific styling for conversation items */
+.conversation-item.conv-risk-high {
+  border-left: 3px solid #dc2626;
+}
+
+.conversation-item.conv-risk-medium {
+  border-left: 3px solid #f97316;
+}
+
+.conversation-item.conv-risk-low {
+  border-left: 3px solid #22c55e;
+}
+
+.no-data {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Status Breakdown */
+.status-breakdown {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.status-breakdown h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.status-card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.status-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #a0aec0;
+  text-transform: capitalize;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.3px;
+}
+
+.status-count {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Status-specific colors */
+.status-card.status-sent {
+  border-left: 3px solid #22c55e;
+}
+
+.status-card.status-pending {
+  border-left: 3px solid #f59e0b;
+}
+
+.status-card.status-failed {
+  border-left: 3px solid #ef4444;
+}
+
+/* Responsive adjustments for status breakdown */
+@media (max-width: 1024px) {
+  .status-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Team Metrics */
+.team-metrics {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.team-summary h3 {
+  margin: 0 0 1rem 0;
+  color: #000000 !important;
+}
+
+.team-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.team-stat {
+  text-align: center;
+}
+
+.team-stat .stat-label {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.team-stat .stat-value {
+  display: block;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Role Distribution */
+.role-distribution {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.role-distribution h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.role-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: center;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.role-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.role-count {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #3b82f6;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Risk Level Distribution */
+.risk-distribution {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.risk-distribution h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.risk-card {
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.risk-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Risk level specific colors */
+.risk-card.risk-high {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.risk-card.risk-high:hover {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.risk-card.risk-medium {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+.risk-card.risk-medium:hover {
+  border-color: rgba(249, 115, 22, 0.4);
+}
+
+.risk-card.risk-low {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.risk-card.risk-low:hover {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.risk-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.risk-card.risk-high .risk-name {
+  color: #dc2626;
+}
+
+.risk-card.risk-medium .risk-name {
+  color: #f97316;
+}
+
+.risk-card.risk-low .risk-name {
+  color: #22c55e;
+}
+
+.risk-count {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.risk-card.risk-high .risk-count {
+  color: #dc2626;
+}
+
+.risk-card.risk-medium .risk-count {
+  color: #f97316;
+}
+
+.risk-card.risk-low .risk-count {
+  color: #22c55e;
+}
+
+
+/* SLA Targets */
+.sla-targets {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sla-targets h3 {
+  margin: 0 0 1.5rem 0;
+  color: #000000 !important;
+}
+
+.sla-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.sla-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  position: relative;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sla-card.good {
+  border-left: 4px solid #22c55e;
+}
+
+.sla-card.warning {
+  border-left: 4px solid #fbbf24;
+}
+
+.sla-card.critical {
+  border-left: 4px solid #ef4444;
+}
+
+.sla-severity {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sla-times {
+  margin-bottom: 0.5rem;
+}
+
+.sla-target,
+.sla-actual {
+  display: block;
+  font-size: 0.85rem;
+  color: #333333 !important;
+}
+
+.sla-compliance {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #000000 !important;
+}
+
+/* Severity Analysis */
+.severity-analysis {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.severity-analysis h3 {
+  margin: 0 0 1.5rem 0;
+  color: #000000 !important;
+}
+
+.severity-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.severity-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.severity-label {
+  min-width: 80px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.severity-progress {
+  flex: 1;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.severity-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+.severity-count {
+  min-width: 60px;
+  text-align: right;
+  font-weight: 600;
+  color: #000000 !important;
+}
+
+/* Escalation Reasons */
+.escalation-reasons {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.escalation-reasons h3 {
+  margin: 0 0 1.5rem 0;
+  color: #000000 !important;
+}
+
+.reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.reason-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reason-name {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #000000 !important;
+}
+
+.reason-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reason-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2563eb !important;
+}
+
+.reason-percentage {
+  color: #333333 !important;
+}
+
+/* Failure Analysis */
+.failure-analysis {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.failure-analysis h3 {
+  margin: 0 0 1.5rem 0;
+  color: #000000 !important;
+}
+
+.failure-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.failure-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-left: 4px solid #ef4444;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.failure-reason {
+  color: #000000 !important;
+  font-weight: 500;
+}
+
+.failure-count {
+  color: #dc2626 !important;
+  font-weight: 600;
+}
+
+/* Summary Stats */
+.summary-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 300px;
+  justify-content: center;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-label {
+  color: #333333 !important;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #000000 !important;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+
+/* Loading and Error States */
+.analytics-loading,
+.analytics-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  font-size: 1.2rem;
+  color: white;
+}
+
+.analytics-error {
+  color: #ef4444;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .analytics-content {
+    padding: 1rem;
+  }
+
+  .analytics-page .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .team-stats {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+
+  .sla-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reasons-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-grid,
+  .risk-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .analytics-content {
+    padding: 0.5rem;
+  }
+
+  .analytics-page .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+  .severity-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .reason-stats {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
+/* ==============================================
+   SKELETON LOADERS & ANIMATIONS
+   ============================================== */
+
+/* Pulse animation for skeleton elements */
+@keyframes pulse {
+  0% { 
+    background-color: rgba(255, 255, 255, 0.1);
+    opacity: 0.6;
+  }
+  50% { 
+    background-color: rgba(255, 255, 255, 0.2);
+    opacity: 0.8;
+  }
+  100% { 
+    background-color: rgba(255, 255, 255, 0.1);
+    opacity: 0.6;
+  }
+}
+
+/* Fade-in animation for content */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Override conflicting !important rules for analytics text */
+.analytics-page .tab-btn,
+.analytics-page .tab-label,
+.analytics-page .tab-icon,
+.analytics-page .chart-container h3,
+.analytics-page .metric-header h3,
+.analytics-page .metric-value,
+.analytics-page .metric-subtitle,
+.analytics-page .team-summary h3,
+.analytics-page .stat-label,
+.analytics-page .stat-value,
+.analytics-page .metric-label,
+.analytics-page .failure-analysis h3,
+.analytics-page .failure-reason,
+.analytics-page .sla-targets h3,
+.analytics-page .sla-target,
+.analytics-page .sla-actual,
+.analytics-page .sla-compliance,
+.analytics-page .severity-analysis h3,
+.analytics-page .severity-count,
+.analytics-page .escalation-reasons h3,
+.analytics-page .reason-name,
+.analytics-page .reason-percentage {
+  color: #000000 !important;
+}
+
+.analytics-page .metric-subtitle,
+.analytics-page .stat-label,
+.analytics-page .sla-target,
+.analytics-page .reason-percentage {
+  color: #333333 !important;
+}
+
+.analytics-page .reason-count {
+  color: #2563eb !important;
+}
+
+/* Apply fade-in to analytics tabs */
+.analytics-tab {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Skeleton container */
+.analytics-tab-skeleton {
+  padding: 1.5rem;
+  min-height: 400px;
+}
+
+/* Skeleton metric grid */
+.skeleton-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-card {
+  height: 120px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Skeleton chart grid */
+.skeleton-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-chart {
+  height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Skeleton team metrics */
+.skeleton-team-metrics {
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+  margin-bottom: 2rem;
+}
+
+/* Skeleton leaderboard */
+.skeleton-leaderboard {
+  height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+  margin-bottom: 2rem;
+}
+
+/* Skeleton severity analysis */
+.skeleton-severity {
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+  margin-bottom: 2rem;
+}
+
+/* Skeleton SLA grid */
+.skeleton-sla-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-sla-grid > div {
+  height: 120px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Skeleton reasons grid */
+.skeleton-reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-reasons-grid > div {
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Responsive skeleton adjustments */
+@media (max-width: 768px) {
+  .skeleton-metric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .skeleton-chart-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .skeleton-card {
+    height: 100px;
+  }
+  
+  .skeleton-chart {
+    height: 250px;
+  }
+}

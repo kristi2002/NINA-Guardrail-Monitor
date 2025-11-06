@@ -1,0 +1,66 @@
+/**
+ * Dashboard Metrics Section Component
+ */
+import { MetricCard, MetricCardSkeleton } from '../../../components/analytics'
+import { calculateTrend } from '../../../utils/trendCalculator'
+
+export default function DashboardMetrics({ metrics, previousMetrics }) {
+  const activeConversations = metrics?.conversation_metrics?.active_sessions || 0
+  const criticalAlerts = metrics?.alert_metrics?.critical_alerts || 0
+  const totalConversations = metrics?.conversation_metrics?.total_sessions || 0
+  const averageDuration = metrics?.conversation_metrics?.average_session_duration || 0
+
+  if (!metrics) {
+    return (
+      <div className="metrics-grid">
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+      </div>
+    )
+  }
+
+  return (
+    <div className="metrics-grid">
+      <MetricCard 
+        title="Conversazioni Attive"
+        value={activeConversations}
+        icon="💬"
+        trend={previousMetrics ? calculateTrend(
+          activeConversations,
+          previousMetrics.conversation_metrics?.active_sessions || 0
+        ) : undefined}
+      />
+      <MetricCard 
+        title="Allarmi Critici"
+        value={criticalAlerts}
+        icon="🚨"
+        trend={previousMetrics ? calculateTrend(
+          criticalAlerts,
+          previousMetrics.alert_metrics?.critical_alerts || 0
+        ) : undefined}
+        isAlert={true}
+      />
+      <MetricCard 
+        title="Conversazioni Oggi"
+        value={totalConversations}
+        icon="📅"
+        trend={previousMetrics ? calculateTrend(
+          totalConversations,
+          previousMetrics.conversation_metrics?.total_sessions || 0
+        ) : undefined}
+      />
+      <MetricCard 
+        title="Durata Media"
+        value={averageDuration ? `${Math.round(averageDuration)} min` : 'N/A'}
+        icon="⏱️"
+        trend={previousMetrics ? calculateTrend(
+          averageDuration,
+          previousMetrics.conversation_metrics?.average_session_duration || 0
+        ) : undefined}
+      />
+    </div>
+  )
+}
+

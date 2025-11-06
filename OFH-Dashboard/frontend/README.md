@@ -15,19 +15,55 @@ Visit `http://localhost:3000`
 
 ```
 src/
-├── components/          # Reusable components
-│   ├── MetricCard.jsx  # Dashboard metric cards
-│   └── GuardrailChart.jsx  # Time-series charts
+├── components/          # Domain-organized components
+│   ├── conversations/   # Conversation domain components
+│   │   ├── ConversationCard.jsx
+│   │   ├── ConversationList.jsx
+│   │   └── ...
+│   ├── notifications/  # Notification domain components
+│   │   ├── NotificationCenter.jsx
+│   │   └── NotificationPreferences.jsx
+│   ├── analytics/      # Analytics domain components
+│   │   ├── AlertCard.jsx
+│   │   ├── GuardrailChart.jsx
+│   │   └── MetricCard.jsx
+│   ├── ui/             # Reusable UI components
+│   │   ├── CustomSelect.jsx
+│   │   ├── DataTable.jsx
+│   │   └── LoadingSkeleton.jsx
+│   └── common/         # Shared/common components
+│       ├── ErrorBoundary.jsx
+│       ├── ProtectedRoute.jsx
+│       └── UserProfile.jsx
 ├── pages/              # Main pages
 │   ├── Dashboard.jsx   # Main dashboard view
 │   └── Analytics.jsx   # Analytics page
-├── App.jsx             # Main app with routing
-└── main.jsx            # Entry point
+├── services/           # Domain-organized services
+│   ├── api/           # API services
+│   └── notifications/ # Notification services
+├── contexts/          # React contexts
+├── styles/            # Global styles
+├── translations/       # i18n files
+├── utils/             # Utility functions
+├── App.jsx            # Main app with routing
+└── main.jsx           # Entry point
 ```
 
 ## Key Components
 
-### MetricCard
+### Domain Organization
+
+Components are organized by domain for better maintainability:
+
+- **Conversations**: `components/conversations/` - Conversation-related components
+- **Notifications**: `components/notifications/` - Notification-related components  
+- **Analytics**: `components/analytics/` - Analytics and metrics components
+- **UI**: `components/ui/` - Reusable UI components
+- **Common**: `components/common/` - Shared/common components
+
+### Example Components
+
+#### MetricCard (`components/analytics/MetricCard.jsx`)
 Displays a single metric with icon, value, and trend indicator.
 
 **Props:**
@@ -37,13 +73,16 @@ Displays a single metric with icon, value, and trend indicator.
 - `trend`: Percentage change (optional)
 - `isAlert`: Highlight for critical metrics
 
-### GuardrailChart
+#### GuardrailChart (`components/analytics/GuardrailChart.jsx`)
 Line chart showing metrics over time using Recharts library.
 
 **Props:**
 - `data`: Array of time-series data points
 
-### Dashboard
+#### ConversationList (`components/conversations/ConversationList.jsx`)
+Displays and manages conversation lists with filtering and actions.
+
+#### Dashboard (`pages/Dashboard.jsx`)
 Main dashboard page that:
 - Fetches metrics from backend API
 - Displays metric cards
@@ -52,14 +91,23 @@ Main dashboard page that:
 
 ## API Integration
 
-The frontend communicates with the backend using Axios:
+The frontend communicates with the backend using organized service layers:
 
 ```javascript
-import axios from 'axios'
+// Using domain-organized services
+import { dataService } from './services/api'
+import { notificationService } from './services/notifications'
 
 // Fetch metrics
-const response = await axios.get('/api/metrics')
+const metrics = await dataService.getMetrics()
+
+// Fetch notifications
+const notifications = await notificationService.getNotifications()
 ```
+
+Services are organized by domain:
+- **API Services**: `services/api/` - General API services (auth, data, messaging)
+- **Notification Services**: `services/notifications/` - Notification-specific services
 
 The `/api` prefix is automatically proxied to `http://localhost:5000` (configured in `vite.config.js`).
 

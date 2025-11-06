@@ -1,0 +1,174 @@
+/**
+ * Dashboard Header Component Styles
+ * Extracted from Dashboard.css
+ */
+
+/* Enhanced Professional Dashboard Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  gap: 2rem;
+  position: relative;
+}
+
+.dashboard-header.has-critical-alerts {
+  border-color: #dc2626;
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  margin: 0;
+  color: rgba(26, 32, 44, 0.6);
+  font-size: 0.9rem;
+}
+
+.system-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(26, 32, 44, 0.7);
+  margin-top: 0.5rem;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ccc;
+  display: inline-block;
+}
+
+.status-indicator.status-online {
+  background-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+}
+
+.status-divider {
+  color: rgba(26, 32, 44, 0.3);
+}
+
+/* Critical Alert Indicator */
+.critical-alert-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fee2e2;
+  color: #dc2626;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-weight: 600;
+  border: 1px solid #ef4444;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+}
+
+.critical-alert-indicator .alert-icon {
+  font-size: 1.2rem;
+}
+
+.critical-alert-indicator .alert-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.critical-alert-indicator .btn-view-critical-alerts {
+  background: none;
+  border: none;
+  color: #dc2626;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.critical-alert-indicator .btn-view-critical-alerts:hover {
+  color: #b91c1c;
+}
+
+.header-right {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+
+  .header-left {
+    align-items: flex-start;
+  }
+
+  .header-title h1 {
+    font-size: 1.8rem;
+  }
+
+  .critical-alert-indicator {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .system-status {
+    font-size: 0.75rem;
+  }
+
+  .critical-alert-indicator {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .critical-alert-indicator .btn-view-critical-alerts {
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+}

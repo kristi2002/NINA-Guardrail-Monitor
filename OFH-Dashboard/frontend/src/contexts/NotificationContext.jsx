@@ -1,7 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from 'react'
-import notificationService from '../services/notificationService'
-import messagingService from '../services/messagingService'
-import escalationService from '../services/escalationService'
+import { notificationService } from '../services/notifications'
+import { messagingService, escalationService } from '../services/api'
 import { useAuth } from './AuthContext'
 
 const NotificationContext = createContext()

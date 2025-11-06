@@ -11,6 +11,13 @@ from .conversation import ConversationSession
 from .guardrail_event import GuardrailEvent
 from .chat_message import ChatMessage
 from .operator_action import OperatorAction
+from .notifications import (
+    Notification, NotificationStatus, NotificationChannel, 
+    NotificationPriority, NotificationType,
+    NotificationPreference,
+    NotificationRule, RuleCondition, RuleAction,
+    NotificationGroup
+)
 
 # Export all models
 __all__ = [
@@ -21,7 +28,17 @@ __all__ = [
     # 'Alert',  # OBSOLETE - No longer used
     'GuardrailEvent',
     'ChatMessage',
-    'OperatorAction'
+    'OperatorAction',
+    'Notification',
+    'NotificationStatus',
+    'NotificationChannel',
+    'NotificationPriority',
+    'NotificationType',
+    'NotificationPreference',
+    'NotificationRule',
+    'RuleCondition',
+    'RuleAction',
+    'NotificationGroup'
 ]
 
 # Model registry for easy access
@@ -31,7 +48,11 @@ MODELS = {
     # 'Alert': Alert,  # OBSOLETE - No longer used
     'GuardrailEvent': GuardrailEvent,
     'ChatMessage': ChatMessage,
-    'OperatorAction': OperatorAction
+    'OperatorAction': OperatorAction,
+    'Notification': Notification,
+    'NotificationPreference': NotificationPreference,
+    'NotificationRule': NotificationRule,
+    'NotificationGroup': NotificationGroup
 }
 
 def get_model(model_name):

@@ -38,12 +38,27 @@ The OFH Dashboard is a full-stack monitoring solution that provides real-time in
 OFH-Dashboard/
 ├── frontend/                    # React application
 │   ├── src/
-│   │   ├── components/         # Reusable UI components
-│   │   │   ├── ErrorBoundary.jsx
-│   │   │   ├── ProtectedRoute.jsx
-│   │   │   ├── UserProfile.jsx
-│   │   │   ├── ConversationCard.jsx
-│   │   │   └── AlertCard.jsx
+│   │   ├── components/         # Domain-organized components
+│   │   │   ├── conversations/  # Conversation domain components
+│   │   │   │   ├── ConversationCard.jsx
+│   │   │   │   ├── ConversationDetailModal.jsx
+│   │   │   │   ├── ConversationList.jsx
+│   │   │   │   └── ...
+│   │   │   ├── notifications/ # Notification domain components
+│   │   │   │   ├── NotificationCenter.jsx
+│   │   │   │   └── NotificationPreferences.jsx
+│   │   │   ├── analytics/     # Analytics domain components
+│   │   │   │   ├── AlertCard.jsx
+│   │   │   │   ├── GuardrailChart.jsx
+│   │   │   │   └── MetricCard.jsx
+│   │   │   ├── ui/            # Reusable UI components
+│   │   │   │   ├── CustomSelect.jsx
+│   │   │   │   ├── DataTable.jsx
+│   │   │   │   └── LoadingSkeleton.jsx
+│   │   │   └── common/        # Shared/common components
+│   │   │       ├── ErrorBoundary.jsx
+│   │   │       ├── ProtectedRoute.jsx
+│   │   │       └── UserProfile.jsx
 │   │   ├── pages/              # Dashboard pages
 │   │   │   ├── Dashboard.jsx
 │   │   │   ├── Analytics.jsx
@@ -52,15 +67,20 @@ OFH-Dashboard/
 │   │   ├── contexts/           # React contexts
 │   │   │   ├── AuthContext.jsx
 │   │   │   └── NotificationContext.jsx
-│   │   ├── services/           # API services
-│   │   │   ├── authService.js
-│   │   │   ├── dataService.js
-│   │   │   └── notificationService.js
-│   │   └── utils/              # Utility functions
+│   │   ├── services/           # Domain-organized services
+│   │   │   ├── api/           # API services
+│   │   │   │   ├── authService.js
+│   │   │   │   ├── dataService.js
+│   │   │   │   └── messagingService.js
+│   │   │   └── notifications/ # Notification services
+│   │   │       └── notificationService.js
+│   │   ├── styles/            # Global styles
+│   │   ├── translations/      # i18n files
+│   │   └── utils/             # Utility functions
 │   │       └── eventTypeMapper.js
 │   └── package.json
 │
-├── backend/                     # Python Flask API (Clean Architecture)
+├── backend/                     # Python Flask API (Domain-Driven Clean Architecture)
 │   ├── app.py                  # Main Flask application entry point
 │   ├── config.py               # Configuration management
 │   │
@@ -73,27 +93,39 @@ OFH-Dashboard/
 │   │   │   ├── escalations.py
 │   │   │   ├── metrics.py
 │   │   │   ├── notifications.py
+│   │   │   ├── notifications_enhanced.py
 │   │   │   └── security.py
 │   │   └── middleware/         # Cross-cutting concerns
 │   │       ├── auth_middleware.py
 │   │       └── error_handler.py
 │   │
-│   ├── services/               # Business Logic Layer
-│   │   ├── base_service.py
+│   ├── services/               # Business Logic Layer (Domain-Organized)
+│   │   ├── notifications/      # Notification domain services
+│   │   │   ├── notification_service.py
+│   │   │   ├── enhanced_notification_service.py
+│   │   │   ├── notification_orchestrator.py
+│   │   │   └── ...
+│   │   ├── infrastructure/     # Infrastructure services
+│   │   │   └── kafka/         # Kafka infrastructure
+│   │   │       ├── kafka_consumer.py
+│   │   │       ├── kafka_producer.py
+│   │   │       └── kafka_integration_service.py
 │   │   ├── alert_service.py
 │   │   ├── conversation_service.py
 │   │   ├── user_service.py
 │   │   ├── analytics_service.py
 │   │   ├── security_service.py
 │   │   ├── escalation_service.py
-│   │   ├── notification_service.py
 │   │   ├── error_alerting_service.py
 │   │   ├── dlq_management_service.py
 │   │   ├── system_monitor.py
-│   │   ├── kafka_*.py          # Kafka integration services
 │   │   └── database_service.py
 │   │
-│   ├── repositories/           # Data Access Layer
+│   ├── repositories/           # Data Access Layer (Domain-Organized)
+│   │   ├── notifications/      # Notification domain repositories
+│   │   │   ├── notification_repository.py
+│   │   │   ├── notification_preference_repository.py
+│   │   │   └── ...
 │   │   ├── base_repository.py
 │   │   ├── user_repository.py
 │   │   ├── conversation_repository.py
@@ -101,7 +133,11 @@ OFH-Dashboard/
 │   │   ├── chat_message_repository.py
 │   │   └── operator_action_repository.py
 │   │
-│   ├── models/                 # Data Layer
+│   ├── models/                 # Data Layer (Domain-Organized)
+│   │   ├── notifications/      # Notification domain models
+│   │   │   ├── notification.py
+│   │   │   ├── notification_preference.py
+│   │   │   └── ...
 │   │   ├── base.py
 │   │   ├── user.py
 │   │   ├── conversation.py
@@ -112,10 +148,19 @@ OFH-Dashboard/
 │   ├── core/                   # Core Infrastructure
 │   │   └── database.py         # Database manager
 │   │
-│   ├── schemas/                # JSON schemas
+│   ├── schemas/                 # JSON schemas
 │   │   ├── guardrail_event.schema.json
 │   │   ├── operator_action.schema.json
 │   │   └── control_feedback.schema.json
+│   │
+│   ├── scripts/                # Utility scripts
+│   │   ├── management/         # Management scripts
+│   │   ├── testing/            # Test scripts
+│   │   └── utils/              # Utility scripts
+│   │
+│   ├── docs/                   # Documentation
+│   │
+│   ├── migrations/            # Database migrations
 │   │
 │   ├── .env                    # Environment variables (not in repo)
 │   ├── requirements.txt
@@ -233,7 +278,7 @@ ADMIN_PASSWORD=your_secure_admin_password
 #### **📈 Analytics Dashboard**
 - **Overview Tab**: Key metrics, performance trends, system health
 - **Notifications Tab**: Delivery rates, time series data, failure analysis
-- **Admin Performance Tab**: Performance metrics, workload distribution, quality scores
+- **Admin Performance Tab**: Admin performance metrics, workload distribution, quality scores
 - **Alert Trends Tab**: Alert types, geographic analysis, trend analysis
 - **Response Times Tab**: SLA compliance, average times, performance trends
 - **Escalations Tab**: Escalation rates, auto-escalation, resolution times

@@ -30,7 +30,7 @@ from api.middleware.versioning_middleware import register_versioning_middleware
 from core.database import init_database, get_database_manager
 from core.logging_config import get_logger  # Import centralized logging
 from models import create_all_tables
-from services.kafka_integration_service import KafkaIntegrationService
+from services.infrastructure.kafka.kafka_integration_service import KafkaIntegrationService
 
 # Initialize Flask app
 app = Flask(__name__)

@@ -11,7 +11,7 @@ import requests
 import logging
 from datetime import datetime, timedelta
 from services.database_service import EnhancedDatabaseService
-from .kafka_integration_service import KafkaIntegrationService
+from .infrastructure.kafka.kafka_integration_service import KafkaIntegrationService
 # from .kafka_topic_manager import KafkaTopicManager  # OBSOLETE - Removed for static topics
 
 class SystemMonitor:

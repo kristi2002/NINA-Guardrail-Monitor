@@ -674,6 +674,23 @@ def complete_conversation(conversation_id):
         # Commit changes
         repos['session'].commit()
         
+        # Send notification about conversation completion
+        try:
+            from services.notifications.notification_orchestrator import NotificationOrchestrator
+            with repos['session']:
+                orchestrator = NotificationOrchestrator(repos['session'])
+                orchestrator.send_conversation_notification(
+                    conversation_id=conversation_id,
+                    conversation_data={
+                        'patient_id': conversation.patient_id,
+                        'status': 'COMPLETED',
+                        'risk_level': conversation.risk_level or 'normal',
+                        'message': f'Conversation {conversation_id} has been completed'
+                    }
+                )
+        except Exception as notif_error:
+            logger.warning(f"Failed to send completion notification: {notif_error}")
+        
         logger.info(f"Conversation {conversation_id} marked as COMPLETED by {current_user}")
         
         return jsonify({

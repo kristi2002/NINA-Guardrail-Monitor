@@ -24,8 +24,8 @@ This document specifies the Kafka message formats used in the NINA Guardrail Mon
 The NINA Guardrail Monitor uses Kafka for asynchronous communication between three main components:
 
 1. **Guardrail Strategy Service** - Validates messages and publishes guardrail events
-2. **OFH Dashboard** - Monitors conversations and sends operator actions
-3. **AI Agent** (Future) - Consumes operator actions and publishes conversation events
+2. **OFH Dashboard** - Monitors conversations and sends admin actions
+3. **AI Agent** (Future) - Consumes admin actions and publishes conversation events
 
 ---
 
@@ -36,7 +36,7 @@ The system uses four static Kafka topics:
 | Topic Name | Producer | Consumer | Description |
 |------------|----------|----------|-------------|
 | `guardrail_events` | Guardrail Strategy Service | OFH Dashboard | Guardrail violations and monitoring events |
-| `operator_actions` | OFH Dashboard | AI Agent | Commands from dashboard operators |
+| `operator_actions` | OFH Dashboard | AI Agent | Commands from dashboard admins |
 | `guardrail_control` | (Future) | OFH Dashboard | Control messages for guardrails |
 | `dead_letter_queue` | All | System | Failed messages for manual review |
 
@@ -200,14 +200,14 @@ Guardrail events are published whenever a message validation fails or a monitori
 
 ---
 
-### Operator Actions
+### Admin Actions (Operator Actions)
 
 **Topic:** `operator_actions`  
 **Producer:** OFH Dashboard  
 **Consumer:** AI Agent  
 **Schema Version:** 1.0
 
-Operator actions are commands sent from the dashboard to control AI agent behavior.
+Admin actions (formerly operator actions) are commands sent from the dashboard to control AI agent behavior.
 
 #### Message Structure
 
@@ -236,7 +236,7 @@ Operator actions are commands sent from the dashboard to control AI agent behavi
 | `conversation_id` | string | Unique conversation identifier |
 | `timestamp` | string | ISO 8601 format datetime |
 | `action_type` | string | Action type (see enum below) |
-| `operator_id` | string | Operator identifier |
+| `operator_id` | string | Admin identifier (legacy field name) |
 | `message` | string | Human-readable description |
 
 #### Action Types
@@ -302,8 +302,8 @@ Operator actions are commands sent from the dashboard to control AI agent behavi
   "conversation_id": "conv-abc-123",
   "timestamp": "2025-01-15T10:45:00Z",
   "action_type": "stop_conversation",
-  "operator_id": "operator_001",
-  "message": "This conversation has been ended by an operator.",
+  "operator_id": "admin_001",
+  "message": "This conversation has been ended by an admin.",
   "reason": "Toxic content detected repeatedly",
   "priority": "urgent",
   "target_event_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -335,7 +335,7 @@ Operator actions are commands sent from the dashboard to control AI agent behavi
   "conversation_id": "conv-xyz-789",
   "timestamp": "2025-01-15T10:50:00Z",
   "action_type": "false_alarm",
-  "operator_id": "operator_002",
+  "operator_id": "admin_002",
   "message": "Marked as false alarm - content is acceptable in context",
   "reason": "Medical context requires these terms",
   "priority": "normal",
@@ -376,10 +376,10 @@ OFH Dashboard consumes event
 Store in database & show alert
 ```
 
-### 2. Operator Action Flow
+### 2. Admin Action Flow
 
 ```
-Operator clicks action in dashboard
+Admin clicks action in dashboard
          ↓
 Dashboard publishes to operator_actions topic
          ↓

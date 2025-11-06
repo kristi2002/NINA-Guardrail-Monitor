@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 import os
 import logging
 import uuid
-from validators import GuardrailValidator
-from kafka_producer import GuardrailKafkaProducer
+from services.validation import GuardrailValidator
+from services.infrastructure.kafka import GuardrailKafkaProducer
 
 # Load environment variables
 load_dotenv()
