@@ -1,7 +1,10 @@
 /**
  * Simple Metric Card Component for Analytics Tabs
+ * Memoized for performance optimization
  */
-export default function MetricCard({ title, value, subtitle, icon, trend }) {
+import { memo } from 'react'
+
+function MetricCard({ title, value, subtitle, icon, trend }) {
   return (
     <div className="metric-card">
       <div className="metric-header">
@@ -18,4 +21,6 @@ export default function MetricCard({ title, value, subtitle, icon, trend }) {
     </div>
   )
 }
+
+export default memo(MetricCard)
 

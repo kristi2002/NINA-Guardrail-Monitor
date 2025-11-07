@@ -7,6 +7,7 @@ Handles conversation management, monitoring, and reporting
 from flask import Blueprint, request, jsonify, current_app # type: ignore
 from datetime import datetime, timedelta, timezone
 import logging
+import json
 import uuid
 from api.middleware.auth_middleware import token_required, get_current_user
 from repositories.conversation_repository import ConversationRepository
@@ -824,6 +825,647 @@ def cancel_conversation(conversation_id):
         if repos and repos.get('session'):
             repos['session'].close()
 
+@conversations_bp.route('/<conversation_id>/escalate', methods=['POST'])
+@token_required
+def escalate_conversation(conversation_id):
+    """Escalate a conversation to higher priority"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Escalated by operator')
+        message = data.get('message', f'Conversation escalated by {current_user}')
+        
+        logger.info(f"Escalating conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        # Update conversation status
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        conversation.status = 'ESCALATED'
+        conversation.requires_attention = True
+        if conversation.risk_level not in ['HIGH', 'CRITICAL']:
+            conversation.risk_level = 'HIGH'
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='escalate',
+                action_category='alert',
+                operator_id=current_user,
+                title='Conversazione escalata',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='escalate',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='high',
+                    conversation_state='escalated',
+                    risk_level=conversation.risk_level.lower() if conversation.risk_level else 'high'
+                )
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conversation escalated successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error escalating conversation: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/acknowledge', methods=['POST'])
+@token_required
+def acknowledge_conversation(conversation_id):
+    """Acknowledge a conversation/alert"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Acknowledged by operator')
+        message = data.get('message', f'Conversation acknowledged by {current_user}')
+        
+        logger.info(f"Acknowledging conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='acknowledge',
+                action_category='alert',
+                operator_id=current_user,
+                title='Conversazione riconosciuta',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='acknowledge',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='normal',
+                    conversation_state=conversation.status.lower() if conversation.status else 'active',
+                    risk_level=conversation.risk_level.lower() if conversation.risk_level else 'low'
+                )
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conversation acknowledged successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error acknowledging conversation: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/resolve', methods=['POST'])
+@token_required
+def resolve_conversation(conversation_id):
+    """Resolve a conversation/alert"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Resolved by operator')
+        message = data.get('message', f'Conversation resolved by {current_user}')
+        resolution_notes = data.get('resolution_notes', reason)
+        
+        logger.info(f"Resolving conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Update conversation
+        conversation.requires_attention = False
+        if conversation.risk_level in ['HIGH', 'CRITICAL']:
+            conversation.risk_level = 'MEDIUM'
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='resolve',
+                action_category='alert',
+                operator_id=current_user,
+                title='Conversazione risolta',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason, 'resolution_notes': resolution_notes}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='resolve',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='normal',
+                    conversation_state='resolved',
+                    risk_level=conversation.risk_level.lower() if conversation.risk_level else 'medium'
+                )
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conversation resolved successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error resolving conversation: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/override-guardrail', methods=['POST'])
+@token_required
+def override_guardrail(conversation_id):
+    """Override guardrail decision - advanced feature"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Guardrail override by operator')
+        message = data.get('message', f'Guardrail decision overridden by {current_user}')
+        target_event_id = data.get('target_event_id')
+        
+        logger.info(f"Overriding guardrail for conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='override_guardrail',
+                action_category='guardrail',
+                operator_id=current_user,
+                title='Guardrail sovrascritto',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason, 'target_event_id': target_event_id}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='override_guardrail',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    target_event_id=target_event_id,
+                    priority='high',
+                    conversation_state=conversation.status.lower() if conversation.status else 'active',
+                    risk_level=conversation.risk_level.lower() if conversation.risk_level else 'low'
+                )
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Guardrail override successful',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error overriding guardrail: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/manual-intervention', methods=['POST'])
+@token_required
+def manual_intervention(conversation_id):
+    """Request manual intervention - advanced feature"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Manual intervention required')
+        message = data.get('message', f'Manual intervention requested by {current_user}')
+        
+        logger.info(f"Requesting manual intervention for conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Update conversation to require attention
+        conversation.requires_attention = True
+        if conversation.risk_level not in ['HIGH', 'CRITICAL']:
+            conversation.risk_level = 'HIGH'
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='manual_intervention',
+                action_category='intervention',
+                operator_id=current_user,
+                title='Intervento manuale richiesto',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='pending',
+                result='in_progress',
+                action_data={'reason': reason}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='manual_intervention',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='urgent',
+                    conversation_state='manual_intervention',
+                    risk_level=conversation.risk_level.lower() if conversation.risk_level else 'high'
+                )
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Manual intervention requested successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error requesting manual intervention: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/system-override', methods=['POST'])
+@token_required
+def system_override(conversation_id):
+    """System-level override - system-level only"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'System-level override')
+        message = data.get('message', f'System override activated by {current_user}')
+        
+        logger.warning(f"System override activated for conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='system_override',
+                action_category='system',
+                operator_id=current_user,
+                title='Override di sistema',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason, 'override_level': 'system'}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='system_override',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='urgent',
+                    conversation_state='system_override',
+                    risk_level='low'  # System override typically reduces risk
+                )
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'System override activated successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error activating system override: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/emergency-stop', methods=['POST'])
+@token_required
+def emergency_stop(conversation_id):
+    """Emergency stop protocol - immediate conversation termination"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Emergency stop activated')
+        message = data.get('message', f'Emergency stop activated by {current_user}')
+        
+        logger.warning(f"EMERGENCY STOP activated for conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Immediately stop conversation
+        from datetime import timezone
+        conversation.status = 'STOPPED'
+        conversation.risk_level = 'CRITICAL'
+        if not conversation.session_end:
+            conversation.session_end = datetime.now(timezone.utc)
+        
+        # Record operator action
+        try:
+            import uuid
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='emergency_stop',
+                action_category='emergency',
+                operator_id=current_user,
+                title='Fermata di emergenza',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason, 'emergency': True}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka with urgent priority
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='emergency_stop',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='urgent',
+                    conversation_state='stopped',
+                    risk_level='critical'
+                )
+                # Also stop monitoring
+                kafka_service.stop_conversation_monitoring(conversation_id)
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Emergency stop activated successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error activating emergency stop: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
+@conversations_bp.route('/<conversation_id>/resume', methods=['POST'])
+@token_required
+def resume_conversation(conversation_id):
+    """Resume a paused conversation - future feature"""
+    repos = None
+    try:
+        current_user = get_current_user()
+        data = request.get_json() or {}
+        
+        reason = data.get('reason', 'Conversation resumed by operator')
+        message = data.get('message', f'Conversation resumed by {current_user}')
+        
+        logger.info(f"Resuming conversation {conversation_id} by {current_user}")
+        
+        repos = get_repositories()
+        if not repos:
+            return jsonify({'success': False, 'error': 'Database connection failed'}), 503
+        
+        conversation = repos['conversation_repo'].get_by_session_id(conversation_id)
+        if not conversation:
+            return jsonify({'success': False, 'error': 'Conversation not found'}), 404
+        
+        # Update conversation status to active
+        if conversation.status in ['STOPPED', 'PAUSED']:
+            conversation.status = 'ACTIVE'
+        
+        # Record operator action
+        try:
+            import uuid
+            from datetime import timezone
+            repos['operator_action_repo'].create(
+                action_id=str(uuid.uuid4()),
+                conversation_id=conversation_id,
+                action_type='resume_conversation',
+                action_category='conversation',
+                operator_id=current_user,
+                title='Conversazione ripresa',
+                description=message,
+                action_timestamp=datetime.now(timezone.utc),
+                status='completed',
+                result='success',
+                action_data={'reason': reason, 'previous_status': conversation.status}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record operator action: {e}")
+        
+        repos['session'].commit()
+        
+        # Send to Kafka
+        from flask import current_app
+        kafka_service = getattr(current_app, 'kafka_service', None)
+        if kafka_service:
+            try:
+                kafka_service.send_operator_action(
+                    conversation_id=conversation_id,
+                    action_type='resume_conversation',
+                    message=message,
+                    reason=reason,
+                    operator_id=current_user,
+                    priority='normal',
+                    conversation_state='active',
+                    risk_level=conversation.risk_level.lower() if conversation.risk_level else 'low'
+                )
+                # Resume monitoring
+                kafka_service.start_conversation_monitoring(conversation_id)
+            except Exception as e:
+                logger.warning(f"Kafka error: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Conversation resumed successfully',
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        logger.error(f"Error resuming conversation: {e}", exc_info=True)
+        if repos and repos.get('session'):
+            repos['session'].rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if repos and repos.get('session'):
+            repos['session'].close()
+
 @conversations_bp.route('/<conversation_id>/situation', methods=['PUT'])
 @token_required
 def update_conversation_situation(conversation_id):
@@ -998,12 +1640,17 @@ def generate_conversation_report(conversation_id):
             duration = conversation.session_end - conversation.session_start
             session_duration = int(duration.total_seconds() / 60)
         elif conversation.session_start:
-            from datetime import timezone
             duration = datetime.now(timezone.utc) - conversation.session_start
             session_duration = int(duration.total_seconds() / 60)
         
         # Build patientInfo from patient_info JSON if available
         patient_info = conversation.patient_info if conversation.patient_info else {}
+        # Handle case where patient_info might be a JSON string
+        if isinstance(patient_info, str):
+            try:
+                patient_info = json.loads(patient_info)
+            except (json.JSONDecodeError, ValueError):
+                patient_info = {}
         patient_info_dict = patient_info if isinstance(patient_info, dict) else {}
         
         # Format dates (use Italian locale if available)
@@ -1076,7 +1723,7 @@ def generate_conversation_report(conversation_id):
                 {
                     'type': e.event_type or 'guardrail_violation',
                     'event_type': e.event_type or 'guardrail_violation',
-                    'timestamp': e.created_at.isoformat() if e.created_at else datetime.utcnow().isoformat(),
+                    'timestamp': e.created_at.isoformat() if e.created_at else datetime.now(timezone.utc).isoformat(),
                     'description': e.message_content or e.description or 'No description',
                     'details': e.details if hasattr(e, 'details') and e.details else None,
                     'severity': e.severity or 'low'

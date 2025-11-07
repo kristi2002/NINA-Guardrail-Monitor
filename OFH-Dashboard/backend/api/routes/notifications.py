@@ -26,6 +26,119 @@ logger = logging.getLogger(__name__)
 # Create Blueprint
 notifications_bp = Blueprint('notifications', __name__, url_prefix='/api/notifications')
 
+@notifications_bp.route('/history', methods=['GET'])
+@token_required
+def get_notification_history():
+    """Get notification history from guardrail events (alerts)"""
+    try:
+        current_user = get_current_user()
+        limit = request.args.get('limit', 50, type=int)
+        
+        logger.info(f"Notification history requested by {current_user}, limit: {limit}")
+        
+        # Get alerts (guardrail events) which serve as notifications
+        from services.alert_service import AlertService
+        from core.database import get_database_manager
+        
+        db_manager = get_database_manager()
+        session = db_manager.SessionLocal()
+        
+        try:
+            alert_service = AlertService(session)
+            alerts = alert_service.get_recent_alerts(hours=168, limit=limit)  # Last 7 days
+            
+            # Convert GuardrailEvent objects to notification format
+            notifications = []
+            for alert in alerts:
+                # Get attributes from GuardrailEvent model
+                event_type = (alert.event_type or 'system_alert').lower()
+                severity = (alert.severity or 'info').lower()
+                
+                # Map severity to priority for frontend
+                severity_to_priority = {
+                    'critical': 'critical',
+                    'high': 'warning',
+                    'medium': 'info',
+                    'low': 'info',
+                    'info': 'info'
+                }
+                priority = severity_to_priority.get(severity, 'info')
+                
+                # Map event types to notification types
+                notification_type_map = {
+                    'alarm_triggered': 'alert',
+                    'warning_triggered': 'warning',
+                    'privacy_violation_prevented': 'security',
+                    'medication_warning': 'warning',
+                    'inappropriate_content': 'alert',
+                    'emergency_protocol': 'critical',
+                    'false_alarm_reported': 'info',
+                    'operator_intervention': 'info',
+                    'system_alert': 'system',
+                    'compliance_check': 'compliance',
+                    'context_violation': 'alert',
+                    'conversation_started': 'info',
+                    'conversation_ended': 'info'
+                }
+                
+                notification_type = notification_type_map.get(event_type, 'system')
+                
+                # Get message content
+                message_content = alert.message_content or alert.description or alert.detected_text or 'A guardrail event occurred'
+                
+                # Create notification title based on event type
+                title_map = {
+                    'alarm_triggered': '🚨 Alarm Triggered',
+                    'warning_triggered': '⚠️ Warning',
+                    'privacy_violation_prevented': '🔒 Privacy Violation Prevented',
+                    'medication_warning': '💊 Medication Warning',
+                    'inappropriate_content': '🚫 Inappropriate Content',
+                    'emergency_protocol': '🚨 Emergency Protocol',
+                    'false_alarm_reported': 'ℹ️ False Alarm Reported',
+                    'operator_intervention': '👤 Operator Intervention',
+                    'system_alert': '📢 System Alert',
+                    'compliance_check': '✅ Compliance Check',
+                    'context_violation': '⚠️ Context Violation'
+                }
+                title = title_map.get(event_type, '📢 Guardrail Event')
+                
+                # Create notification object
+                notification = {
+                    'id': f"notif_{alert.id}",
+                    'title': title,
+                    'message': message_content[:200],  # Truncate long messages
+                    'type': notification_type,
+                    'priority': priority,  # Frontend expects 'priority', not 'severity'
+                    'severity': severity,  # Keep for reference
+                    'timestamp': alert.created_at.isoformat() if alert.created_at else datetime.now(timezone.utc).isoformat(),
+                    'read': False,  # Could be enhanced to track read status in database
+                    'conversation_id': alert.conversation_id or alert.session_id,
+                    'event_id': alert.event_id,
+                    'metadata': {
+                        'event_type': event_type,
+                        'violations': alert.violations if hasattr(alert, 'violations') and alert.violations else [],
+                        'guardrail_rules': alert.guardrail_rules if hasattr(alert, 'guardrail_rules') and alert.guardrail_rules else []
+                    }
+                }
+                notifications.append(notification)
+            
+            return jsonify({
+                'success': True,
+                'notifications': notifications,
+                'total': len(notifications)
+            })
+            
+        finally:
+            session.close()
+            
+    except Exception as e:
+        logger.error(f"Error getting notification history: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get notification history',
+            'message': str(e)
+        }), 500
+
 @notifications_bp.route('/stats', methods=['GET'])
 @token_required
 def get_notification_stats():

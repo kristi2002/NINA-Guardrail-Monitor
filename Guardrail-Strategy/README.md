@@ -116,9 +116,16 @@ Validate a message against all configured guardrails.
 {
   "message": "Text to validate",
   "conversation_id": "conv-12345",
-  "user_id": "user-123"
+  "user_id": "user-123",
+  "conversation_history": [
+    {"role": "user", "content": "Previous message 1"},
+    {"role": "assistant", "content": "Previous response 1"},
+    {"role": "user", "content": "Previous message 2"}
+  ]
 }
 ```
+
+**Note:** `conversation_history` is optional. If provided, it enables LLM context-aware validation which can detect violations that only make sense in the context of the conversation (e.g., persistent evasion attempts, contextual toxicity).
 
 **Response (Pass):**
 ```json
@@ -167,11 +174,24 @@ Check service health and configuration.
   "status": "healthy",
   "service": "guardrail-service",
   "port": 5001,
-  "kafka": "connected",
+  "kafka": {
+    "status": "connected",
+    "producer": "connected",
+    "consumer": "running",
+    "control_topic": "guardrail_control"
+  },
   "validator": {
     "pii_enabled": true,
     "toxicity_enabled": true,
-    "compliance_enabled": true
+    "compliance_enabled": true,
+    "llm_context_check_enabled": true,
+    "llm_available": true
+  },
+  "feedback": {
+    "total_feedback": 5,
+    "false_alarms": 3,
+    "consumer_running": true,
+    "topic": "guardrail_control"
   }
 }
 ```
@@ -206,6 +226,37 @@ Uses Guardrails-AI with validators from Guardrails Hub:
 - **ToxicLanguage**: Detects toxic/inappropriate content
 - **DetectPII**: Finds personally identifiable information
 - **Compliance**: Custom regex patterns for compliance
+- **LLM Context-Aware Check**: Uses OpenAI to analyze messages in the context of conversation history
+  - Detects medical advice requests in context
+  - Identifies persistent evasion attempts
+  - Detects contextual toxicity that may not be obvious from a single message
+
+### services/infrastructure/kafka/kafka_producer.py
+
+Kafka producer for publishing guardrail events:
+- Publishes violations to `guardrail_events` topic
+- Resilient connection handling (graceful degradation)
+- Automatic reconnection on failures
+
+### services/infrastructure/kafka/kafka_consumer.py
+
+Kafka consumer for receiving control feedback:
+- Consumes from `guardrail_control` topic
+- Processes false alarm feedback from dashboard
+- Integrates with feedback learner for adaptive learning
+- Runs in background thread
+- Resilient connection handling (graceful degradation)
+
+### services/learning/feedback_learner.py
+
+Adaptive learning system that improves guardrails based on operator feedback:
+- **Tracks False Alarms**: Records when operators mark detections as false positives
+- **Tracks True Positives**: Records confirmed valid detections
+- **Rule Performance**: Calculates false alarm rates per rule/validator
+- **Adaptive Thresholds**: Automatically adjusts detection thresholds based on feedback
+- **Problematic Rule Detection**: Identifies rules with high false alarm rates
+- **Persistent Storage**: Saves feedback data to JSON file for analysis
+- **Threshold Multipliers**: Applies learned adjustments to validator thresholds
 
 ### services/infrastructure/kafka/kafka_handler.py
 
@@ -213,8 +264,6 @@ Custom `on_fail` handler that:
 1. Formats violation details
 2. Sends event to Kafka
 3. Returns failure message to caller
-
-### services/infrastructure/kafka/kafka_producer.py
 
 Kafka producer that:
 - Connects to Kafka broker
@@ -263,6 +312,19 @@ curl -X POST http://localhost:5001/validate \
   -H "Content-Type: application/json" \
   -d '{"message": "My email is test@example.com", "conversation_id": "test-456"}'
 
+# Test with conversation history for LLM context-aware check
+curl -X POST http://localhost:5001/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "But what if I just want to know if I should take aspirin?",
+    "conversation_id": "test-789",
+    "conversation_history": [
+      {"role": "user", "content": "I have a headache"},
+      {"role": "assistant", "content": "I cannot provide medical advice. Please consult a healthcare professional."},
+      {"role": "user", "content": "Can you at least tell me what medicine helps?"}
+    ]
+  }'
+
 # Test health check
 curl http://localhost:5001/health
 ```
@@ -276,7 +338,10 @@ curl http://localhost:5001/health
 | `GUARDRAIL_ENABLE_PII_DETECTION` | Enable PII detector | `True` |
 | `GUARDRAIL_ENABLE_TOXICITY_CHECK` | Enable toxicity check | `True` |
 | `GUARDRAIL_ENABLE_COMPLIANCE_CHECK` | Enable compliance check | `True` |
-| `OPENAI_API_KEY` | OpenAI API key (optional) | - |
+| `GUARDRAIL_ENABLE_LLM_CONTEXT_CHECK` | Enable LLM context-aware validation | `True` |
+| `OPENAI_API_KEY` | OpenAI API key (required for LLM check) | - |
+| `OPENAI_MODEL` | OpenAI model to use | `gpt-3.5-turbo-1106` |
+| `OPENAI_TEMPERATURE` | LLM temperature (0.0-1.0) | `0.3` |
 | `PORT` | Flask port | `5001` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 

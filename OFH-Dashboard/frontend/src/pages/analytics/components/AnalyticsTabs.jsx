@@ -9,7 +9,8 @@ const tabs = [
   { id: 'users', label: 'Admin Performance', icon: '👥' },
   { id: 'alerts', label: 'Alert Trends', icon: '📈' },
   { id: 'response', label: 'Response Times', icon: '⏱️' },
-  { id: 'escalations', label: 'Escalations', icon: '⬆️' }
+  { id: 'escalations', label: 'Escalations', icon: '⬆️' },
+  { id: 'guardrail-performance', label: 'Guardrail Performance', icon: '🛡️' }
 ]
 
 export default function AnalyticsTabs({ activeTab, onTabClick }) {

@@ -6,7 +6,7 @@ Integrates the enhanced Kafka producer and consumer
 
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_socketio import emit  # type: ignore
 from .kafka_producer import NINAKafkaProducerV2
 from .kafka_consumer import NINAKafkaConsumerV2
@@ -51,17 +51,24 @@ class KafkaIntegrationService:
         # self._initialize_control_topics() # <-- RIMOSSO (I topic sono statici e si presume esistano)
 
     def start_consumer(self):
-        """Start the Kafka consumer"""
+        """Start the Kafka consumer with graceful degradation"""
         try:
             self.logger.info("🚀 Starting Kafka consumer...")
             success = self.consumer.start_consumer()
             if success:
                 self.logger.info("✅ Kafka consumer started successfully")
             else:
-                self.logger.error("❌ Failed to start Kafka consumer")
+                self.logger.warning(
+                    "⚠️ Kafka consumer not started (Kafka may be unavailable). "
+                    "Service will continue without real-time Kafka consumption."
+                )
             return success
         except Exception as e:
-            self.logger.error(f"❌ Error starting Kafka consumer: {e}", exc_info=True)
+            self.logger.warning(
+                f"⚠️ Error starting Kafka consumer: {e}. "
+                "Service will continue without Kafka consumer.",
+                exc_info=True
+            )
             return False
 
     def handle_consumed_event(self, event_type, conversation_id, event):
@@ -83,9 +90,27 @@ class KafkaIntegrationService:
                 # --- THE FIX ---
                 # If severity is high or critical, emit 'alert_escalation'
                 if severity in ["high", "critical"]:
+                    # Format as alert escalation
+                    escalation_data = {
+                        "id": f"escalation_{event.get('event_id', 'unknown')}",
+                        "title": self._get_notification_title(event),
+                        "message": event.get("message", "A critical guardrail event occurred"),
+                        "type": "critical",
+                        "priority": "critical",
+                        "severity": severity,
+                        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                        "read": False,
+                        "conversation_id": conversation_id,
+                        "event_id": event.get("event_id"),
+                        "metadata": {
+                            "event_type": event.get("event_type"),
+                            "violations": event.get("violations", []),
+                            "guardrail_rules": event.get("guardrail_rules", [])
+                        }
+                    }
                     self.socketio.emit(
                         "alert_escalation",
-                        {"conversation_id": conversation_id, "event": event},
+                        escalation_data,
                     )
                     self.logger.info(
                         f"Socket.IO 'alert_escalation' emitted for {conversation_id}"
@@ -93,9 +118,27 @@ class KafkaIntegrationService:
 
                 # For all other severities, emit a generic 'notification'
                 else:
+                    # Format notification for frontend
+                    notification_data = {
+                        "id": f"notif_{event.get('event_id', 'unknown')}",
+                        "title": self._get_notification_title(event),
+                        "message": event.get("message", "A guardrail event occurred"),
+                        "type": self._get_notification_type(event.get("event_type", "system_alert")),
+                        "priority": self._map_severity_to_priority(severity),
+                        "severity": severity,
+                        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                        "read": False,
+                        "conversation_id": conversation_id,
+                        "event_id": event.get("event_id"),
+                        "metadata": {
+                            "event_type": event.get("event_type"),
+                            "violations": event.get("violations", []),
+                            "guardrail_rules": event.get("guardrail_rules", [])
+                        }
+                    }
                     self.socketio.emit(
                         "notification",
-                        {"conversation_id": conversation_id, "event": event},
+                        notification_data,
                     )
                     self.logger.info(
                         f"Socket.IO 'notification' emitted for {conversation_id}"
@@ -103,13 +146,26 @@ class KafkaIntegrationService:
 
             # Check if this is an operator action
             elif event_type == "operator_action":
-                # Send all operator actions as a generic 'notification'
+                # Format operator action as notification
+                notification_data = {
+                    "id": f"notif_op_{event.get('action_id', 'unknown')}",
+                    "title": f"👤 {event.get('title', 'Operator Action')}",
+                    "message": event.get("description", event.get("message", "An operator action was taken")),
+                    "type": "info",
+                    "priority": "info",
+                    "severity": "info",
+                    "timestamp": event.get("action_timestamp", datetime.now(timezone.utc).isoformat()),
+                    "read": False,
+                    "conversation_id": conversation_id,
+                    "event_id": event.get("action_id"),
+                    "metadata": {
+                        "action_type": event.get("action_type"),
+                        "operator_id": event.get("operator_id")
+                    }
+                }
                 self.socketio.emit(
                     "notification",
-                    {
-                        "conversation_id": conversation_id,
-                        "event": event,  # Send the full operator action event
-                    },
+                    notification_data,
                 )
                 self.logger.info(
                     f"Socket.IO 'notification' (for operator_action) emitted for {conversation_id}"
@@ -223,27 +279,107 @@ class KafkaIntegrationService:
             return False
 
     def send_operator_action(
-        self, conversation_id, action_type, message, reason=None, operator_id=None
+        self, 
+        conversation_id, 
+        action_type, 
+        message, 
+        reason=None, 
+        operator_id=None,
+        target_event_id=None,
+        priority=None,
+        conversation_state=None,
+        risk_level=None,
+        active_guardrails=None
     ):
-        """Send an operator action for a specific conversation"""
+        """
+        Send an operator action for a specific conversation with full metadata
+        
+        Args:
+            conversation_id: The conversation ID
+            action_type: Type of action (stop_conversation, escalate, acknowledge, etc.)
+            message: Human-readable message
+            reason: Reason for the action
+            operator_id: ID of the operator
+            target_event_id: ID of the specific event this action relates to
+            priority: Priority level (low, normal, high, urgent)
+            conversation_state: Current state of conversation (active, paused, etc.)
+            risk_level: Risk level (low, medium, high, critical)
+            active_guardrails: List of active guardrail validators
+        """
         try:
-            # Create enhanced operator action message
+            import time
+            action_start_time = time.time()
+            
+            # Determine priority if not provided
+            if not priority:
+                if action_type in ["stop_conversation", "emergency_stop"]:
+                    priority = "urgent"
+                elif action_type in ["escalate", "manual_intervention"]:
+                    priority = "high"
+                elif action_type in ["acknowledge", "resolve"]:
+                    priority = "normal"
+                else:
+                    priority = "normal"
+            
+            # Get conversation state and risk level from database if not provided
+            if not conversation_state or not risk_level:
+                try:
+                    from models.conversation_session import ConversationSession
+                    session = self.db.session.query(ConversationSession).filter_by(
+                        id=conversation_id
+                    ).first()
+                    if session:
+                        if not conversation_state:
+                            # Map status to conversation_state
+                            status_mapping = {
+                                'ACTIVE': 'active',
+                                'PAUSED': 'paused',
+                                'ESCALATED': 'escalated',
+                                'COMPLETED': 'resolved',
+                                'TERMINATED': 'stopped',
+                                'STOPPED': 'stopped'
+                            }
+                            conversation_state = status_mapping.get(session.status, 'active')
+                        if not risk_level:
+                            risk_level = (session.risk_level or 'low').lower()
+                except Exception as e:
+                    self.logger.debug(f"Could not fetch conversation state: {e}")
+            
+            # Get active guardrails if not provided
+            if not active_guardrails:
+                active_guardrails = ["ToxicLanguage", "DetectPII", "Compliance", "LLMContextAwareCheck"]
+            
+            # Calculate response time
+            response_time_seconds = time.time() - action_start_time
+            
+            # Create enhanced operator action message with full metadata
             operator_action = {
-                "action_type": action_type,
+                "schema_version": "1.0",
                 "conversation_id": conversation_id,
+                "timestamp": datetime.now().isoformat(),
+                "action_type": action_type,
                 "operator_id": operator_id or "dashboard_operator",
                 "message": message,
                 "reason": reason,
-                "timestamp": datetime.now().isoformat(),
+                "priority": priority,
+                "target_event_id": target_event_id,
                 "command": {
-                    "type": (
-                        "STOP"
-                        if action_type == "stop_conversation"
-                        else action_type.upper()
-                    ),
+                    "type": action_type,
                     "reason": reason or "operator_intervention",
-                    "final_message": message,
+                    "final_message": message if action_type == "stop_conversation" else None
                 },
+                "action_metadata": {
+                    "response_time_seconds": round(response_time_seconds, 2),
+                    "escalation_level": "supervisor" if action_type == "escalate" else None,
+                    "notification_sent": True,
+                    "follow_up_required": action_type in ["escalate", "manual_intervention"],
+                    "resolution_notes": reason if action_type == "resolve" else None
+                },
+                "system_context": {
+                    "active_guardrails": active_guardrails,
+                    "conversation_state": conversation_state or "active",
+                    "risk_level": risk_level or "low"
+                }
             }
 
             # Send via producer with custom message
@@ -255,7 +391,8 @@ class KafkaIntegrationService:
                 # Note: Socket.IO emission will be handled by the consumer callback
                 # after the event is successfully processed and saved to database
                 self.logger.info(
-                    f"Operator action sent: {action_type} for conversation {conversation_id}"
+                    f"Operator action sent: {action_type} for conversation {conversation_id} "
+                    f"with full metadata"
                 )
                 return True
 
@@ -291,6 +428,57 @@ class KafkaIntegrationService:
     def get_conversation_events(self, conversation_id):
         """Get events for a specific conversation"""
         return self.conversation_events.get(conversation_id, [])
+    
+    def _get_notification_title(self, event):
+        """Get notification title based on event type"""
+        event_type = event.get("event_type", "system_alert")
+        title_map = {
+            'alarm_triggered': '🚨 Alarm Triggered',
+            'warning_triggered': '⚠️ Warning',
+            'privacy_violation_prevented': '🔒 Privacy Violation Prevented',
+            'medication_warning': '💊 Medication Warning',
+            'inappropriate_content': '🚫 Inappropriate Content',
+            'emergency_protocol': '🚨 Emergency Protocol',
+            'false_alarm_reported': 'ℹ️ False Alarm Reported',
+            'operator_intervention': '👤 Operator Intervention',
+            'system_alert': '📢 System Alert',
+            'compliance_check': '✅ Compliance Check',
+            'context_violation': '⚠️ Context Violation',
+            'conversation_started': '💬 Conversation Started',
+            'conversation_ended': '✅ Conversation Ended'
+        }
+        return title_map.get(event_type, '📢 Guardrail Event')
+    
+    def _get_notification_type(self, event_type):
+        """Get notification type based on event type"""
+        notification_type_map = {
+            'alarm_triggered': 'alert',
+            'warning_triggered': 'warning',
+            'privacy_violation_prevented': 'security',
+            'medication_warning': 'warning',
+            'inappropriate_content': 'alert',
+            'emergency_protocol': 'critical',
+            'false_alarm_reported': 'info',
+            'operator_intervention': 'info',
+            'system_alert': 'system',
+            'compliance_check': 'compliance',
+            'context_violation': 'alert',
+            'conversation_started': 'info',
+            'conversation_ended': 'info'
+        }
+        return notification_type_map.get(event_type, 'system')
+    
+    def _map_severity_to_priority(self, severity):
+        """Map severity to priority for frontend"""
+        severity_lower = str(severity).lower()
+        severity_to_priority = {
+            'critical': 'critical',
+            'high': 'warning',
+            'medium': 'info',
+            'low': 'info',
+            'info': 'info'
+        }
+        return severity_to_priority.get(severity_lower, 'info')
 
     def simulate_conversation_flow(self, conversation_id=None, duration=60):
         """Simulate a complete conversation flow"""

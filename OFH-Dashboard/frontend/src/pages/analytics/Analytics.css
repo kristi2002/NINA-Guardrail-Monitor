@@ -19,8 +19,29 @@
   min-height: 100vh;
   background: var(--primary-bg);
   color: var(--text-primary);
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  text-align: left; /* Ensure default text alignment is left */
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  text-align: left !important; /* Ensure default text alignment is left */
+}
+
+/* Force font-family and text-align for all child elements - explicitly set left alignment */
+.analytics-page *,
+.analytics-page *::before,
+.analytics-page *::after {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Explicitly set text-align to left for all text elements, except those that should be centered */
+.analytics-page * {
+  text-align: left;
+}
+
+/* Only center-align specific elements that need it */
+.analytics-page .text-center,
+.analytics-page [style*="text-align: center"],
+.analytics-page .status-card,
+.analytics-page .role-card,
+.analytics-page .risk-card {
+  text-align: center !important;
 }
 
 /* Header and Tabs styles moved to component CSS files:
@@ -31,7 +52,22 @@
 /* Content Area */
 .analytics-content {
   padding: 2rem;
-  text-align: left; /* Ensure content text alignment is left */
+  text-align: left !important; /* Ensure content text alignment is left */
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+.analytics-content * {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  text-align: left;
+}
+
+/* Center-align specific elements that need it */
+.analytics-content .text-center,
+.analytics-content [style*="text-align: center"],
+.analytics-content .status-card,
+.analytics-content .role-card,
+.analytics-content .risk-card {
+  text-align: center !important;
 }
 
 .analytics-tab {
@@ -747,11 +783,14 @@
 .analytics-loading,
 .analytics-error {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 50vh;
   font-size: 1.2rem;
-  color: white;
+  color: var(--text-primary);
+  padding: 2rem;
+  text-align: center;
 }
 
 .analytics-error {
@@ -821,16 +860,16 @@
 /* Pulse animation for skeleton elements */
 @keyframes pulse {
   0% { 
-    background-color: rgba(255, 255, 255, 0.1);
-    opacity: 0.6;
-  }
-  50% { 
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(226, 232, 240, 0.5);
     opacity: 0.8;
   }
+  50% { 
+    background-color: rgba(203, 213, 225, 0.7);
+    opacity: 1;
+  }
   100% { 
-    background-color: rgba(255, 255, 255, 0.1);
-    opacity: 0.6;
+    background-color: rgba(226, 232, 240, 0.5);
+    opacity: 0.8;
   }
 }
 
@@ -847,6 +886,12 @@
 }
 
 /* Override conflicting !important rules for analytics text */
+/* Ensure consistent font and text alignment throughout analytics page */
+.analytics-page {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  text-align: left !important;
+}
+
 .analytics-page .tab-btn,
 .analytics-page .tab-label,
 .analytics-page .tab-icon,
@@ -870,6 +915,8 @@
 .analytics-page .reason-name,
 .analytics-page .reason-percentage {
   color: #000000 !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  text-align: left !important;
 }
 
 .analytics-page .metric-subtitle,
@@ -877,6 +924,8 @@
 .analytics-page .sla-target,
 .analytics-page .reason-percentage {
   color: #333333 !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  text-align: left !important;
 }
 
 .analytics-page .reason-count {
@@ -904,9 +953,9 @@
 
 .skeleton-card {
   height: 120px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
 }
 
@@ -920,18 +969,18 @@
 
 .skeleton-chart {
   height: 300px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
 }
 
 /* Skeleton team metrics */
 .skeleton-team-metrics {
   height: 200px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
   margin-bottom: 2rem;
 }
@@ -939,9 +988,9 @@
 /* Skeleton leaderboard */
 .skeleton-leaderboard {
   height: 300px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
   margin-bottom: 2rem;
 }
@@ -949,9 +998,9 @@
 /* Skeleton severity analysis */
 .skeleton-severity {
   height: 200px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
   margin-bottom: 2rem;
 }
@@ -966,9 +1015,9 @@
 
 .skeleton-sla-grid > div {
   height: 120px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
 }
 
@@ -982,9 +1031,9 @@
 
 .skeleton-reasons-grid > div {
   height: 100px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   animation: pulse 1.5s infinite ease-in-out;
 }
 

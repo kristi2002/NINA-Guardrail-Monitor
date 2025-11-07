@@ -33,7 +33,8 @@
         "false_alarm_reported",
         "operator_intervention",
         "system_alert",
-        "compliance_check"
+        "compliance_check",
+        "context_violation"
       ]
     },
     "severity": {

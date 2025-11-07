@@ -14,6 +14,10 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   const [openDropdownId, setOpenDropdownId] = useState(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+  
   // Filter states
   const [filterSearch, setFilterSearch] = useState('') // Patient ID - first
   const [filterStatus, setFilterStatus] = useState('all') // Status - second
@@ -227,6 +231,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
     setFilterDateTo('')
     setFilterUpdatedFrom('')
     setFilterUpdatedTo('')
+    setCurrentPage(1) // Reset to first page when filters are reset
     // Clear Flatpickr instances
     if (dateFromRef.current && dateFromRef.current._flatpickr) {
       dateFromRef.current._flatpickr.clear()
@@ -241,6 +246,32 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
       updatedToRef.current._flatpickr.clear()
     }
   }
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterSearch, filterStatus, filterSituation, filterDateFrom, filterDateTo, filterUpdatedFrom, filterUpdatedTo])
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(displayConversations.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedConversations = displayConversations.slice(startIndex, endIndex)
+  
+  // Pagination handlers
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+      // Scroll to top of table
+      const tableContainer = document.querySelector('.conversation-table-container')
+      if (tableContainer) {
+        tableContainer.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }
+  
+  const goToPreviousPage = () => goToPage(currentPage - 1)
+  const goToNextPage = () => goToPage(currentPage + 1)
   
   // Count active filters
   const activeFiltersCount = 
@@ -696,11 +727,10 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                 <th>Situazione</th>
                 <th>Data Creazione</th>
                 <th>Ultimo aggiornamento</th>
-                <th>Azioni</th>
               </tr>
             </thead>
             <tbody>
-              {displayConversations.map((conversation) => {
+              {paginatedConversations.map((conversation) => {
               if (!conversation || !conversation.id) {
                 return null
               }
@@ -769,52 +799,6 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                       <span className="date-text">{updatedDate.date}, {updatedDate.time}</span>
                     </div>
                   </td>
-                  
-                  <td className="actions-cell">
-                    <div className="action-dropdown">
-                      <button 
-                        className="action-button"
-                        onClick={(e) => toggleDropdown(conversation.id, e)}
-                      >
-                        <span className="action-icon">▼</span>
-                        Azioni
-                      </button>
-                      {openDropdownId === conversation.id && (
-                        <div className="action-dropdown-menu">
-                          <button
-                            className="action-menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleActionMenu(conversation.id, 'stop')
-                            }}
-                          >
-                            <span className="menu-icon">⏹️</span>
-                            Ferma e segnala
-                          </button>
-                          <button
-                            className="action-menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleActionMenu(conversation.id, 'complete')
-                            }}
-                          >
-                            <span className="menu-icon">✅</span>
-                            Completa conversazione
-                          </button>
-                          <button
-                            className="action-menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleActionMenu(conversation.id, 'cancel')
-                            }}
-                          >
-                            <span className="menu-icon">❌</span>
-                            Annulla conversazione
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
                 </tr>
               )
               } catch (error) {
@@ -824,6 +808,61 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
             }).filter(Boolean)}
           </tbody>
         </table>
+        )}
+        
+        {/* Pagination Controls */}
+        {displayConversations.length > itemsPerPage && (
+          <div className="conversation-pagination">
+            <div className="pagination-info">
+              <span>
+                Mostrando {startIndex + 1}-{Math.min(endIndex, displayConversations.length)} di {displayConversations.length} conversazioni
+              </span>
+            </div>
+            <div className="pagination-controls">
+              <button
+                className="pagination-btn"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                aria-label="Pagina precedente"
+              >
+                ‹
+              </button>
+              
+              <div className="pagination-numbers">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first page, last page, current page, and pages around current
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        className={`pagination-number ${currentPage === page ? 'active' : ''}`}
+                        onClick={() => goToPage(page)}
+                        aria-label={`Vai alla pagina ${page}`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="pagination-ellipsis">...</span>
+                  }
+                  return null
+                })}
+              </div>
+              
+              <button
+                className="pagination-btn"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                aria-label="Pagina successiva"
+              >
+                ›
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

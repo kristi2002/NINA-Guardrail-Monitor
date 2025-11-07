@@ -118,9 +118,16 @@ class ConversationRepository(BaseRepository):
             # Use func.count() to avoid loading all columns (including patient_info which might not exist)
             total_conversations = self.db.query(func.count(ConversationSession.id)).filter(base_filter).scalar() or 0
             
+            # Active conversations: status is ACTIVE OR (status is not COMPLETED/TERMINATED and session_end is NULL)
             active_conversations = self.db.query(func.count(ConversationSession.id)).filter(
                 base_filter,
-                ConversationSession.status == 'ACTIVE'
+                or_(
+                    ConversationSession.status == 'ACTIVE',
+                    and_(
+                        ConversationSession.status.notin_(['COMPLETED', 'TERMINATED', 'CANCELLED']),
+                        ConversationSession.session_end.is_(None)
+                    )
+                )
             ).scalar() or 0
             
             # --- FIX: Query the real database column ---
@@ -140,9 +147,28 @@ class ConversationRepository(BaseRepository):
                 func.count(ConversationSession.id).label('count')
             ).filter(base_filter).group_by(ConversationSession.status).all()
             
-            avg_duration = self.db.query(func.avg(ConversationSession.session_duration_minutes)).filter(
+            # Calculate average duration: use session_duration_minutes if available, otherwise calculate from session_start/session_end
+            from sqlalchemy import case
+            avg_duration = self.db.query(
+                func.avg(
+                    case(
+                        (ConversationSession.session_duration_minutes.isnot(None), 
+                         ConversationSession.session_duration_minutes),
+                        (and_(ConversationSession.session_start.isnot(None), 
+                              ConversationSession.session_end.isnot(None)),
+                         func.extract('epoch', ConversationSession.session_end - ConversationSession.session_start) / 60),
+                        else_=None
+                    )
+                )
+            ).filter(
                 base_filter,
-                ConversationSession.session_duration_minutes.isnot(None)
+                or_(
+                    ConversationSession.session_duration_minutes.isnot(None),
+                    and_(
+                        ConversationSession.session_start.isnot(None),
+                        ConversationSession.session_end.isnot(None)
+                    )
+                )
             ).scalar()
             
             # --- FIX: Query the real database column ---

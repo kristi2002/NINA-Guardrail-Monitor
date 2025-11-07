@@ -19,9 +19,11 @@ function NotificationCenter({ isOpen, onClose }) {
   const filteredNotifications = notifications.filter(notification => {
     if (filter === 'all') return true
     if (filter === 'unread') return !notification.read
-    if (filter === 'critical') return notification.priority === 'critical'
-    if (filter === 'warning') return notification.priority === 'warning'
-    if (filter === 'info') return notification.priority === 'info'
+    // Support both 'priority' and 'severity' fields
+    const priority = notification.priority || notification.severity || 'info'
+    if (filter === 'critical') return priority === 'critical' || priority === 'high'
+    if (filter === 'warning') return priority === 'warning' || priority === 'medium'
+    if (filter === 'info') return priority === 'info' || priority === 'low'
     return true
   })
 
@@ -43,21 +45,45 @@ function NotificationCenter({ isOpen, onClose }) {
     markAllAsRead()
   }
 
-  const getPriorityIcon = (priority) => {
+  const getPriorityIcon = (notification) => {
+    // Support both 'priority' and 'severity' fields
+    const priority = notification.priority || notification.severity || 'info'
     switch (priority) {
-      case 'critical': return '🚨'
-      case 'warning': return '⚠️'
-      case 'info': return 'ℹ️'
+      case 'critical':
+      case 'high': return '🚨'
+      case 'warning':
+      case 'medium': return '⚠️'
+      case 'info':
+      case 'low': return 'ℹ️'
       default: return '📢'
     }
   }
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (notification) => {
+    // Support both 'priority' and 'severity' fields
+    const priority = notification.priority || notification.severity || 'info'
     switch (priority) {
-      case 'critical': return '#ef4444'
-      case 'warning': return '#f59e0b'
-      case 'info': return '#3b82f6'
+      case 'critical':
+      case 'high': return '#ef4444'
+      case 'warning':
+      case 'medium': return '#f59e0b'
+      case 'info':
+      case 'low': return '#3b82f6'
       default: return '#6b7280'
+    }
+  }
+  
+  const getPriorityLabel = (notification) => {
+    // Support both 'priority' and 'severity' fields
+    const priority = notification.priority || notification.severity || 'info'
+    switch (priority) {
+      case 'critical': return 'critical'
+      case 'high': return 'high'
+      case 'warning': return 'warning'
+      case 'medium': return 'medium'
+      case 'info': return 'info'
+      case 'low': return 'low'
+      default: return 'info'
     }
   }
 
@@ -166,20 +192,20 @@ function NotificationCenter({ isOpen, onClose }) {
                   onClick={() => !notification.read && handleMarkAsRead(notification.id)}
                 >
                   <div className="notification-icon">
-                    {getPriorityIcon(notification.priority)}
+                    {getPriorityIcon(notification)}
                   </div>
                   
                   <div className="notification-content">
                     <div className="notification-header">
                       <h4 className="notification-title">
-                        {notification.title}
+                        {notification.title || notification.message}
                       </h4>
                       <div className="notification-meta">
                         <span
                           className="priority-badge"
-                          style={{ backgroundColor: getPriorityColor(notification.priority) }}
+                          style={{ backgroundColor: getPriorityColor(notification) }}
                         >
-                          {notification.priority}
+                          {getPriorityLabel(notification)}
                         </span>
                         <span className="timestamp">
                           {formatTimestamp(notification.timestamp)}

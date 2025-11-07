@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnalyticsHeader, AnalyticsTabs } from './analytics/components'
-import { OverviewTab, NotificationsTab, UsersTab, AlertsTab, ResponseTimesTab, EscalationsTab } from './analytics/tabs'
+import { OverviewTab, NotificationsTab, UsersTab, AlertsTab, ResponseTimesTab, EscalationsTab, GuardrailPerformanceTab } from './analytics/tabs'
 import { useAnalyticsData } from './analytics/hooks'
 import { useTabNavigation } from '../hooks/shared'
 import { exportAnalyticsData } from './analytics/utils/exportData'
@@ -8,7 +8,21 @@ import './analytics/Analytics.css'
 
 function Analytics() {
   const [timeRange, setTimeRange] = useState('7d')
+  const [exporting, setExporting] = useState(false)
   const { activeTab, handleTabClick } = useTabNavigation('overview')
+  
+  // Force style recalculation on mount to ensure CSS is properly applied
+  useEffect(() => {
+    // Force a reflow to ensure styles are applied
+    const analyticsPage = document.querySelector('.analytics-page')
+    if (analyticsPage) {
+      // Trigger a reflow by reading offsetHeight
+      void analyticsPage.offsetHeight
+      // Ensure font-family and text-align are set
+      analyticsPage.style.fontFamily = "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+      analyticsPage.style.textAlign = 'left'
+    }
+  }, [])
   
   const {
     analyticsData,
@@ -18,7 +32,19 @@ function Analytics() {
     fetchAnalyticsData
   } = useAnalyticsData(activeTab, timeRange)
 
-  const handleExport = () => exportAnalyticsData(timeRange, 'json')
+  const handleExport = async () => {
+    if (!analyticsData) {
+      alert('No data available to export. Please wait for data to load.')
+      return
+    }
+    
+    setExporting(true)
+    try {
+      await exportAnalyticsData(activeTab, timeRange, 'json', analyticsData)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Helper for rendering metric cards (used by tab components)
   const renderMetricCard = (title, value, subtitle, icon, trend) => (
@@ -58,6 +84,8 @@ function Analytics() {
         return <ResponseTimesTab {...tabProps} />
       case 'escalations':
         return <EscalationsTab {...tabProps} />
+      case 'guardrail-performance':
+        return <GuardrailPerformanceTab {...tabProps} />
       default:
         return <OverviewTab {...tabProps} />
     }
@@ -75,6 +103,8 @@ function Analytics() {
         onTimeRangeChange={setTimeRange}
         onExport={handleExport}
         lastUpdated={lastUpdated}
+        exporting={exporting}
+        hasData={!!analyticsData}
       />
 
       <AnalyticsTabs 

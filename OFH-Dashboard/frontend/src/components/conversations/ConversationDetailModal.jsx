@@ -4,6 +4,54 @@ import { mapEventTypeToDisplay, getEventTypeLabel, getEventTypeIcon } from '../.
 import ConversationReportModal from './ConversationReportModal'
 import './ConversationDetailModal.css'
 
+// Action templates for common scenarios
+const ACTION_TEMPLATES = {
+  escalate: [
+    'Richiede intervento supervisore',
+    'Situazione complessa che richiede escalation',
+    'Decisione che richiede approvazione superiore',
+    'Caso che necessita di revisione manageriale'
+  ],
+  manual_intervention: [
+    'Richiede valutazione umana immediata',
+    'Situazione ambigua che necessita di intervento',
+    'Caso che richiede expertise specializzata',
+    'Decisione che richiede giudizio umano'
+  ],
+  override_guardrail: [
+    'Falso positivo del guardrail',
+    'Guardrail troppo restrittivo per questo caso',
+    'Decisione del guardrail non appropriata',
+    'Override necessario per procedere'
+  ],
+  system_override: [
+    'Bypass necessario per caso speciale',
+    'Sistema troppo conservativo per questa situazione',
+    'Override richiesto per continuare operazione',
+    'Bypass autorizzato per caso eccezionale'
+  ],
+  emergency_stop: [
+    'Minaccia di sicurezza rilevata',
+    'Violazione critica del protocollo',
+    'Situazione di emergenza immediata',
+    'Stop richiesto per sicurezza'
+  ],
+  resolve: [
+    'Problema risolto con successo',
+    'Situazione normalizzata',
+    'Issue chiusa dopo intervento',
+    'Risoluzione completata'
+  ]
+}
+
+// Action severity levels for confirmation requirements
+const ACTION_SEVERITY = {
+  low: ['acknowledge', 'resolve'],
+  medium: ['escalate', 'manual_intervention', 'override_guardrail', 'stop_conversation', 'complete_conversation', 'cancel_conversation', 'resume_conversation'],
+  high: ['system_override'],
+  critical: ['emergency_stop']
+}
+
 function ConversationDetailModal({ conversation, isOpen, onClose, onConversationUpdated }) {
   const [loading, setLoading] = useState(false)
   const [fetchingDetails, setFetchingDetails] = useState(false)
@@ -12,6 +60,8 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   const [reportData, setReportData] = useState(null)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [fullConversation, setFullConversation] = useState(null)
+  const [recentActions, setRecentActions] = useState([])
+  const [showActionHistory, setShowActionHistory] = useState(false)
 
   useEffect(() => {
     const fetchConversationDetails = async () => {
@@ -31,16 +81,20 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           setFullConversation(detailedConversation)
           // Get events from the detailed conversation
           setEvents(detailedConversation.events || detailedConversation.recent_events || [])
+          // Get recent actions for action history
+          setRecentActions(detailedConversation.recent_actions || [])
         } else {
           // Fallback to conversation from props
           setEvents(conversation.events || [])
           setFullConversation(conversation)
+          setRecentActions([])
         }
       } catch (err) {
         console.error('Failed to load conversation details:', err)
         // Fallback to conversation from props
         setEvents(conversation.events || [])
         setFullConversation(conversation)
+        setRecentActions([])
       } finally {
         setFetchingDetails(false)
       }
@@ -58,6 +112,85 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
 
   // Use fullConversation if available, fallback to conversation from props
   const displayConversation = fullConversation || conversation
+  const currentStatus = displayConversation?.status?.toUpperCase() || 'UNKNOWN'
+
+  // Helper function to check if action is available based on conversation state
+  const isActionAvailable = (actionType) => {
+    switch (actionType) {
+      case 'resume':
+        return ['STOPPED', 'PAUSED'].includes(currentStatus)
+      case 'stop':
+      case 'emergency_stop':
+        return ['ACTIVE', 'PAUSED'].includes(currentStatus)
+      case 'complete':
+        return ['ACTIVE'].includes(currentStatus)
+      case 'cancel':
+        return ['ACTIVE', 'PAUSED'].includes(currentStatus)
+      case 'escalate':
+      case 'manual_intervention':
+        return !['COMPLETED', 'CANCELLED'].includes(currentStatus)
+      default:
+        return true
+    }
+  }
+
+  // Helper function to get action severity
+  const getActionSeverity = (actionType) => {
+    for (const [severity, actions] of Object.entries(ACTION_SEVERITY)) {
+      if (actions.includes(actionType)) {
+        return severity
+      }
+    }
+    return 'medium'
+  }
+
+  // Helper function to show prompt with templates
+  const promptWithTemplates = (actionType, defaultMessage) => {
+    const templates = ACTION_TEMPLATES[actionType] || []
+    if (templates.length === 0) {
+      return window.prompt(defaultMessage, '')
+    }
+
+    // Create a custom prompt with template selection
+    const templateChoice = window.prompt(
+      `${defaultMessage}\n\nTemplate disponibili:\n${templates.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n\nInserisci il numero del template (1-${templates.length}) o scrivi un motivo personalizzato:`,
+      ''
+    )
+
+    if (templateChoice === null) return null
+
+    // Check if user selected a template number
+    const templateNum = parseInt(templateChoice)
+    if (!isNaN(templateNum) && templateNum >= 1 && templateNum <= templates.length) {
+      return templates[templateNum - 1]
+    }
+
+    // Otherwise return the custom text
+    return templateChoice
+  }
+
+  // Helper function for severity-based confirmation
+  const confirmWithSeverity = (actionType, message, additionalInfo = '') => {
+    const severity = getActionSeverity(actionType)
+    
+    if (severity === 'low') {
+      // Low severity: simple confirmation
+      return window.confirm(message + (additionalInfo ? `\n\n${additionalInfo}` : ''))
+    } else if (severity === 'medium') {
+      // Medium severity: standard confirmation
+      return window.confirm(`⚠️ ${message}${additionalInfo ? `\n\n${additionalInfo}` : ''}\n\nProcedere?`)
+    } else if (severity === 'high') {
+      // High severity: strong warning
+      return window.confirm(`⚠️ ATTENZIONE: ${message}${additionalInfo ? `\n\n${additionalInfo}` : ''}\n\nQuesta è un'azione importante. Sei sicuro di voler procedere?`)
+    } else if (severity === 'critical') {
+      // Critical severity: double confirmation
+      const firstConfirm = window.confirm(`🚨 AZIONE CRITICA: ${message}${additionalInfo ? `\n\n${additionalInfo}` : ''}\n\nQuesta è un'azione critica che richiede conferma.`)
+      if (!firstConfirm) return false
+      return window.confirm(`🚨 CONFERMA FINALE\n\nSei assolutamente sicuro di voler procedere con questa azione critica?`)
+    }
+    
+    return window.confirm(message)
+  }
 
   const formatDateTime = (dateString) => {
     // Handle null, undefined, or invalid date strings
@@ -225,10 +358,15 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const handleStopAndReport = async () => {
-    // Confirm before stopping
-    const confirmed = window.confirm(
-      'Sei sicuro di voler fermare e segnalare questa conversazione?\n\n' +
-      'Questa azione fermerà la conversazione e la segnalerà come interrotta dall\'amministratore.'
+    if (!isActionAvailable('stop')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const confirmed = confirmWithSeverity(
+      'stop_conversation',
+      'Ferma e Segnala',
+      'Questa azione fermerà la conversazione normalmente.\nLa conversazione verrà segnalata come interrotta dall\'amministratore.\n\nPer situazioni di emergenza critica, usa invece "Fermata Emergenza".'
     )
     
     if (!confirmed) {
@@ -289,9 +427,14 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const handleCompleteConversation = async () => {
-    // Confirm before completing
-    const confirmed = window.confirm(
-      'Sei sicuro di voler completare questa conversazione?\n\n' +
+    if (!isActionAvailable('complete')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const confirmed = confirmWithSeverity(
+      'complete_conversation',
+      'Completa conversazione',
       'Questa azione segnerà la conversazione come completata.'
     )
     
@@ -342,11 +485,15 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const handleCancelConversation = async () => {
-    // Confirm before cancelling
-    const confirmed = window.confirm(
-      'Sei sicuro di voler annullare questa conversazione?\n\n' +
-      'Questa azione segnerà la conversazione come annullata. ' +
-      'Questa azione è diversa da "Ferma e segnala" che indica un intervento durante la sessione.'
+    if (!isActionAvailable('cancel')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const confirmed = confirmWithSeverity(
+      'cancel_conversation',
+      'Annulla conversazione',
+      'Questa azione segnerà la conversazione come annullata.\nQuesta azione è diversa da "Ferma e segnala" che indica un intervento durante la sessione.'
     )
     
     if (!confirmed) {
@@ -390,6 +537,283 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         errorMessage += `\n${error.message}`
       }
       alert(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEscalate = async () => {
+    if (!isActionAvailable('escalate')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const reason = promptWithTemplates('escalate', 'Inserisci il motivo dell\'escalation al supervisore:')
+    if (reason === null || reason === '') return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/escalate`, {
+        reason: reason || 'Escalated by operator',
+        message: `Conversation escalated: ${reason || 'No reason provided'}`
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione escalata con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation, status: 'ESCALATED' })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nell\'escalation'}`)
+      }
+    } catch (error) {
+      console.error('Failed to escalate conversation:', error)
+      alert(`Errore nell'escalation: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAcknowledge = async () => {
+    const reason = window.prompt('Inserisci il motivo del riconoscimento (opzionale):', '')
+    if (reason === null) return // User cancelled (but allow empty string)
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/acknowledge`, {
+        reason: reason || 'Acknowledged by operator',
+        message: `Conversation acknowledged${reason ? `: ${reason}` : ''}`
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione riconosciuta con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated(conversation)
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nel riconoscimento'}`)
+      }
+    } catch (error) {
+      console.error('Failed to acknowledge conversation:', error)
+      alert(`Errore nel riconoscimento: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResolve = async () => {
+    const reason = promptWithTemplates('resolve', 'Inserisci le note di risoluzione:')
+    if (reason === null || reason === '') return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/resolve`, {
+        reason: reason || 'Resolved by operator',
+        message: `Conversation resolved: ${reason || 'No notes provided'}`,
+        resolution_notes: reason || 'Resolved by operator'
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione risolta con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation, requires_attention: false })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nella risoluzione'}`)
+      }
+    } catch (error) {
+      console.error('Failed to resolve conversation:', error)
+      alert(`Errore nella risoluzione: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOverrideGuardrail = async () => {
+    const reason = promptWithTemplates('override_guardrail', 'Inserisci il motivo per sovrascrivere la decisione del guardrail:')
+    if (reason === null || reason === '') return
+    
+    const confirmed = confirmWithSeverity(
+      'override_guardrail',
+      'Sovrascrivi Guardrail',
+      'Questa azione sovrascriverà una decisione specifica del guardrail.\nUtile quando un guardrail ha generato un falso positivo.\n\nDifferenza da "Override Sistema":\n• Sovrascrivi Guardrail: Per decisioni specifiche del guardrail\n• Override Sistema: Per bypass a livello di sistema completo'
+    )
+    
+    if (!confirmed) return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/override-guardrail`, {
+        reason: reason || 'Guardrail override by operator',
+        message: `Guardrail decision overridden: ${reason || 'No reason provided'}`
+      })
+      
+      if (response.data.success) {
+        alert('Guardrail sovrascritto con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nella sovrascrittura del guardrail'}`)
+      }
+    } catch (error) {
+      console.error('Failed to override guardrail:', error)
+      alert(`Errore nella sovrascrittura: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleManualIntervention = async () => {
+    if (!isActionAvailable('manual_intervention')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const reason = promptWithTemplates('manual_intervention', 'Inserisci il motivo per richiedere l\'intervento manuale urgente:')
+    if (reason === null || reason === '') return
+    
+    const confirmed = confirmWithSeverity(
+      'manual_intervention',
+      'Richiesta Intervento Manuale',
+      'Questa azione richiede un intervento manuale urgente.\nAumenterà il livello di rischio e imposterà "richiede attenzione".\n\nDifferenza da "Escala":\n• Intervento Manuale: Richiesta urgente per revisione umana (priorità URGENT)\n• Escala: Escalation formale al supervisore (cambia status a ESCALATED)'
+    )
+    
+    if (!confirmed) return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/manual-intervention`, {
+        reason: reason || 'Manual intervention required',
+        message: `Manual intervention requested: ${reason || 'No reason provided'}`
+      })
+      
+      if (response.data.success) {
+        alert('Intervento manuale richiesto con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation, requires_attention: true })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nella richiesta di intervento manuale'}`)
+      }
+    } catch (error) {
+      console.error('Failed to request manual intervention:', error)
+      alert(`Errore nella richiesta: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSystemOverride = async () => {
+    const reason = promptWithTemplates('system_override', 'Inserisci il motivo per l\'override di sistema:')
+    if (reason === null || reason === '') return
+    
+    const confirmed = confirmWithSeverity(
+      'system_override',
+      'Override di Sistema',
+      'Questa azione attiverà un override a livello di sistema completo.\nRidurrà il livello di rischio a LOW e bypasserà i controlli del sistema.\n\nDifferenza da "Sovrascrivi Guardrail":\n• Override Sistema: Bypass completo del sistema (riduce rischio a LOW)\n• Sovrascrivi Guardrail: Solo per decisioni specifiche del guardrail'
+    )
+    
+    if (!confirmed) return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/system-override`, {
+        reason: reason || 'System-level override',
+        message: `System override activated: ${reason || 'No reason provided'}`
+      })
+      
+      if (response.data.success) {
+        alert('Override di sistema attivato con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nell\'attivazione dell\'override di sistema'}`)
+      }
+    } catch (error) {
+      console.error('Failed to activate system override:', error)
+      alert(`Errore nell'attivazione: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEmergencyStop = async () => {
+    if (!isActionAvailable('emergency_stop')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const reason = promptWithTemplates('emergency_stop', 'Inserisci il motivo per la fermata di emergenza:')
+    if (reason === null || reason === '') return
+    
+    const confirmed = confirmWithSeverity(
+      'emergency_stop',
+      'FERMATA DI EMERGENZA',
+      'Questa azione fermerà immediatamente la conversazione e imposterà il livello di rischio come CRITICO.\n\nDifferenza da "Ferma e segnala":\n• Fermata Emergenza: Situazioni critiche urgenti (rischio CRITICO)\n• Ferma e segnala: Interruzione normale (rischio invariato)'
+    )
+    
+    if (!confirmed) return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/emergency-stop`, {
+        reason: reason || 'Emergency stop activated',
+        message: `Emergency stop activated: ${reason || 'No reason provided'}`
+      })
+      
+      if (response.data.success) {
+        alert('Fermata di emergenza attivata con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation, status: 'STOPPED' })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nell\'attivazione della fermata di emergenza'}`)
+      }
+    } catch (error) {
+      console.error('Failed to activate emergency stop:', error)
+      alert(`Errore nell'attivazione: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResumeConversation = async () => {
+    if (!isActionAvailable('resume')) {
+      alert('Questa azione non è disponibile per conversazioni in stato ' + currentStatus)
+      return
+    }
+
+    const reason = window.prompt('Inserisci il motivo per riprendere la conversazione:', '')
+    if (reason === null || reason === '') return
+    
+    try {
+      setLoading(true)
+      const response = await axios.post(`/api/conversations/${conversation.id}/resume`, {
+        reason: reason || 'Conversation resumed by operator',
+        message: `Conversation resumed: ${reason || 'No reason provided'}`
+      })
+      
+      if (response.data.success) {
+        alert('Conversazione ripresa con successo')
+        if (onConversationUpdated) {
+          onConversationUpdated({ ...conversation, status: 'ACTIVE' })
+        }
+        onClose()
+      } else {
+        alert(`Errore: ${response.data.error || 'Errore nella ripresa della conversazione'}`)
+      }
+    } catch (error) {
+      console.error('Failed to resume conversation:', error)
+      alert(`Errore nella ripresa: ${error.response?.data?.error || error.message}`)
     } finally {
       setLoading(false)
     }
@@ -650,12 +1074,54 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action History Toggle */}
+        {recentActions.length > 0 && (
+          <div className="action-history-toggle" style={{ padding: '0 2rem 1rem 2rem' }}>
+            <button
+              onClick={() => setShowActionHistory(!showActionHistory)}
+              className="btn-history-toggle"
+            >
+              {showActionHistory ? '▼' : '▶'} Cronologia Azioni ({recentActions.length})
+            </button>
+          </div>
+        )}
+
+        {/* Action History Display */}
+        {showActionHistory && recentActions.length > 0 && (
+          <div className="action-history" style={{ padding: '0 2rem 1.5rem 2rem', marginBottom: '1rem', borderBottom: '1px solid #f1f3f4' }}>
+            <h4>Azioni Recenti</h4>
+            <div className="action-history-list">
+              {recentActions.slice(0, 10).map((action, idx) => {
+                const actionTime = formatDateTime(action.timestamp)
+                return (
+                  <div key={action.id || idx} className="action-history-item">
+                    <div className="action-history-time">
+                      {actionTime.date} {actionTime.time}
+                    </div>
+                    <div className="action-history-content">
+                      <strong>{action.type || 'Azione'}</strong> - {action.description || 'Nessuna descrizione'}
+                      {action.operator && <span className="action-history-operator"> (Operatore: {action.operator})</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons - Grouped by Category */}
+        <div className="action-buttons-container">
+          {/* Lifecycle Actions */}
+          <div className="action-button-group">
+            <div className="action-group-header">
+              <span className="action-group-title">Ciclo di Vita</span>
+            </div>
         <div className="action-buttons">
           <button 
             className="btn-stop-report"
             onClick={handleStopAndReport}
-            disabled={loading}
+                disabled={loading || !isActionAvailable('stop')}
+                title="Ferma la conversazione normalmente (per interruzioni standard)"
           >
             {loading ? (
               <>
@@ -663,14 +1129,14 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 Elaborazione...
               </>
             ) : (
-              'Ferma e segnala'
+              '🛑 Ferma e Segnala'
             )}
           </button>
           
           <button 
             className="btn-complete"
             onClick={handleCompleteConversation}
-            disabled={loading}
+                disabled={loading || !isActionAvailable('complete')}
           >
             {loading ? (
               <>
@@ -686,17 +1152,110 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           </button>
           
           <button 
-            className="btn-unreliable-alarm"
-            onClick={handleUnreliableAlarm}
-            disabled={loading}
+                className="btn-cancel"
+                onClick={handleCancelConversation}
+                disabled={loading || !isActionAvailable('cancel')}
           >
-            <span className="btn-icon">👤</span>
-            Allarme non attendibile
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Elaborazione...
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">❌</span>
+                    Annulla conversazione
+                  </>
+                )}
+          </button>
+          
+              <button 
+                className="btn-resume"
+                onClick={handleResumeConversation}
+                disabled={loading || !isActionAvailable('resume')}
+                title="Riprendi una conversazione pausata"
+              >
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Elaborazione...
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">▶️</span>
+                    Riprendi Conversazione
+                  </>
+                )}
+              </button>
+              
+              <button 
+                className="btn-emergency-stop"
+                onClick={handleEmergencyStop}
+                disabled={loading || !isActionAvailable('emergency_stop')}
+                title="Fermata di emergenza immediata"
+              >
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Elaborazione...
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">🚨</span>
+                    Fermata Emergenza
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Escalation & Attention Actions */}
+          <div className="action-button-group">
+            <div className="action-group-header">
+              <span className="action-group-title">Escalation & Attenzione</span>
+            </div>
+            <div className="action-buttons">
+          <button 
+            className="btn-escalate"
+            onClick={handleEscalate}
+                disabled={loading || !isActionAvailable('escalate')}
+                title="Escala formalmente al supervisore (cambia status a ESCALATED)"
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                Elaborazione...
+              </>
+            ) : (
+              <>
+                <span className="btn-icon">⬆️</span>
+                    Escala al Supervisore
+                  </>
+                )}
+              </button>
+              
+              <button 
+                className="btn-manual-intervention"
+                onClick={handleManualIntervention}
+                disabled={loading || !isActionAvailable('manual_intervention')}
+                title="Richiedi intervento manuale urgente (priorità URGENT, senza cambiare status)"
+              >
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Elaborazione...
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">👋</span>
+                    Intervento Manuale Urgente
+              </>
+            )}
           </button>
           
           <button 
-            className="btn-cancel"
-            onClick={handleCancelConversation}
+            className="btn-acknowledge"
+            onClick={handleAcknowledge}
             disabled={loading}
           >
             {loading ? (
@@ -706,11 +1265,86 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
               </>
             ) : (
               <>
-                <span className="btn-icon">❌</span>
-                Annulla conversazione
+                <span className="btn-icon">✓</span>
+                Riconosci
               </>
             )}
           </button>
+          
+          <button 
+            className="btn-resolve"
+            onClick={handleResolve}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                Elaborazione...
+              </>
+            ) : (
+              <>
+                <span className="btn-icon">✅</span>
+                Risolvi
+              </>
+            )}
+          </button>
+            </div>
+          </div>
+
+          {/* System Control Actions */}
+          <div className="action-button-group">
+            <div className="action-group-header">
+              <span className="action-group-title">Controllo Sistema</span>
+            </div>
+            <div className="action-buttons">
+          <button 
+                className="btn-override-guardrail"
+                onClick={handleOverrideGuardrail}
+            disabled={loading}
+                title="Sovrascrivi una decisione specifica del guardrail (per falsi positivi)"
+          >
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                Elaborazione...
+              </>
+            ) : (
+              <>
+                    <span className="btn-icon">🔄</span>
+                    Sovrascrivi Guardrail
+              </>
+            )}
+          </button>
+              
+              <button 
+                className="btn-system-override"
+                onClick={handleSystemOverride}
+                disabled={loading}
+                title="Bypass completo a livello di sistema (riduce rischio a LOW)"
+              >
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Elaborazione...
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">⚙️</span>
+                    Override Sistema Completo
+                  </>
+                )}
+              </button>
+              
+              <button 
+                className="btn-unreliable-alarm"
+                onClick={handleUnreliableAlarm}
+                disabled={loading}
+              >
+                <span className="btn-icon">👤</span>
+                Allarme non attendibile
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Conversation Report */}

@@ -95,18 +95,6 @@ function UserProfile({ isDropdownOpen, onClose }) {
         </div>
 
         <div className="user-profile-actions">
-          <button className="profile-action-btn settings">
-            <span className="action-icon">⚙️</span>
-            Settings
-          </button>
-          
-          <button className="profile-action-btn security">
-            <span className="action-icon">🔐</span>
-            Security
-          </button>
-          
-          <hr className="action-divider" />
-          
           <button 
             className="profile-action-btn logout"
             onClick={handleLogout}

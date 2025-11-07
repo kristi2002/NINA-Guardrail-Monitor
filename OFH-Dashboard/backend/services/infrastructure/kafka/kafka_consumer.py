@@ -13,7 +13,7 @@ import time
 import jsonschema  # type: ignore
 from datetime import datetime
 from kafka import KafkaConsumer, KafkaProducer
-from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError
+from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable
 from services.database_service import EnhancedDatabaseService
 from collections import defaultdict
 from services.error_alerting_service import ErrorAlertingService
@@ -290,16 +290,15 @@ class NINAKafkaConsumerV2:
                 )
                 return True
 
-            except (KafkaError, KafkaTimeoutError, KafkaConnectionError) as e:
+            except (KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable) as e:
                 last_error = e
-                self.logger.error(
-                    f"Kafka connection error (attempt {attempt + 1}/{retry_count}): {e}",
-                    exc_info=True,
+                self.logger.warning(
+                    f"⚠️ Kafka connection error (attempt {attempt + 1}/{retry_count}): {e}"
                 )
                 if attempt < retry_count - 1:
                     self.logger.info(f"Will retry in {retry_delay} seconds...")
                 else:
-                    self.logger.error("All connection attempts failed")
+                    self.logger.warning("⚠️ All connection attempts failed - consumer will not start")
 
             except (
                 ConnectionRefusedError,
@@ -329,12 +328,22 @@ class NINAKafkaConsumerV2:
                 else:
                     self.logger.error("All connection attempts failed")
 
-        # All retries failed
-        error_msg = f"Failed to connect Kafka consumer after {retry_count} attempts: {last_error}"
-        self.logger.error(error_msg, exc_info=True)
-        self.alerting_service.alert_kafka_connection_failure(
-            str(last_error), "Consumer"
+        # All retries failed - graceful degradation
+        error_msg = f"⚠️ Failed to connect Kafka consumer after {retry_count} attempts: {last_error}"
+        self.logger.warning(
+            f"{error_msg}. Service will continue without Kafka consumer. "
+            f"Consumer will retry when Kafka becomes available."
         )
+        # Only alert if alerting_service is available
+        if hasattr(self, "alerting_service") and self.alerting_service:
+            try:
+                self.alerting_service.alert_kafka_connection_failure(
+                    str(last_error), "Consumer"
+                )
+            except Exception as alert_error:
+                self.logger.warning(f"Failed to send alert: {alert_error}")
+        # Return False but don't raise exception - allow service to continue
+        self.consumer = None
         return False
 
     def _send_to_dlq(self, original_topic, message, key, error, retry_count):
@@ -882,15 +891,19 @@ class NINAKafkaConsumerV2:
             )
 
             if not self.thread.is_alive():
-                self.logger.error(
-                    "❌ Consumer thread failed to start - thread is not alive"
+                self.logger.warning(
+                    "⚠️ Consumer thread failed to start - thread is not alive"
                 )
                 return False
 
             return True  # Indicate success
-        # If connect() failed
-        self.logger.error("❌ Failed to start consumer due to connection error")
-        return False  # Indicate failure
+        # If connect() failed - graceful degradation
+        self.logger.warning(
+            "⚠️ Kafka consumer not started due to connection error. "
+            "Service will continue without real-time Kafka consumption. "
+            "Consumer will retry when Kafka becomes available."
+        )
+        return False  # Indicate failure but don't raise exception
 
     def start_consumer(self):
         """Public method to start the consumer - used by integration service"""

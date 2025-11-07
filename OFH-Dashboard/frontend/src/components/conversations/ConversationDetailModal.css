@@ -189,29 +189,146 @@
   line-height: 1.5;
 }
 
-/* Action Buttons */
-.action-buttons {
-  display: flex;
-  gap: 1rem;
+/* Action Buttons Container */
+.action-buttons-container {
   padding: 0 2rem 1.5rem 2rem;
 }
 
+/* Action Button Groups */
+.action-button-group {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.action-button-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.action-group-header {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.action-group-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Action History */
+.btn-history-toggle {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1976d2;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.btn-history-toggle:hover {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.action-history {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.action-history h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.action-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.action-history-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #1976d2;
+  font-size: 0.85rem;
+}
+
+.action-history-time {
+  min-width: 150px;
+  color: #666;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.action-history-content {
+  flex: 1;
+  color: #333;
+}
+
+.action-history-content strong {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.action-history-operator {
+  color: #999;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* Base button styles for all action buttons */
 .btn-stop-report,
 .btn-complete,
 .btn-unreliable-alarm,
-.btn-cancel {
-  padding: 0.75rem 1.5rem;
+.btn-cancel,
+.btn-escalate,
+.btn-acknowledge,
+.btn-resolve,
+.btn-override-guardrail,
+.btn-manual-intervention,
+.btn-system-override,
+.btn-emergency-stop,
+.btn-resume {
+  padding: 0.75rem 1.25rem;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: fit-content;
 }
 
 .btn-stop-report {
@@ -258,8 +375,119 @@
   box-shadow: 0 6px 20px rgba(97, 97, 97, 0.4);
 }
 
+/* Escalate, Acknowledge, Resolve buttons */
+.btn-escalate {
+  background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.btn-escalate:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+}
+
+.btn-acknowledge {
+  background: linear-gradient(135deg, #2196f3 0%, #64b5f6 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.btn-acknowledge:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+}
+
+.btn-resolve {
+  background: linear-gradient(135deg, #00bcd4 0%, #4dd0e1 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+}
+
+.btn-resolve:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
+}
+
+/* New advanced action buttons */
+.btn-override-guardrail {
+  background: linear-gradient(135deg, #9c27b0 0%, #ba68c8 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+}
+
+.btn-override-guardrail:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
+}
+
+.btn-manual-intervention {
+  background: linear-gradient(135deg, #ff5722 0%, #ff8a65 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+}
+
+.btn-manual-intervention:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 87, 34, 0.4);
+}
+
+.btn-system-override {
+  background: linear-gradient(135deg, #607d8b 0%, #90a4ae 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(96, 125, 139, 0.3);
+}
+
+.btn-system-override:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(96, 125, 139, 0.4);
+}
+
+.btn-emergency-stop {
+  background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.4);
+  font-weight: 700;
+}
+
+.btn-emergency-stop:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(211, 47, 47, 0.5);
+  background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
+}
+
+.btn-resume {
+  background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(56, 142, 60, 0.3);
+}
+
+.btn-resume:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(56, 142, 60, 0.4);
+}
+
+/* Disabled state for all buttons */
+.btn-stop-report:disabled,
+.btn-complete:disabled,
+.btn-unreliable-alarm:disabled,
+.btn-cancel:disabled,
+.btn-escalate:disabled,
+.btn-acknowledge:disabled,
+.btn-resolve:disabled,
+.btn-override-guardrail:disabled,
+.btn-manual-intervention:disabled,
+.btn-system-override:disabled,
+.btn-emergency-stop:disabled,
+.btn-resume:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
 .btn-icon {
   font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .loading-spinner {
@@ -568,7 +796,30 @@
   line-height: 1.4;
 }
 
-/* Responsive Design */
+/* Responsive Design - Medium screens */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .action-buttons {
+    gap: 0.6rem;
+  }
+  
+  .btn-stop-report,
+  .btn-complete,
+  .btn-unreliable-alarm,
+  .btn-escalate,
+  .btn-acknowledge,
+  .btn-resolve,
+  .btn-override-guardrail,
+  .btn-manual-intervention,
+  .btn-system-override,
+  .btn-emergency-stop,
+  .btn-resume,
+  .btn-cancel {
+    padding: 0.65rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Responsive Design - Mobile */
 @media (max-width: 768px) {
   .modal-overlay {
     padding: 1rem;
@@ -604,12 +855,25 @@
   
   .action-buttons {
     flex-direction: column;
+    gap: 0.5rem;
   }
   
   .btn-stop-report,
   .btn-complete,
-  .btn-unreliable-alarm {
+  .btn-unreliable-alarm,
+  .btn-escalate,
+  .btn-acknowledge,
+  .btn-resolve,
+  .btn-override-guardrail,
+  .btn-manual-intervention,
+  .btn-system-override,
+  .btn-emergency-stop,
+  .btn-resume,
+  .btn-cancel {
+    width: 100%;
     justify-content: center;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
   }
   
   .status-indicators {

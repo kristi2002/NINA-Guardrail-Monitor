@@ -28,7 +28,8 @@ export function useAnalyticsData(activeTab, timeRange) {
       'users': 'admin-performance',
       'alerts': 'alert-trends',
       'response': 'response-times',
-      'escalations': 'escalations'
+      'escalations': 'escalations',
+      'guardrail-performance': 'guardrail-performance'
     }
     
     const endpointName = endpointMap[activeTab] || 'overview'

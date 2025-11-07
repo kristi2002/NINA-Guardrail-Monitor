@@ -100,42 +100,65 @@ def get_alerts_analytics():
 @analytics_bp.route('/export', methods=['POST'])
 @token_required
 def export_analytics():
-    """Export analytics data in various formats"""
+    """Export analytics data in various formats - supports tab-specific exports"""
     try:
         current_user = get_current_user()
         data = request.get_json() or {}
         export_format = data.get('format', 'json')
         time_range = data.get('timeRange', '7d')
+        active_tab = data.get('activeTab', 'overview')
         
-        logger.info(f"Analytics export requested by {current_user} in format: {export_format}")
+        logger.info(f"Analytics export requested by {current_user} for tab: {active_tab}, format: {export_format}, range: {time_range}")
         
         # Use the service with a database session to get real data
         with get_session_context() as session:
             service = AnalyticsService(session)
             
-            # Get dashboard overview data for export
-            overview_response = service.get_dashboard_overview(time_range)
+            # Map tab IDs to service methods
+            tab_data = {}
             
-            if not overview_response.get('success'):
-                return jsonify(overview_response), 500
+            if active_tab == 'overview':
+                overview_response = service.get_dashboard_overview(time_range)
+                if overview_response.get('success'):
+                    tab_data = overview_response.get('data', {})
+            elif active_tab == 'notifications':
+                notifications_response = service.get_notification_analytics(time_range)
+                if notifications_response.get('success'):
+                    tab_data = notifications_response.get('data', {})
+            elif active_tab == 'users' or active_tab == 'admin-performance':
+                users_response = service.get_user_analytics(time_range, admin_only=True)
+                if users_response.get('success'):
+                    tab_data = users_response.get('data', {})
+            elif active_tab == 'alerts' or active_tab == 'alert-trends':
+                alerts_response = service.get_alert_trends_analytics(time_range)
+                if alerts_response.get('success'):
+                    tab_data = alerts_response.get('data', {})
+            elif active_tab == 'response' or active_tab == 'response-times':
+                response_response = service.get_response_times_analytics(time_range)
+                if response_response.get('success'):
+                    tab_data = response_response.get('data', {})
+            elif active_tab == 'escalations':
+                escalations_response = service.get_escalation_analytics(time_range)
+                if escalations_response.get('success'):
+                    tab_data = escalations_response.get('data', {})
+            elif active_tab == 'guardrail-performance':
+                guardrail_response = service.get_guardrail_performance_analytics(time_range)
+                if guardrail_response.get('success'):
+                    tab_data = guardrail_response.get('data', {})
+            else:
+                # Default to overview
+                overview_response = service.get_dashboard_overview(time_range)
+                if overview_response.get('success'):
+                    tab_data = overview_response.get('data', {})
             
-            overview_data = overview_response.get('data', {})
-            
-            # Build export data with real metrics
+            # Build comprehensive export data
             export_data = {
                 'exported_by': current_user,
                 'exported_at': datetime.now().isoformat(),
                 'format': export_format,
                 'time_range': time_range,
-                'data': {
-                    'summary_metrics': {
-                        'total_conversations': overview_data.get('conversations', {}).get('total', 0),
-                        'total_alerts': overview_data.get('alerts', {}).get('total', 0),
-                        'critical_alerts': overview_data.get('alerts', {}).get('critical', 0),
-                        'active_conversations': overview_data.get('conversations', {}).get('active', 0),
-                        'total_users': overview_data.get('users', {}).get('total', 0)
-                    }
-                }
+                'tab': active_tab,
+                'data': tab_data
             }
         
         if export_format == 'csv':
@@ -162,7 +185,7 @@ def export_analytics():
             })
         
     except Exception as e:
-        logger.error(f"Error exporting analytics: {e}")
+        logger.error(f"Error exporting analytics: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': 'Failed to export analytics',
@@ -298,6 +321,45 @@ def get_escalations():
     
     except Exception as e:
         logger.error(f"Critical error in escalations route: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Critical internal error',
+            'message': str(e)
+        }), 500
+
+@analytics_bp.route('/guardrail-performance', methods=['GET'])
+@token_required
+def get_guardrail_performance():
+    """Get guardrail performance analytics from Guardrail Strategy service (with caching)"""
+    try:
+        current_user = get_current_user()
+        
+        logger.info(f"Guardrail performance analytics requested by {current_user}")
+        
+        # Try to get from cache first (cache for 5 minutes since guardrail data changes less frequently)
+        cache_key = "analytics:guardrail-performance"
+        cached_data = get_cache(cache_key)
+        
+        if cached_data:
+            logger.info("Cache hit for guardrail performance analytics")
+            status_code = 200 if cached_data.get('success') else 500
+            return jsonify(cached_data), status_code
+        
+        # Cache miss - fetch from Guardrail Strategy service
+        logger.info("Cache miss - fetching guardrail performance from Guardrail Strategy service")
+        with get_session_context() as session:
+            service = AnalyticsService(session)
+            response_data = service.get_guardrail_performance_analytics()
+        
+        # Cache the result for 5 minutes (300 seconds) - longer cache for better performance
+        if response_data.get('success'):
+            set_cache(cache_key, response_data, ttl=300)
+        
+        status_code = 200 if response_data.get('success') else 500
+        return jsonify(response_data), status_code
+    
+    except Exception as e:
+        logger.error(f"Critical error in guardrail-performance route: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': 'Critical internal error',

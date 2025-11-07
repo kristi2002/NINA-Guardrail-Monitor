@@ -260,11 +260,21 @@ if __name__ == '__main__':
     # Start Kafka consumer if service is available
     if kafka_service:
         try:
-            kafka_service.start_consumer()
-            logger.info("✅ Kafka consumer started successfully")
+            # Start consumer with graceful degradation
+            success = kafka_service.start_consumer()
+            if success:
+                logger.info("✅ Kafka consumer started successfully")
+            else:
+                logger.warning(
+                    "⚠️ Kafka consumer not started (Kafka may be unavailable). "
+                    "Application will continue without Kafka consumer."
+                )
         except Exception as e:
-            logger.error(f"❌ Failed to start Kafka consumer: {e}")
-            logger.warning("Application will continue without Kafka consumer")
+            logger.warning(
+                f"⚠️ Failed to start Kafka consumer: {e}. "
+                "Application will continue without Kafka consumer.",
+                exc_info=True
+            )
     else:
         logger.warning("⚠️ Kafka service not available, skipping consumer startup")
     

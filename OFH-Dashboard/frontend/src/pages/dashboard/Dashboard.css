@@ -7,8 +7,17 @@
 .dashboard {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  padding: 1rem;
+  padding: 1.5rem;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Improved spacing between sections */
+.dashboard > * {
+  margin-bottom: 1.5rem;
+}
+
+.dashboard > *:last-child {
+  margin-bottom: 0;
 }
 
 /* Enhanced metrics grid for conversation monitoring */
@@ -18,6 +27,16 @@
   gap: 1.5rem;
   margin-bottom: 2rem;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Smooth transitions for metric cards */
+.dashboard .metrics-grid .metric-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard .metrics-grid .metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Ensure metric cards in dashboard have proper bright theme */
@@ -141,10 +160,76 @@
   to { transform: rotate(360deg); }
 }
 
+/* Loading states */
+.dashboard-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+}
+
+.dashboard-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(25, 118, 210, 0.1);
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Empty states */
+.dashboard-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.dashboard-empty-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-empty-description {
+  color: rgba(26, 32, 44, 0.6);
+  font-size: 0.95rem;
+}
+
+/* Smooth fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard > * {
+  animation: fadeIn 0.4s ease-out;
+}
+
 /* Responsive improvements */
 @media (max-width: 768px) {
   .dashboard {
-    padding: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .dashboard > * {
+    margin-bottom: 1rem;
   }
   
   .dashboard .metrics-grid {
@@ -158,6 +243,16 @@
   }
   
   .status-summary-item {
+    justify-content: center;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .header-action-btn {
+    width: 100%;
     justify-content: center;
   }
 }

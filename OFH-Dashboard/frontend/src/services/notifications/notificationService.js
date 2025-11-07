@@ -53,22 +53,31 @@ class NotificationService {
           resolve()
         })
 
-        this.socket.on('disconnect', () => {
-          console.log('🔔 Notification service disconnected')
+        // Handle disconnection gracefully
+        this.socket.on('disconnect', (reason) => {
           this.isConnected = false
+          // Only log unexpected disconnections
+          if (reason !== 'io server disconnect' && reason !== 'transport close') {
+            if (import.meta.env.DEV) {
+              console.log('🔔 Notification service disconnected:', reason)
+            }
+          }
         })
 
         this.socket.on('connect_error', (error) => {
-          // Only log errors in development, and make them less noisy
-          if (import.meta.env.DEV) {
-            console.warn('🔔 Socket.IO connection error (this is normal if backend is not running):', error.message || error)
+          // Connection errors are normal during development (server restarts, etc.)
+          // Only log unexpected errors, not connection resets
+          if (import.meta.env.DEV && error.message && !error.message.includes('xhr poll error')) {
+            // Suppress common connection reset errors
+            const isConnectionReset = error.message.includes('ECONNRESET') || 
+                                     error.message.includes('ECONNREFUSED') ||
+                                     error.message.includes('connection closed')
+            if (!isConnectionReset) {
+              console.warn('🔔 Socket.IO connection error:', error.message || error)
+            }
           }
           // Don't reject on initial connect - let it retry in background
           this.handleReconnect()
-          // Only reject if this was the initial connection attempt
-          if (this.reconnectAttempts === 0) {
-            // Don't reject - let it retry silently
-          }
         })
 
         // Listen for notifications from backend
@@ -172,8 +181,11 @@ class NotificationService {
 
   async requestNotificationHistory(limit = 50) {
     try {
-      // API doesn't have a specific endpoint for notification history yet
-      // Return empty array until it's implemented
+      const response = await axios.get(`/api/notifications/history?limit=${limit}`)
+      if (response.data.success) {
+        console.log(`🔔 Loaded ${response.data.notifications?.length || 0} notifications`)
+        return response.data.notifications || []
+      }
       return []
     } catch (error) {
       console.error('🔔 Failed to get notification history:', error)

@@ -96,10 +96,15 @@ const ConversationReportModal = ({ reportData, isOpen, onClose }) => {
             .title { font-size: 24px; font-weight: bold; color: #1976d2; margin-bottom: 10px; }
             .section { margin-bottom: 25px; page-break-inside: avoid; }
             .section-title { font-size: 18px; font-weight: bold; color: #1976d2; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
-            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
             .info-table td { padding: 12px; border: 1px solid #ddd; }
             .info-table td:first-child { background: #f8f9fa; font-weight: bold; color: #1976d2; width: 30%; }
-            .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; background: #ff9800; color: white; }
+            .info-table td:last-child { width: 70%; }
+            .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; background: #ff9800; color: white; width: fit-content; min-width: fit-content; max-width: fit-content; white-space: nowrap; }
+            .status-badge.cancelled { background: #ff9800; color: white; }
+            .status-badge.completed { background: #4caf50; color: white; }
+            .status-badge.active { background: #2196f3; color: white; }
+            .status-badge.unknown { background: #9e9e9e; color: white; }
             .risk-section { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
             .events-section { margin-top: 20px; }
             .event-item { border-left: 4px solid #1976d2; padding: 15px; margin-bottom: 15px; background: #f8f9fa; border-radius: 0 6px 6px 0; }

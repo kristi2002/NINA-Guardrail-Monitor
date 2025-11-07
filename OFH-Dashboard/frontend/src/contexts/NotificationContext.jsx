@@ -21,9 +21,19 @@ const notificationReducer = (state, action) => {
       return { ...state, connectionStatus: action.payload }
     
     case 'ADD_NOTIFICATION':
+      // Ensure the notification has required fields
+      const newNotification = {
+        ...action.payload,
+        id: action.payload.id || `notif_${Date.now()}_${Math.random()}`,
+        title: action.payload.title || action.payload.message || 'Notification',
+        message: action.payload.message || action.payload.title || 'New notification',
+        priority: action.payload.priority || action.payload.severity || 'info',
+        timestamp: action.payload.timestamp || new Date().toISOString(),
+        read: action.payload.read || false
+      }
       return {
         ...state,
-        notifications: [action.payload, ...state.notifications].slice(0, 100), // Keep last 100
+        notifications: [newNotification, ...state.notifications].slice(0, 100), // Keep last 100
         unreadCount: state.unreadCount + 1
       }
     

@@ -20,11 +20,42 @@ export default defineConfig({
         secure: false,  // For local development
         rewrite: (path) => path,  // Keep the /socket.io path
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.log('Socket.IO proxy error:', err);
+          // Handle proxy errors gracefully (connection resets are normal)
+          proxy.on('error', (err, req, res) => {
+            // ECONNRESET and ECONNREFUSED are common during development (server restarts, client disconnects)
+            if (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED') {
+              // Silently handle connection resets - these are normal
+              return;
+            }
+            // Only log unexpected errors
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Socket.IO proxy error:', err.message || err.code);
+            }
           });
-          proxy.on('proxyReqWs', (proxyReq, _req, _socket) => {
-            console.log('Socket.IO WebSocket upgrade request');
+          
+          // Handle WebSocket-specific errors
+          proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+            // Handle socket errors (connection resets during WebSocket upgrade)
+            socket.on('error', (err) => {
+              // ECONNRESET is normal when client disconnects or server restarts
+              if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
+                if (process.env.NODE_ENV === 'development') {
+                  console.warn('Socket.IO WebSocket socket error:', err.message || err.code);
+                }
+              }
+            });
+          });
+          
+          // Handle WebSocket upgrade errors
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Handle errors during HTTP upgrade to WebSocket
+            proxyReq.on('error', (err) => {
+              if (err.code !== 'ECONNRESET' && err.code !== 'ECONNREFUSED') {
+                if (process.env.NODE_ENV === 'development') {
+                  console.warn('Socket.IO proxy request error:', err.message || err.code);
+                }
+              }
+            });
           });
         }
       }

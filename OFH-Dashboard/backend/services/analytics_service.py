@@ -11,6 +11,7 @@ from .base_service import BaseService
 from repositories.conversation_repository import ConversationRepository
 from repositories.user_repository import UserRepository
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -822,3 +823,63 @@ class AnalyticsService(BaseService):
             recommendations.append("Low user activity - consider user engagement initiatives")
         
         return recommendations
+    
+    def get_guardrail_performance_analytics(self, time_range: str = '7d') -> Dict[str, Any]:
+        """Get guardrail performance analytics from Guardrail Strategy service"""
+        try:
+            import requests
+            guardrail_service_url = os.getenv('GUARDRAIL_SERVICE_URL', 'http://localhost:5001')
+            
+            try:
+                # Fetch performance data from Guardrail Strategy service (optimized timeout)
+                response = requests.get(
+                    f'{guardrail_service_url}/analytics/performance',
+                    timeout=5,  # Balanced timeout for reliability
+                    headers={'Connection': 'keep-alive'}  # Reuse connections for faster subsequent requests
+                )
+                
+                if response.status_code == 200:
+                    guardrail_data = response.json()
+                    if guardrail_data.get('success'):
+                        return self.format_response(
+                            success=True,
+                            data=guardrail_data.get('data', {}),
+                            message="Guardrail performance analytics retrieved successfully"
+                        )
+                    else:
+                        logger.warning(f"Guardrail service returned error: {guardrail_data.get('error')}")
+                elif response.status_code == 503:
+                    # Service not available (feedback learner not enabled)
+                    logger.info("Guardrail Strategy feedback learner not available")
+                    return self.format_response(
+                        success=True,
+                        data={
+                            'available': False,
+                            'message': 'Adaptive learning not enabled in Guardrail Strategy service'
+                        },
+                        message="Guardrail performance analytics not available"
+                    )
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Could not connect to Guardrail Strategy service: {e}")
+                return self.format_response(
+                    success=True,
+                    data={
+                        'available': False,
+                        'message': 'Guardrail Strategy service not reachable'
+                    },
+                    message="Guardrail performance analytics not available"
+                )
+            
+            # Fallback if service is not available
+            return self.format_response(
+                success=True,
+                data={
+                    'available': False,
+                    'message': 'Guardrail Strategy service not available'
+                },
+                message="Guardrail performance analytics not available"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error getting guardrail performance analytics: {e}", exc_info=True)
+            return self.handle_exception(e, 'get_guardrail_performance_analytics')

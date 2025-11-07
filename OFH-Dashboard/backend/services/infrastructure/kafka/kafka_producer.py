@@ -10,6 +10,7 @@ import time
 import random
 import uuid
 import logging
+from logging import Filter
 import os
 from datetime import datetime
 from kafka import KafkaProducer  # type: ignore
@@ -32,6 +33,34 @@ class NINAKafkaProducerV2:
         # Setup logging
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
+        
+        # Suppress ERROR logs from kafka library for optional guardrail_control topic
+        # This prevents noisy ERROR logs when the topic doesn't exist (which is normal)
+        kafka_loggers = [
+            logging.getLogger('kafka.cluster'),
+            logging.getLogger('kafka.producer.kafka'),
+        ]
+        # Track if we've warned about guardrail_control in kafka library logs
+        _kafka_guardrail_warned = {'warned': False}
+        
+        for kafka_logger in kafka_loggers:
+            # Add a filter to suppress InvalidTopicError for guardrail_control (only log once)
+            class InvalidTopicFilter(Filter):
+                def filter(self, record):
+                    # If it's an ERROR about guardrail_control topic, suppress after first warning
+                    if record.levelno in (logging.ERROR, logging.WARNING):
+                        msg = record.getMessage()
+                        if 'guardrail_control' in msg and ('InvalidTopic' in msg or 'not a valid topic name' in msg):
+                            if _kafka_guardrail_warned['warned']:
+                                # Suppress subsequent warnings
+                                return False
+                            else:
+                                # First time: downgrade ERROR to WARNING and mark as warned
+                                _kafka_guardrail_warned['warned'] = True
+                                record.levelno = logging.WARNING
+                                record.levelname = 'WARNING'
+                    return True
+            kafka_logger.addFilter(InvalidTopicFilter())
 
         self.bootstrap_servers = bootstrap_servers or get_kafka_bootstrap_servers()
         self.producer = None
@@ -39,8 +68,13 @@ class NINAKafkaProducerV2:
         self.retry_delay = retry_delay or config.get("RETRY_DELAY")
         self.async_mode = async_mode  # Enable asynchronous sending
         self.dlq_producer = None  # Dead letter queue producer
-        self.connect()
-
+        
+        # Track if we've already warned about missing guardrail_control topic
+        self._guardrail_control_warned = False
+        
+        # Initialize alerting service BEFORE connect() so it's available in error handlers
+        self.alerting_service = ErrorAlertingService()
+        
         # Define our static topics
         self.topics = {
             "guardrail_events": os.getenv("KAFKA_TOPIC_GUARDRAIL", "guardrail_events"),
@@ -48,9 +82,8 @@ class NINAKafkaProducerV2:
             "guardrail_control": os.getenv("KAFKA_TOPIC_CONTROL", "guardrail_control"),
             "dead_letter_queue": "dead_letter_queue",
         }
-
-        # Initialize alerting service
-        self.alerting_service = ErrorAlertingService()
+        
+        self.connect()
 
         # Statistics for monitoring
         self.stats = {
@@ -99,16 +132,37 @@ class NINAKafkaProducerV2:
     def _on_send_error(self, exception, topic, message, key):
         """Callback function for failed message delivery"""
         try:
+            error_str = str(exception)
+            is_invalid_topic = (
+                "InvalidTopic" in error_str 
+                or "InvalidTopicError" in error_str 
+                or f"'{topic}' is not a valid topic name" in error_str
+            )
+            
+            # Special handling for optional guardrail_control topic
+            if is_invalid_topic and topic == self.topics.get("guardrail_control"):
+                # This is normal - guardrail_control is optional and may not exist
+                # Only log once per session to reduce noise
+                if not self._guardrail_control_warned:
+                    self.logger.warning(
+                        f"Topic '{topic}' does not exist. Messages to this topic will be silently ignored. "
+                        f"This is normal if guardrail_control topic hasn't been created yet. "
+                        f"(This warning will only appear once per session)"
+                    )
+                    self._guardrail_control_warned = True
+                # Don't increment failure stats or send to DLQ for missing optional topic
+                return
+            
             self.stats["messages_failed"] += 1
             self.logger.error(f"❌ Failed to send message to {topic}: {exception}")
 
-            # Alert on failure
+            # Alert on failure (but not for missing optional topics)
             if hasattr(self, "alerting_service"):
                 self.alerting_service.alert_kafka_connection_failure(
                     str(exception), f"Producer-{topic}"
                 )
 
-            # Send to DLQ if enabled
+            # Send to DLQ if enabled (but not for missing optional topics)
             if config.get("DLQ_ENABLED", True):
                 self._send_to_dlq_async(topic, message, key, exception)
 
@@ -213,7 +267,12 @@ class NINAKafkaProducerV2:
             return True
         except KafkaError as e:
             self.logger.error(f"Failed to connect to Kafka: {e}", exc_info=True)
-            self.alerting_service.alert_kafka_connection_failure(str(e), "Producer")
+            # Only alert if alerting_service is initialized
+            if hasattr(self, "alerting_service") and self.alerting_service:
+                try:
+                    self.alerting_service.alert_kafka_connection_failure(str(e), "Producer")
+                except Exception as alert_error:
+                    self.logger.warning(f"Failed to send alert: {alert_error}")
             return False
 
     def _send_async(self, topic, value, key=None):
@@ -479,7 +538,14 @@ class NINAKafkaProducerV2:
             return False
 
         if custom_message:
+            # Use custom message if provided (should already have full metadata)
             action_event = custom_message
+            # Ensure schema_version is present
+            if "schema_version" not in action_event:
+                action_event["schema_version"] = "1.0"
+            # Ensure 'message' field exists (required by schema, replaces 'action_description')
+            if "message" not in action_event and "action_description" in action_event:
+                action_event["message"] = action_event.pop("action_description")
         else:
             # Genera un payload conforme allo schema se non fornito
             action_event = {
@@ -546,11 +612,13 @@ class NINAKafkaProducerV2:
             self.logger.info("Producer flushed - all pending messages sent")
 
     def send_false_alarm_feedback(self, conversation_id, original_event_id, feedback):
-        """Send false alarm feedback to the STATIC control topic"""
+        """Send false alarm feedback to the STATIC control topic (optional - may not exist)"""
         if not self.producer:
             self.logger.error("Producer not connected")
             return False
 
+        topic = self.topics["guardrail_control"]
+        
         feedback_event = {
             "schema_version": "1.0",
             "conversation_id": conversation_id,
@@ -561,10 +629,6 @@ class NINAKafkaProducerV2:
             "original_event_id": original_event_id,
         }
 
-        # --- FIX ---
-        topic = self.topics["guardrail_control"]
-        # --- END FIX ---
-
         try:
             success = self._send_async(topic, feedback_event, key=conversation_id)
             if success:
@@ -573,11 +637,24 @@ class NINAKafkaProducerV2:
             else:
                 return False
         except Exception as e:
-            self.logger.error(
-                f"Failed to send false alarm feedback: {e}", exc_info=True
-            )
-            self._handle_send_failure(topic, feedback_event, conversation_id, e)
-            return False
+            # Check if it's an InvalidTopicError - this is expected if topic doesn't exist
+            error_str = str(e)
+            if "InvalidTopic" in error_str or "InvalidTopicError" in error_str or "'guardrail_control' is not a valid topic name" in error_str:
+                # This is normal - guardrail_control is optional and may not exist
+                self.logger.warning(
+                    f"Topic '{topic}' does not exist. False alarm feedback not sent. "
+                    f"This is normal if guardrail_control topic hasn't been created yet. "
+                    f"Feedback logged: conversation_id={conversation_id}, feedback={feedback}"
+                )
+                # Don't send to DLQ for missing optional topic
+                return False
+            else:
+                # Other errors should be logged and sent to DLQ
+                self.logger.error(
+                    f"Failed to send false alarm feedback: {e}", exc_info=True
+                )
+                self._handle_send_failure(topic, feedback_event, conversation_id, e)
+                return False
 
     def simulate_conversation_flow(self, conversation_id=None, duration=60):
         """Simulate a complete conversation flow with guardrail events"""
