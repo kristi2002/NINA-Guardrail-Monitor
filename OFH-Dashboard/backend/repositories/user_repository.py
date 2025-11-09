@@ -7,7 +7,7 @@ Handles user-specific database operations
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, asc, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .base_repository import BaseRepository
 from models.user import User
 import logging
@@ -55,7 +55,7 @@ class UserRepository(BaseRepository):
         try:
             return self.db.query(User).filter(
                 User.locked_until.isnot(None),
-                User.locked_until > datetime.utcnow(),
+                User.locked_until > datetime.now(timezone.utc),
                 User.is_deleted.is_(False)
             ).order_by(desc(User.locked_until)).limit(limit).all()
         except Exception as e:
@@ -65,7 +65,7 @@ class UserRepository(BaseRepository):
     def get_recent_logins(self, hours: int = 24, limit: int = 100) -> List[User]:
         """Get users with recent logins"""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
             return self.db.query(User).filter(
                 User.last_login >= cutoff_time,
                 User.is_deleted.is_(False)
@@ -101,7 +101,7 @@ class UserRepository(BaseRepository):
             locked_users = self.db.query(func.count(User.id)).filter(
                 base_filter,
                 User.locked_until.isnot(None),
-                User.locked_until > datetime.utcnow()
+                User.locked_until > datetime.now(timezone.utc)
             ).scalar() or 0
             
             # Users by role (apply admin filter if needed)
@@ -130,7 +130,7 @@ class UserRepository(BaseRepository):
             department_stats = department_query.group_by(User.department).all()
             
             # Recent logins (last 24 hours) - use func.count() to avoid loading all columns
-            recent_login_filter = User.last_login >= datetime.utcnow() - timedelta(hours=24)
+            recent_login_filter = User.last_login >= datetime.now(timezone.utc) - timedelta(hours=24)
             recent_login_filter = recent_login_filter & base_filter
             
             recent_logins = self.db.query(func.count(User.id)).filter(recent_login_filter).scalar() or 0
@@ -157,7 +157,7 @@ class UserRepository(BaseRepository):
     def get_user_activity_metrics(self, hours: int = 24) -> Dict[str, Any]:
         """Get user activity metrics"""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
             
             # Recent logins - use func.count() to avoid loading all columns
             recent_logins = self.db.query(func.count(User.id)).filter(

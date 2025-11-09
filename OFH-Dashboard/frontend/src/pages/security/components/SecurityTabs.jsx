@@ -8,7 +8,8 @@ const tabs = [
   { id: 'threats', label: 'Threats', icon: '⚠️' },
   { id: 'access', label: 'Access Control', icon: '🔐' },
   { id: 'compliance', label: 'Compliance', icon: '📋' },
-  { id: 'incidents', label: 'Incidents', icon: '🚨' }
+  { id: 'incidents', label: 'Incidents', icon: '🚨' },
+  { id: 'alerting', label: 'Alerting', icon: '📡' }
 ]
 
 export default function SecurityTabs({ activeTab, onTabClick }) {

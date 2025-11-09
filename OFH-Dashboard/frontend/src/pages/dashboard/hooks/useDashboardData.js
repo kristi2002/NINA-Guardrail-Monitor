@@ -2,14 +2,13 @@
  * Dashboard Data Hook
  * Manages all data fetching and real-time subscriptions for Dashboard
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { notificationService } from '../../../services/notifications'
 
 export function useDashboardData() {
   const [metrics, setMetrics] = useState(null)
   const [error, setError] = useState(null)
-  const [alerts, setAlerts] = useState([])
   const [conversations, setConversations] = useState([])
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [realtimeActive, setRealtimeActive] = useState(false)
@@ -34,17 +33,6 @@ export function useDashboardData() {
     }
   }
 
-  const fetchAlerts = async (signal) => {
-    try {
-      const response = await axios.get('/api/alerts', { signal })
-      setAlerts(response.data.alerts || [])
-    } catch (err) {
-      if (err.name !== 'CanceledError' && !axios.isCancel(err)) {
-        console.error('Failed to load alerts:', err)
-      }
-    }
-  }
-
   const fetchConversations = async (signal) => {
     try {
       const response = await axios.get('/api/conversations', { signal })
@@ -64,7 +52,6 @@ export function useDashboardData() {
     let isMounted = true
 
     fetchMetrics(signal)
-    fetchAlerts(signal)
     fetchConversations(signal)
     
     // Connect to WebSocket (only if not already connected)
@@ -83,7 +70,7 @@ export function useDashboardData() {
     const unsubscribeNotification = notificationService.subscribe('notification', (data) => {
       if (isMounted) {
         console.log('🔔 Received notification:', data)
-        fetchAlerts()
+        fetchMetrics()
         fetchConversations()
       }
     })
@@ -92,7 +79,7 @@ export function useDashboardData() {
     const unsubscribeEscalation = notificationService.subscribe('alert_escalation', (data) => {
       if (isMounted) {
         console.log('🚨 Alert escalated:', data)
-        fetchAlerts()
+        fetchMetrics()
         fetchConversations()
       }
     })
@@ -106,12 +93,27 @@ export function useDashboardData() {
         setRealtimeActive(true)
       }
     })
+
+    const unsubscribeGuardrail = notificationService.subscribe('guardrail_event', (data) => {
+      if (isMounted) {
+        console.log('🛡️ Guardrail event push:', data)
+        fetchMetrics()
+        fetchConversations()
+      }
+    })
+
+    const unsubscribeOperator = notificationService.subscribe('operator_action', (data) => {
+      if (isMounted) {
+        console.log('🕹️ Operator action push:', data)
+        fetchMetrics()
+        fetchConversations()
+      }
+    })
     
     // Fallback: Refresh metrics every 30 seconds if no real-time updates
     const interval = setInterval(() => {
       if (isMounted && !notificationService.isConnected) {
         fetchMetrics()
-        fetchAlerts()
         fetchConversations()
       }
     }, 30000)
@@ -124,6 +126,8 @@ export function useDashboardData() {
       unsubscribeNotification()
       unsubscribeEscalation()
       unsubscribeStatus()
+      unsubscribeGuardrail()
+      unsubscribeOperator()
       // Note: We don't disconnect the notification service here because it's a singleton
       // that might be used by other components. It will be cleaned up when the app unmounts.
     }
@@ -132,13 +136,11 @@ export function useDashboardData() {
   return {
     metrics,
     error,
-    alerts,
     conversations,
     lastUpdated,
     realtimeActive,
     previousMetrics,
     fetchMetrics,
-    fetchAlerts,
     fetchConversations
   }
 }

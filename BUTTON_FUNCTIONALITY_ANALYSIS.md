@@ -274,9 +274,9 @@ All buttons call corresponding Flask endpoints in `OFH-Dashboard/backend/api/rou
 - `/api/conversations/<id>/situation` (PUT)
 
 ### Kafka Integration
-- Most actions send messages via Kafka to notify the AI agent
+- All operator actions publish to the `operator_actions` topic for the AI agent **and** mirror a control payload to `guardrail_control` for guardrail learning
 - Actions use different priorities: `normal`, `high`, `urgent`
-- Some actions also send feedback to `guardrail_control` topic for adaptive learning
+- False-alarm and resolution flows enrich `guardrail_control` with `feedback_metadata` so the Guardrail Strategy can adapt thresholds
 
 ### Database Persistence
 - All actions are recorded in the `operator_actions` table

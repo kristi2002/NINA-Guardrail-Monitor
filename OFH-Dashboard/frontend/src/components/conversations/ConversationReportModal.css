@@ -318,13 +318,13 @@
 }
 
 /* Events Summary */
-.summary-grid {
+.conversation-report-modal .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1.5rem;
 }
 
-.summary-item {
+.conversation-report-modal .summary-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -335,15 +335,15 @@
   border: 1px solid #e0e0e0;
 }
 
-.summary-item.warning {
+.conversation-report-modal .summary-item.warning {
   border-left: 4px solid #ffa726;
 }
 
-.summary-item.alert {
+.conversation-report-modal .summary-item.alert {
   border-left: 4px solid #f44336;
 }
 
-.summary-number {
+.conversation-report-modal .summary-number {
   font-size: 2rem;
   font-weight: 700;
   color: #1976d2;
@@ -351,7 +351,7 @@
   margin-bottom: 0.5rem;
 }
 
-.summary-label {
+.conversation-report-modal .summary-label {
   font-size: 0.85rem;
   color: #666;
   font-weight: 600;
@@ -360,18 +360,18 @@
   margin-bottom: 0.5rem;
 }
 
-.summary-value {
+.conversation-report-modal .summary-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: #1976d2;
   line-height: 1.2;
 }
 
-.summary-value.warning {
+.conversation-report-modal .summary-value.warning {
   color: #ffa726;
 }
 
-.summary-value.danger {
+.conversation-report-modal .summary-value.danger {
   color: #f44336;
 }
 
@@ -687,7 +687,7 @@
     gap: 1rem;
   }
   
-  .summary-grid {
+  .conversation-report-modal .summary-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
   }
@@ -796,7 +796,7 @@
   .conversation-details-grid,
   .analysis-grid,
   .metadata-grid,
-  .summary-grid {
+  .conversation-report-modal .summary-grid {
     display: block !important;
   }
   
@@ -811,7 +811,7 @@
   
   .risk-assessment,
   .analysis-item,
-  .summary-item {
+  .conversation-report-modal .summary-item {
     background: #f8f9fa !important;
     border: 1px solid #ddd !important;
     margin-bottom: 1rem !important;

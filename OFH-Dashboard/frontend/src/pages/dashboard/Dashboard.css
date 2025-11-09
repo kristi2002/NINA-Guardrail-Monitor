@@ -5,10 +5,21 @@
 
 /* Dashboard Page Container */
 .dashboard {
+  --primary-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-bg-hover: rgba(255, 255, 255, 0.95);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --text-primary: #1a202c;
+  --text-secondary: rgba(26, 32, 44, 0.8);
+  --text-muted: rgba(26, 32, 44, 0.6);
+
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: var(--primary-bg);
   padding: 1.5rem;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-primary);
 }
 
 /* Improved spacing between sections */
@@ -23,33 +34,13 @@
 /* Enhanced metrics grid for conversation monitoring */
 .dashboard .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 1288px;
+  min-height: 222.22px;
 }
 
-/* Smooth transitions for metric cards */
-.dashboard .metrics-grid .metric-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dashboard .metrics-grid .metric-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Ensure metric cards in dashboard have proper bright theme */
-.dashboard .metrics-grid .metric-card {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  color: #1a202c !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-}
-
-.dashboard .metrics-grid .metric-card * {
-  color: #1a202c !important;
-}
 
 /* Real-time indicator for conversations */
 .conversation-realtime-indicator {

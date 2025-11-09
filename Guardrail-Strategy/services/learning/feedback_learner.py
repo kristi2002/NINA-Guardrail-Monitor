@@ -6,9 +6,9 @@ Uses operator feedback to improve guardrail detection accuracy
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
-from collections import defaultdict
+from collections import defaultdict, Counter
 import os
 
 logger = logging.getLogger(__name__)
@@ -297,6 +297,18 @@ class FeedbackLearner:
         
         return problematic
     
+    def _parse_timestamp(self, timestamp_str: Optional[str]) -> Optional[datetime]:
+        """Parse ISO timestamp strings into timezone-aware datetime objects."""
+        if not timestamp_str:
+            return None
+        try:
+            ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                return ts.replace(tzinfo=timezone.utc)
+            return ts.astimezone(timezone.utc)
+        except Exception:
+            return None
+
     def get_statistics(self) -> Dict[str, Any]:
         """Get overall feedback statistics"""
         total_false_alarms = len(self.false_alarms)
@@ -314,6 +326,77 @@ class FeedbackLearner:
             'last_updated': datetime.now().isoformat()
         }
     
+    def get_recent_feedback(self, limit: int = 5) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Return recent false alarms and true positives with trimmed context.
+        
+        Args:
+            limit: Maximum number of entries for each list.
+        """
+
+        def summarize(entries: List[Dict[str, Any]], include_feedback: bool) -> List[Dict[str, Any]]:
+            items = []
+            for entry in reversed(entries[-limit:]):
+                items.append({
+                    'conversation_id': entry.get('conversation_id'),
+                    'event_id': entry.get('event_id') or entry.get('original_event_id'),
+                    'validator_type': entry.get('validator_type'),
+                    'triggered_rules': entry.get('triggered_rules', []),
+                    'timestamp': entry.get('timestamp'),
+                    'feedback': entry.get('feedback') if include_feedback else None,
+                })
+            return items
+
+        return {
+            'false_alarms': summarize(self.false_alarms, include_feedback=True),
+            'true_positives': summarize(self.true_positives, include_feedback=False),
+        }
+
+    def get_feedback_timeline(self, days: int = 7) -> List[Dict[str, Any]]:
+        """
+        Aggregate feedback counts per day for the requested window.
+        """
+        now = datetime.now(timezone.utc)
+        day_indexes = [ (now - timedelta(days=offset)).date() for offset in reversed(range(days)) ]
+
+        false_counter: Counter = Counter()
+        for entry in self.false_alarms:
+            ts = self._parse_timestamp(entry.get('timestamp'))
+            if ts:
+                false_counter[ts.date()] += 1
+
+        true_counter: Counter = Counter()
+        for entry in self.true_positives:
+            ts = self._parse_timestamp(entry.get('timestamp'))
+            if ts:
+                true_counter[ts.date()] += 1
+
+        timeline = []
+        for day in day_indexes:
+            false_count = false_counter.get(day, 0)
+            true_count = true_counter.get(day, 0)
+            total = false_count + true_count
+            accuracy = (true_count / total) if total else 0.0
+            timeline.append({
+                'date': day.isoformat(),
+                'false_alarms': false_count,
+                'true_positives': true_count,
+                'total_feedback': total,
+                'estimated_accuracy': accuracy,
+            })
+        return timeline
+
+    def get_last_feedback_timestamp(self) -> Optional[str]:
+        """
+        Return ISO string of the most recent feedback entry across all lists.
+        """
+        latest_ts: Optional[datetime] = None
+        for entry in self.false_alarms + self.true_positives:
+            ts = self._parse_timestamp(entry.get('timestamp'))
+            if ts and (latest_ts is None or ts > latest_ts):
+                latest_ts = ts
+        return latest_ts.isoformat() if latest_ts else None
+
     def should_adjust_rule(self, rule_name: str) -> bool:
         """
         Check if a rule has enough feedback to warrant adjustment

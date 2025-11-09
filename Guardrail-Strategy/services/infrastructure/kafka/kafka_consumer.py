@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable
+from shared.guardrail_schemas import GuardrailControlFeedback
 
 logger = logging.getLogger(__name__)
 
@@ -119,11 +120,17 @@ class GuardrailKafkaConsumer:
             True if processed successfully, False otherwise
         """
         try:
-            feedback_type = feedback.get('feedback_type', 'unknown')
-            conversation_id = feedback.get('conversation_id', 'unknown')
-            original_event_id = feedback.get('original_event_id')
-            feedback_content = feedback.get('feedback_content', '')
-            
+            typed_feedback = GuardrailControlFeedback(**{
+                key: value for key, value in feedback.items()
+                if key in GuardrailControlFeedback.__dataclass_fields__
+            })
+            feedback_dict = typed_feedback.to_dict()
+
+            feedback_type = feedback_dict.get('feedback_type', 'unknown')
+            conversation_id = feedback_dict.get('conversation_id', 'unknown')
+            original_event_id = feedback_dict.get('original_event_id')
+            feedback_content = feedback_dict.get('feedback_content', '')
+
             logger.info(
                 f"📥 Received guardrail control feedback: {feedback_type} "
                 f"for conversation {conversation_id}"

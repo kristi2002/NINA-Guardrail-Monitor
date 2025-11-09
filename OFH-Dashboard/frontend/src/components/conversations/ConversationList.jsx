@@ -13,6 +13,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   const [loading, setLoading] = useState(false)
   const [openDropdownId, setOpenDropdownId] = useState(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState({ key: 'default', direction: 'desc' })
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -222,6 +223,92 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
     }
   })
   
+  const getSituationOrder = (conversation) => {
+    const situationConfig = getSituationConfig(conversation.situation, conversation.situationLevel)
+    const orderMap = {
+      'situation-regular': 0,
+      'situation-warning': 1,
+      'situation-danger': 2
+    }
+    return orderMap[situationConfig.class] ?? 99
+  }
+
+  const getTimeValue = (value) => {
+    if (!value) return 0
+    const time = new Date(value).getTime()
+    return isNaN(time) ? 0 : time
+  }
+
+  const getPatientLabel = (conversation) => (
+    (conversation.patientInfo?.name || conversation.patientId || conversation.id || '')
+      .toString()
+      .toLowerCase()
+  )
+
+  const getSortValue = (conversation, key) => {
+    switch (key) {
+      case 'patient':
+        return getPatientLabel(conversation)
+      case 'situation':
+        return getSituationOrder(conversation)
+      case 'createdAt':
+        return getTimeValue(conversation.created_at || conversation.createdAt || conversation.session_start)
+      case 'updatedAt':
+        return getTimeValue(conversation.updated_at || conversation.lastUpdated || conversation.session_end)
+      default:
+        return null
+    }
+  }
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      }
+      return { key, direction: 'desc' }
+    })
+  }
+
+  const sortedConversations = [...displayConversations].sort((a, b) => {
+    if (sortConfig.key !== 'default') {
+      const valueA = getSortValue(a, sortConfig.key)
+      const valueB = getSortValue(b, sortConfig.key)
+
+      if (valueA !== valueB) {
+        if (typeof valueA === 'number' && typeof valueB === 'number') {
+          const diff = valueB - valueA
+          return sortConfig.direction === 'asc' ? -diff : diff
+        }
+
+        const comparison = valueA > valueB ? 1 : valueA < valueB ? -1 : 0
+        return sortConfig.direction === 'asc' ? comparison : -comparison
+      }
+    }
+
+    const patientA = (a.patientInfo?.name || a.patientId || a.id || '').toString().toLowerCase()
+    const patientB = (b.patientInfo?.name || b.patientId || b.id || '').toString().toLowerCase()
+
+    if (patientA !== patientB) {
+      return patientA.localeCompare(patientB)
+    }
+
+    const situationOrderA = getSituationOrder(a)
+    const situationOrderB = getSituationOrder(b)
+    if (situationOrderA !== situationOrderB) {
+      return situationOrderA - situationOrderB
+    }
+
+    const creationA = getTimeValue(a.created_at || a.createdAt || a.session_start)
+    const creationB = getTimeValue(b.created_at || b.createdAt || b.session_start)
+    if (creationA !== creationB) {
+      return creationB - creationA
+    }
+
+    const updatedA = getTimeValue(a.updated_at || a.lastUpdated || a.session_end)
+    const updatedB = getTimeValue(b.updated_at || b.lastUpdated || b.session_end)
+    return updatedB - updatedA
+  })
+
   // Reset filters
   const resetFilters = () => {
     setFilterSearch('')
@@ -253,10 +340,17 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   }, [filterSearch, filterStatus, filterSituation, filterDateFrom, filterDateTo, filterUpdatedFrom, filterUpdatedTo])
   
   // Calculate pagination
-  const totalPages = Math.ceil(displayConversations.length / itemsPerPage)
+  const totalPages = Math.ceil(sortedConversations.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedConversations = displayConversations.slice(startIndex, endIndex)
+  const paginatedConversations = sortedConversations.slice(startIndex, endIndex)
+
+  const getSortIndicator = (key) => {
+    if (sortConfig.key !== key) {
+      return '↕'
+    }
+    return sortConfig.direction === 'asc' ? '↑' : '↓'
+  }
   
   // Pagination handlers
   const goToPage = (page) => {
@@ -708,7 +802,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
       </div>
 
       <div className="conversation-table-container">
-        {displayConversations.length === 0 ? (
+        {sortedConversations.length === 0 ? (
           <div className="conversation-list-empty">
             <div className="empty-icon"></div>
             <div className="empty-text">Nessun risultato trovato</div>
@@ -724,9 +818,33 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
               <tr>
                 <th>Paziente</th>
                 <th>Stato</th>
-                <th>Situazione</th>
-                <th>Data Creazione</th>
-                <th>Ultimo aggiornamento</th>
+                <th>
+                  <button
+                    type="button"
+                    className="table-sort-button"
+                    onClick={() => handleSort('situation')}
+                  >
+                    Situazione <span className="sort-indicator">{getSortIndicator('situation')}</span>
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="table-sort-button"
+                    onClick={() => handleSort('createdAt')}
+                  >
+                    Data Creazione <span className="sort-indicator">{getSortIndicator('createdAt')}</span>
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="table-sort-button"
+                    onClick={() => handleSort('updatedAt')}
+                  >
+                    Ultimo aggiornamento <span className="sort-indicator">{getSortIndicator('updatedAt')}</span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -811,11 +929,11 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
         )}
         
         {/* Pagination Controls */}
-        {displayConversations.length > itemsPerPage && (
+        {sortedConversations.length > itemsPerPage && (
           <div className="conversation-pagination">
             <div className="pagination-info">
               <span>
-                Mostrando {startIndex + 1}-{Math.min(endIndex, displayConversations.length)} di {displayConversations.length} conversazioni
+                Mostrando {startIndex + 1}-{Math.min(endIndex, sortedConversations.length)} di {sortedConversations.length} conversazioni
               </span>
             </div>
             <div className="pagination-controls">

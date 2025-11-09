@@ -14,6 +14,7 @@ This document specifies the Kafka message formats used in the NINA Guardrail Mon
 3. [Message Schemas](#message-schemas)
    - [Guardrail Events](#guardrail-events)
    - [Operator Actions](#operator-actions)
+   - [Guardrail Control Feedback](#guardrail-control-feedback)
 4. [Message Flow](#message-flow)
 5. [Validation](#validation)
 
@@ -37,8 +38,9 @@ The system uses four static Kafka topics:
 |------------|----------|----------|-------------|
 | `guardrail_events` | Guardrail Strategy Service | OFH Dashboard | Guardrail violations and monitoring events |
 | `operator_actions` | OFH Dashboard | AI Agent | Commands from dashboard admins |
-| `guardrail_control` | (Future) | OFH Dashboard | Control messages for guardrails |
+| `guardrail_control` | OFH Dashboard | Guardrail Strategy Service | Operator feedback and control commands |
 | `dead_letter_queue` | All | System | Failed messages for manual review |
+| *(optional)* `conversation_transcripts` | AI Agent | OFH Dashboard | Structured transcript messages (if using Kafka instead of REST) |
 
 ---
 
@@ -107,6 +109,7 @@ Guardrail events are published whenever a message validation fails or a monitori
 
 | Value | Description |
 |-------|-------------|
+| `low` | Low severity, informational follow-up recommended |
 | `info` | Informational event |
 | `medium` | Moderate severity |
 | `high` | High severity |
@@ -201,6 +204,104 @@ Guardrail events are published whenever a message validation fails or a monitori
 ---
 
 ### Admin Actions (Operator Actions)
+### Guardrail Control Feedback
+
+**Topic:** `guardrail_control`  
+**Producer:** OFH Dashboard (operator actions + control commands)  
+**Consumer:** Guardrail Strategy Service  
+**Schema Version:** 1.0
+
+Guardrail control feedback closes the loop by delivering operator decisions back to the strategy service for adaptive learning and guardrail adjustments.
+
+#### Message Structure
+
+```json
+{
+  "schema_version": "1.0",
+  "conversation_id": "string",
+  "timestamp": "ISO 8601 datetime",
+  "feedback_type": "string",
+  "feedback_content": "string",
+  "feedback_source": "string",
+  "original_event_id": "string or null",
+  "feedback_metadata": "object or null",
+  "system_response": "object or null",
+  "context": "object or null"
+}
+```
+
+#### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `schema_version` | string | Schema version (`"1.0"`) |
+| `conversation_id` | string | Conversation identifier |
+| `timestamp` | string | ISO 8601 timestamp when feedback was issued |
+| `feedback_type` | string | Feedback category (see below) |
+| `feedback_content` | string | Free-form operator message |
+| `feedback_source` | string | Origin of the feedback (`dashboard_operator`, `automation`, etc.) |
+
+#### Feedback Types
+
+| Value | Description |
+|-------|-------------|
+| `false_alarm` | Operator marked the alert as benign |
+| `true_positive` | Operator confirmed the guardrail action |
+| `guardrail_adjustment` | Operator requested rule tuning or suppression |
+| `conversation_override` | Operator overrode the conversation state |
+| `system_note` | Informational note (no state change) |
+
+#### Optional Objects
+
+**feedback_metadata**:
+```json
+{
+  "priority": "string or null",
+  "conversation_state": "string or null",
+  "risk_level": "string or null",
+  "active_guardrails": ["array of strings"],
+  "triggered_rules": ["array of strings"]
+}
+```
+
+**system_response**:
+```json
+{
+  "action": "string",
+  "message": "string or null"
+}
+```
+
+**context**:
+```json
+{
+  "reason": "string or null",
+  "notes": "string or null"
+}
+```
+
+#### Example: False Alarm Feedback
+
+```json
+{
+  "schema_version": "1.0",
+  "conversation_id": "conv-abc-123",
+  "timestamp": "2025-02-19T12:40:00Z",
+  "feedback_type": "false_alarm",
+  "feedback_content": "Clinical context makes this wording acceptable.",
+  "feedback_source": "dashboard_operator",
+  "original_event_id": "evt_20250219_001",
+  "feedback_metadata": {
+    "priority": "normal",
+    "conversation_state": "active",
+    "risk_level": "low",
+    "triggered_rules": ["ToxicLanguage.v1"]
+  },
+  "context": {
+    "reason": "Medical staff reclaiming language."
+  }
+}
+```
 
 **Topic:** `operator_actions`  
 **Producer:** OFH Dashboard  
@@ -376,7 +477,7 @@ OFH Dashboard consumes event
 Store in database & show alert
 ```
 
-### 2. Admin Action Flow
+### 2. Admin Action & Feedback Flow
 
 ```
 Admin clicks action in dashboard
@@ -386,6 +487,24 @@ Dashboard publishes to operator_actions topic
 AI Agent consumes action
          ↓
 Execute command (stop, override, etc.)
+         ↓
+Dashboard also mirrors feedback to guardrail_control topic
+         ↓
+Guardrail Strategy consumes guardrail_control
+         ↓
+Adaptive learning updates / guardrail tuning
+```
+
+### 3. Conversation Transcript Flow (optional)
+
+```
+AI Agent emits conversation message
+         ↓
+POST /api/transcripts (or publish to conversation_transcripts topic)
+         ↓
+Dashboard persists ChatMessage + ConversationSession updates
+         ↓
+Transcript UI reflects new message in near real time
 ```
 
 ---
@@ -398,6 +517,7 @@ All messages are validated against their respective JSON schemas before processi
 
 - **Guardrail Events:** `OFH-Dashboard/backend/schemas/guardrail_event.schema.json`
 - **Operator Actions:** `OFH-Dashboard/backend/schemas/operator_action.schema.json`
+- **Guardrail Control Feedback:** `shared/guardrail_schemas/GuardrailControlFeedback` dataclass (shared library)
 
 ### Validation Example
 

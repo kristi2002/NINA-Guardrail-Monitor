@@ -1,269 +1,260 @@
-/* ==============================================
-   1. CSS VARIABLES (THEME CONFIGURATION)
-   ============================================== */
-   :root {
-    /* Base Colors */
-    --white-95: rgba(255, 255, 255, 0.95);
-    --white-25: rgba(255, 255, 255, 0.25);
-    --white-18: rgba(255, 255, 255, 0.18);
-    --black-15: rgba(0, 0, 0, 0.15);
-    --black-08: rgba(0, 0, 0, 0.08);
-
-    /* Card-Specific Colors & Shadows - Use page variables */
-    --card-border-color: var(--white-18);
-    --card-shadow-color: rgba(0, 0, 0, 0.1);
-    --card-shadow-hover-color: rgba(0, 0, 0, 0.15);
-    
-    /* Trend Colors */
-    --positive-color: #22c55e;
-    --positive-bg: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
-    --positive-border: rgba(34, 197, 94, 0.3);
-    --positive-shadow: rgba(34, 197, 94, 0.15);
-
-    --negative-color: #ef4444;
-    --negative-bg: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.15) 100%);
-    --negative-border: rgba(239, 68, 68, 0.3);
-    --negative-shadow: rgba(239, 68, 68, 0.15);
-
-    --neutral-color: #9ca3af;
-    --neutral-bg: linear-gradient(135deg, rgba(156, 163, 175, 0.25) 0%, rgba(156, 163, 175, 0.15) 100%);
-    --neutral-border: rgba(156, 163, 175, 0.3);
-    --neutral-shadow: rgba(156, 163, 175, 0.15);
-    
-    /* Sizing & Spacing */
-    --card-padding: 2rem;
-    --card-border-radius: 20px;
-    
-    /* Effects */
-    --card-blur: 24px;
-    --transition-speed: 0.4s;
-    --transition-timing: cubic-bezier(0.23, 1, 0.32, 1);
-    --card-shadow: 0 8px 32px var(--card-shadow-color);
-    --card-shadow-hover: 0 24px 48px var(--card-shadow-hover-color);
-}
-
-/* ==============================================
-   2. METRIC CARD: BASE STYLES
-   ============================================== */
 .metric-card {
-    position: relative;
-    background: var(--card-bg, rgba(255, 255, 255, 0.1));
-    backdrop-filter: blur(var(--card-blur));
-    border-radius: var(--card-border-radius);
-    border: 1px solid var(--card-border, var(--card-border-color));
-    box-shadow: var(--card-shadow);
-    overflow: hidden;
-    min-height: 180px;
-    transition: 
-        transform var(--transition-speed) var(--transition-timing),
-        box-shadow var(--transition-speed) var(--transition-timing),
-        border-color var(--transition-speed) var(--transition-timing);
+  position: relative;
+  width: 304px;
+  min-height: 226.22px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 2px solid rgba(0, 0, 0, 0.2) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
-/* Force all text in metric cards to be dark for readability */
 .metric-card * {
-    color: #1a202c !important;
+  color: #1a202c !important;
 }
 
 .metric-card:hover,
 .metric-card:focus-visible {
-    transform: translateY(-12px) scale(1.03);
-    box-shadow: var(--card-shadow-hover);
-    border-color: var(--white-25);
-    outline: none; /* For focus-visible state */
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  outline: none;
 }
 
-/* ==============================================
-   3. CARD STATES (ALERT)
-   ============================================== */
 .metric-card.alert {
-    --card-bg: linear-gradient(135deg, rgba(255, 71, 87, 0.15) 0%, rgba(255, 107, 122, 0.08) 100%);
-    --card-border-color: rgba(255, 71, 87, 0.25);
-    --card-shadow-color: rgba(255, 71, 87, 0.12);
-    --card-shadow-hover-color: rgba(255, 71, 87, 0.18);
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.15) 0%, rgba(255, 107, 122, 0.08) 100%) !important;
+  border-color: rgba(255, 71, 87, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.12) !important;
 }
 
 .metric-card.alert:hover,
 .metric-card.alert:focus-visible {
-    border-color: rgba(255, 71, 87, 0.35);
+  border-color: rgba(255, 71, 87, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.18) !important;
 }
 
-/* ==============================================
-   4. CARD DECORATIVE ELEMENTS
-   ============================================== */
-.card-background {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
-    z-index: 1;
+.metric-card .card-background {
+  display: none !important;
 }
 
-/* ==============================================
-   5. CARD CONTENT
-   ============================================== */
-.card-content {
-    position: relative;
-    z-index: 2;
-    padding: var(--card-padding);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+.metric-card .card-content {
+  position: relative !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  height: 100% !important;
+  width: 260px !important;
+  min-height: 182.22px !important;
+  padding: 0 !important;
+  flex: none !important;
 }
 
-/* Header */
-.metric-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+.metric-card .metric-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 6px !important;
+  width: 260px !important;
+  min-height: 103.22px !important;
+  flex: none !important;
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    flex: 1;
+.metric-card .header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px !important;
+  flex: none;
 }
 
-.icon-container {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--white-25);
-    box-shadow: 0 4px 16px var(--black-08);
-    transition: transform 0.3s ease;
-}
-
-.metric-icon {
-    font-size: 1.75rem;
-    filter: drop-shadow(0 2px 4px var(--black-15));
+.metric-card .icon-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  transition: transform 0.2s ease !important;
+  flex-shrink: 0 !important;
 }
 
 .metric-card:hover .icon-container,
 .metric-card:focus-visible .icon-container {
-    transform: scale(1.1) rotate(-5deg);
+  transform: translateY(-2px) !important;
 }
 
-.metric-title {
-    color: #1a202c !important;
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 0;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    text-shadow: none;
-    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.metric-card .metric-icon {
+  font-size: 1.5rem !important;
 }
 
-/* Main Value & Trend */
-.metric-value-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1rem;
+.metric-card .metric-title {
+  margin: 0 !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  color: #000000 !important;
 }
 
-.metric-value {
-    font-size: 3rem;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -1.5px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #1a202c !important;
-    text-shadow: none;
-    filter: none;
+.metric-card .metric-value-container {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: 260px !important;
+  min-height: 53px !important;
+  margin-top: 1rem !important;
+  flex: none !important;
 }
 
-.metric-trend {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.6rem 1rem;
-    border-radius: 999px;
-    font-size: 0.875rem;
-    font-weight: 700;
-    backdrop-filter: blur(10px);
-    white-space: nowrap;
+.metric-card .metric-value-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
 }
 
-.metric-trend.positive {
-    background: var(--positive-bg);
-    color: var(--positive-color);
-    border: 1px solid var(--positive-border);
-    box-shadow: 0 2px 8px var(--positive-shadow);
-}
-.metric-trend.negative {
-    background: var(--negative-bg);
-    color: var(--negative-color);
-    border: 1px solid var(--negative-border);
-    box-shadow: 0 2px 8px var(--negative-shadow);
-}
-.metric-trend.neutral {
-    background: var(--neutral-bg);
-    color: var(--neutral-color);
-    border: 1px solid var(--neutral-border);
-    box-shadow: 0 2px 8px var(--neutral-shadow);
+.metric-card .metric-value {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 5px !important;
+  line-height: 1.2 !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  color: #000000 !important;
 }
 
-/* Alert Indicator */
-.alert-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    background: var(--negative-bg);
-    padding: 0.4rem 1rem;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    color: var(--negative-color);
-    font-weight: 700;
-    border: 1px solid var(--negative-border);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.metric-card .metric-subtitle {
+  font-size: 0.9rem !important;
+  color: #333333 !important;
 }
 
-.pulse-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--negative-color);
-    animation: pulse 2s ease-in-out infinite;
-    box-shadow: 0 0 8px var(--negative-color);
+.metric-card .metric-trend {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  background: rgba(148, 163, 184, 0.15) !important;
+  color: #475569 !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.metric-card .metric-trend.positive {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.metric-card .metric-trend.negative {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.metric-card .metric-trend.neutral {
+  background: #f3f4f6 !important;
+  color: #4b5563 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.metric-card .alert-indicator {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.6rem !important;
+  padding: 0.35rem 0.85rem !important;
+  border-radius: 999px !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  background: #fee2e2 !important;
+  border: 1px solid rgba(220, 38, 38, 0.4) !important;
+  color: #b91c1c !important;
+  box-sizing: border-box !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-height: 31.91px !important;
+  flex-wrap: wrap !important;
+  margin: 0.5rem 0 0.75rem !important;
+  flex: none !important;
+}
+
+.metric-card .alert-label {
+  display: inline-block !important;
+  flex: 1 1 auto !important;
+  white-space: normal !important;
+}
+
+.metric-card .pulse-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #dc2626 !important;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6) !important;
+  animation: pulse 2s ease-in-out infinite !important;
+  flex-shrink: 0 !important;
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0.75;
+  }
 }
 
-/* ==============================================
-   6. RESPONSIVE DESIGN
-   ============================================== */
 @media (max-width: 768px) {
-    :root {
-        --card-padding: 1.5rem;
-    }
-    .metric-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-    .alert-indicator { align-self: flex-end; }
-    .metric-value { font-size: 2.5rem; }
-    .icon-container { width: 48px; height: 48px; }
-    .metric-icon { font-size: 1.5rem; }
+  .card-content {
+    gap: 14px;
+  }
+
+  .metric-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metric-value-container {
+    width: 100%;
+  }
+
+  .icon-container {
+    width: 44px;
+    height: 44px;
+  }
+
+  .metric-value {
+    font-size: 1.8rem;
+  }
 }
 
 @media (max-width: 480px) {
-    .metric-value-container {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
+  .metric-value-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
+

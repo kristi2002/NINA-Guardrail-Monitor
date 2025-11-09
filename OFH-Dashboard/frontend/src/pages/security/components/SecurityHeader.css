@@ -15,9 +15,10 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   gap: 2rem;
   text-align: left;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
-.header-left {
+.security-header .header-left {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -27,7 +28,7 @@
   justify-content: flex-start;
 }
 
-.header-left h1 {
+.security-header .header-left h1 {
   margin: 0;
   font-size: 2rem;
   font-weight: 700;
@@ -36,50 +37,50 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  text-align: left;
   justify-content: flex-start;
 }
 
-.header-subtitle {
+.security-header .header-subtitle {
   margin: 0;
   color: rgba(26, 32, 44, 0.6);
   font-size: 0.9rem;
   line-height: 1.5;
-  text-align: left;
 }
 
-.header-controls {
+.security-header .header-controls {
   display: flex;
   gap: 1rem;
   align-items: center;
   flex-shrink: 0;
 }
 
-.time-range-select {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  color: #1a202c;
-  font-size: 0.9rem;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  min-width: 150px;
+.security-header .time-range-select {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  color: #1a202c !important;
+  font-size: 0.9rem !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  min-width: 150px !important;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  text-align: left !important;
 }
 
-.time-range-select:hover {
+.security-header .time-range-select:hover {
   border-color: #3b82f6;
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
 }
 
-.time-range-select:focus {
+.security-header .time-range-select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.time-range-select option {
+.security-header .time-range-select option {
   background: #ffffff;
   color: #1a202c;
   padding: 0.5rem;
@@ -93,16 +94,16 @@
     align-items: stretch;
   }
 
-  .header-left {
+  .security-header .header-left {
     width: 100%;
   }
 
-  .header-controls {
+  .security-header .header-controls {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
   
-  .time-range-select {
+  .security-header .time-range-select {
     min-width: 120px;
   }
 }
@@ -112,21 +113,21 @@
     padding: 1.5rem;
   }
 
-  .header-left h1 {
+  .security-header .header-left h1 {
     font-size: 1.5rem;
     flex-wrap: wrap;
   }
   
-  .header-subtitle {
+  .security-header .header-subtitle {
     font-size: 0.85rem;
   }
   
-  .header-controls {
+  .security-header .header-controls {
     width: 100%;
     justify-content: space-between;
   }
   
-  .time-range-select {
+  .security-header .time-range-select {
     flex: 1;
     min-width: 0;
   }

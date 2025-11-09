@@ -15,6 +15,7 @@ from .metrics import metrics_bp
 from .escalations import escalations_bp
 from .notifications import notifications_bp
 from .notifications_enhanced import notifications_enhanced_bp
+from .transcripts import transcripts_bp
 
 def register_routes(app: Flask):
     """Register all API route blueprints with the Flask app"""
@@ -29,6 +30,7 @@ def register_routes(app: Flask):
     app.register_blueprint(escalations_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(notifications_enhanced_bp)  # Enhanced notification API
+    app.register_blueprint(transcripts_bp)
     
     # API versioning is handled by versioning_middleware.py
     # All /api/v1/* requests are rewritten to /api/* internally

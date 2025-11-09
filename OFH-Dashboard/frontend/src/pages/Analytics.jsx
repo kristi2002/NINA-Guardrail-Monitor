@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AnalyticsHeader, AnalyticsTabs } from './analytics/components'
+import { MetricCard } from '../components/analytics'
 import { OverviewTab, NotificationsTab, UsersTab, AlertsTab, ResponseTimesTab, EscalationsTab, GuardrailPerformanceTab } from './analytics/tabs'
 import { useAnalyticsData } from './analytics/hooks'
 import { useTabNavigation } from '../hooks/shared'
@@ -46,21 +47,28 @@ function Analytics() {
     }
   }
 
+  const [animateContent, setAnimateContent] = useState(false)
+  const prevLoadingRef = useRef(loading)
+
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      setTimeout(() => setAnimateContent(true), 0)
+      const timer = setTimeout(() => setAnimateContent(false), 450)
+      return () => clearTimeout(timer)
+    }
+    prevLoadingRef.current = loading
+  }, [loading])
+
   // Helper for rendering metric cards (used by tab components)
-  const renderMetricCard = (title, value, subtitle, icon, trend) => (
-    <div className="metric-card">
-      <div className="metric-header">
-        <span className="metric-icon">{icon}</span>
-        <h3>{title}</h3>
-      </div>
-      <div className="metric-value">{value}</div>
-      {subtitle && <div className="metric-subtitle">{subtitle}</div>}
-      {trend !== undefined && (
-        <div className={`metric-trend ${trend >= 0 ? 'positive' : 'negative'}`}>
-          {trend >= 0 ? '↗️' : '↘️'} {Math.abs(trend)}%
-        </div>
-      )}
-    </div>
+  const renderMetricCard = (title, value, subtitle, icon, trend, options = {}) => (
+    <MetricCard
+      title={title}
+      value={value}
+      subtitle={subtitle}
+      icon={icon}
+      trend={trend}
+      isAlert={options.isAlert}
+    />
   )
 
   // Render tab based on active tab
@@ -73,7 +81,7 @@ function Analytics() {
 
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab {...tabProps} />
+        return <OverviewTab {...tabProps} timeRange={timeRange} />
       case 'notifications':
         return <NotificationsTab {...tabProps} />
       case 'users':
@@ -87,7 +95,7 @@ function Analytics() {
       case 'guardrail-performance':
         return <GuardrailPerformanceTab {...tabProps} />
       default:
-        return <OverviewTab {...tabProps} />
+        return <OverviewTab {...tabProps} timeRange={timeRange} />
     }
   }
 
@@ -113,7 +121,7 @@ function Analytics() {
       />
 
       {/* Tab Content */}
-      <div className="analytics-content">
+      <div className={`analytics-content ${animateContent ? 'content-transition' : ''}`}>
         {error && (
           <div className="analytics-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c33', marginBottom: '1rem', borderRadius: '4px' }}>
             ⚠️ {error}

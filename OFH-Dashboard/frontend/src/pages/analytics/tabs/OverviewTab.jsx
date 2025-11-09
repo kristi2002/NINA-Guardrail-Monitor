@@ -4,7 +4,33 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import MetricCard from './MetricCard'
 
-export default function OverviewTab({ data, loading, renderMetricCard }) {
+function PerformanceCard({ icon, iconClass, label, value, trend }) {
+  return (
+    <div className="summary-card">
+      <div className={`summary-icon ${iconClass}`}>{icon}</div>
+      <div className="summary-body">
+        <span className="summary-label">{label}</span>
+        <span className="summary-value">{value}</span>
+        {trend?.label && (
+          <span className={`summary-trend ${trend.type || 'neutral'}`}>
+            {trend.label}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function timeRangeLabel(range) {
+  switch (range) {
+    case '1d': return '24 hours'
+    case '7d': return '7 days'
+    case '30d': return '30 days'
+    default: return 'period'
+  }
+}
+
+export default function OverviewTab({ data, loading, renderMetricCard, timeRange = '7d' }) {
   if (!data && !loading) {
     return (
       <div className="analytics-tab-skeleton">
@@ -51,7 +77,7 @@ export default function OverviewTab({ data, loading, renderMetricCard }) {
         </div>
 
         <div className="charts-grid">
-          <div className="chart-container">
+          <div className="alert-summary">
             <h3>Alert Distribution by Severity</h3>
             {Object.keys(alerts.severity_distribution || {}).length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -77,21 +103,41 @@ export default function OverviewTab({ data, loading, renderMetricCard }) {
             )}
           </div>
 
-          <div className="chart-container">
-            <h3>Performance Summary</h3>
-            <div className="summary-stats">
-              <div className="stat-item">
-                <span className="stat-label">Total Conversations</span>
-                <span className="stat-value">{totalConversations}</span>
+          <div className="performance-summary">
+            <div className="summary-header">
+              <div>
+                <h3>Performance Summary</h3>
+                <p className="summary-subtitle">
+                  Conversation health vs. goals (last {timeRangeLabel(timeRange)})
+                </p>
               </div>
-              <div className="stat-item">
-                <span className="stat-label">Active Users</span>
-                <span className="stat-value">{users.active || 0}</span>
+              <div className="summary-badge">
+                <span className="trend-icon">↗</span>
+                <span>+8% overall improvement</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-label">Average Duration</span>
-                <span className="stat-value">{Math.round(conversations.average_duration || 0)}m</span>
-              </div>
+            </div>
+            <div className="summary-grid">
+              <PerformanceCard
+                icon="💬"
+                iconClass="total"
+                label="Total Conversations"
+                value={totalConversations}
+                trend={{ type: 'positive', label: '+12% vs last period' }}
+              />
+              <PerformanceCard
+                icon="🧑‍💻"
+                iconClass="users"
+                label="Active Users"
+                value={users.active || 0}
+                trend={{ type: 'neutral', label: 'Stable engagement' }}
+              />
+              <PerformanceCard
+                icon="⏱️"
+                iconClass="duration"
+                label="Average Duration"
+                value={`${Math.round(conversations.average_duration || 0)}m`}
+                trend={{ type: 'negative', label: '+3m vs target' }}
+              />
             </div>
           </div>
         </div>

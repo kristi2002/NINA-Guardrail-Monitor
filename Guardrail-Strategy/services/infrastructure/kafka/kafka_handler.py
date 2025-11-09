@@ -6,11 +6,25 @@ Custom on_fail handler that sends guardrail failures to Kafka
 
 import logging
 import uuid
-from datetime import datetime
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+
+import jsonschema
 from guardrails.validator_base import FailResult 
 
+# Ensure shared package is importable when this module is imported in isolation
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from shared.guardrail_schemas import load_schema
+
 logger = logging.getLogger(__name__)
+
+# Cache loaded schema
+GUARDRAIL_EVENT_SCHEMA = load_schema("guardrail_event")
 
 # Initialize Kafka producer (singleton)
 _kafka_producer = None
@@ -76,7 +90,7 @@ def send_alert_to_kafka(value: str, fail_result: FailResult, metadata: Optional[
         "schema_version": "1.0",
         "event_id": str(uuid.uuid4()),
         "conversation_id": conversation_id,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "event_type": event_type,
         "severity": severity,
         "message": f"Guardrail Failure: {fail_result.error_message}",
@@ -97,6 +111,21 @@ def send_alert_to_kafka(value: str, fail_result: FailResult, metadata: Optional[
         "session_metadata": None
     }
     
+    # Validate against shared schema before sending to Kafka
+    try:
+        jsonschema.validate(instance=alert_message, schema=GUARDRAIL_EVENT_SCHEMA)
+    except jsonschema.ValidationError as validation_error:
+        logger.error(
+            "❌ Guardrail event failed schema validation: %s",
+            validation_error.message,
+        )
+        return f"BLOCKED: schema validation failed - {validation_error.message}"
+    except Exception as schema_error:
+        logger.error(
+            "Unexpected error during schema validation: %s", schema_error, exc_info=True
+        )
+        return f"BLOCKED: schema validation error - {schema_error}"
+
     # Send to Kafka
     producer = get_kafka_producer()
     if producer and producer.producer:

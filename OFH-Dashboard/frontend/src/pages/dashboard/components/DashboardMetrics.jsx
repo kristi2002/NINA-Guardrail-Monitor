@@ -4,6 +4,7 @@
 import { MetricCard, MetricCardSkeleton } from '../../../components/analytics'
 import { calculateTrend } from '../../../utils/trendCalculator'
 
+
 export default function DashboardMetrics({ metrics, previousMetrics }) {
   const activeConversations = metrics?.conversation_metrics?.active_sessions || 0
   const criticalAlerts = metrics?.alert_metrics?.critical_alerts || 0

@@ -93,6 +93,18 @@ class NotificationService {
           this.handleSystemStatus(data)
         })
 
+        this.socket.on('guardrail_event', (data) => {
+          this.handleGuardrailEvent(data)
+        })
+
+        this.socket.on('operator_action', (data) => {
+          this.handleOperatorAction(data)
+        })
+
+        this.socket.on('guardrail_control', (data) => {
+          this.handleGuardrailControl(data)
+        })
+
       } catch (error) {
         console.error('🔔 Failed to connect:', error)
         reject(error)
@@ -131,6 +143,21 @@ class NotificationService {
   handleSystemStatus(data) {
     console.log('🔔 System status update:', data)
     this.notifyListeners('system_status', data)
+  }
+
+  handleGuardrailEvent(data) {
+    console.log('🛡️ Guardrail event received:', data)
+    this.notifyListeners('guardrail_event', data)
+  }
+
+  handleOperatorAction(data) {
+    console.log('🕹️ Operator action received:', data)
+    this.notifyListeners('operator_action', data)
+  }
+
+  handleGuardrailControl(data) {
+    console.log('🎛️ Guardrail control feedback:', data)
+    this.notifyListeners('guardrail_control', data)
   }
 
   notifyListeners(event, data) {

@@ -41,6 +41,7 @@ export function getSecurityData(securityData) {
       failed_attempts: 0,
       mfa_adoption_rate: 0,
       suspicious_activities: 0,
+      admin_activity_recent: 0,
     },
     user_patterns: [],
     frameworks: {
@@ -59,6 +60,10 @@ export function getSecurityData(securityData) {
       resolved_incidents: 0,
       resolution_rate: 0,
       average_response_time: 'N/A',
+    },
+    alerting: {
+      alerts: [],
+      warning: null,
     },
   }
 

@@ -16,6 +16,7 @@ from .security_service import SecurityService
 from .escalation_service import AutoEscalationService
 from .dlq_management_service import DLQManagementService
 from .system_monitor import SystemMonitor
+from .alerting import ExternalAlertingService
 from .infrastructure.kafka.kafka_consumer import NINAKafkaConsumerV2
 from .infrastructure.kafka.kafka_producer import NINAKafkaProducerV2
 from .infrastructure.kafka.kafka_integration_service import KafkaIntegrationService
@@ -37,5 +38,6 @@ __all__ = [
     'SystemMonitor',
     'NINAKafkaConsumerV2',
     'NINAKafkaProducerV2',
-    'KafkaIntegrationService'
+    'KafkaIntegrationService',
+    'ExternalAlertingService',
 ]

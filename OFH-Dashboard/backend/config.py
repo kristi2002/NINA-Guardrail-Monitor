@@ -26,6 +26,10 @@ class Config:
             'KAFKA_BOOTSTRAP_SERVERS': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
             'KAFKA_GROUP_ID': os.getenv('KAFKA_GROUP_ID', 'nina-dashboard-v2'),
             'KAFKA_CLIENT_ID': os.getenv('KAFKA_CLIENT_ID', 'nina-topic-manager'),
+            'KAFKA_TOPIC_GUARDRAIL': os.getenv('KAFKA_TOPIC_GUARDRAIL', 'guardrail_events'),
+            'KAFKA_TOPIC_OPERATOR': os.getenv('KAFKA_TOPIC_OPERATOR', 'operator_actions'),
+            'KAFKA_TOPIC_CONTROL': os.getenv('KAFKA_TOPIC_CONTROL', 'guardrail_control'),
+            'KAFKA_TOPIC_GUARDRAIL_PATTERN': os.getenv('KAFKA_TOPIC_GUARDRAIL_PATTERN', ''),
         })
         
         # Database Configuration
@@ -90,6 +94,15 @@ class Config:
             'RETRY_DELAY': int(os.getenv('RETRY_DELAY', '1')),
             'REQUEST_TIMEOUT_MS': int(os.getenv('REQUEST_TIMEOUT_MS', '30000')),
             'DELIVERY_TIMEOUT_MS': int(os.getenv('DELIVERY_TIMEOUT_MS', '120000')),
+        })
+
+        # Circuit Breaker Configuration
+        self._config.update({
+            'CB_GUARDRAIL_FAILURE_THRESHOLD': int(os.getenv('CB_GUARDRAIL_FAILURE_THRESHOLD', '3')),
+            'CB_GUARDRAIL_RECOVERY_TIMEOUT': int(os.getenv('CB_GUARDRAIL_RECOVERY_TIMEOUT', '60')),
+            'CB_KAFKA_FAILURE_THRESHOLD': int(os.getenv('CB_KAFKA_FAILURE_THRESHOLD', '5')),
+            'CB_KAFKA_RECOVERY_TIMEOUT': int(os.getenv('CB_KAFKA_RECOVERY_TIMEOUT', '120')),
+            'CB_HALF_OPEN_SUCCESS_THRESHOLD': int(os.getenv('CB_HALF_OPEN_SUCCESS_THRESHOLD', '1')),
         })
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -222,3 +235,19 @@ def is_monitoring_enabled() -> bool:
 def is_dlq_enabled() -> bool:
     """Check if Dead Letter Queue is enabled"""
     return config.get('DLQ_ENABLED')
+
+def get_kafka_topic_guardrail() -> str:
+    """Get guardrail events topic name"""
+    return config.get('KAFKA_TOPIC_GUARDRAIL', 'guardrail_events')
+
+def get_kafka_topic_operator() -> str:
+    """Get operator actions topic name"""
+    return config.get('KAFKA_TOPIC_OPERATOR', 'operator_actions')
+
+def get_kafka_topic_control() -> str:
+    """Get guardrail control topic name"""
+    return config.get('KAFKA_TOPIC_CONTROL', 'guardrail_control')
+
+def get_kafka_topic_guardrail_pattern() -> str:
+    """Get optional topic pattern for guardrail events"""
+    return config.get('KAFKA_TOPIC_GUARDRAIL_PATTERN', '')

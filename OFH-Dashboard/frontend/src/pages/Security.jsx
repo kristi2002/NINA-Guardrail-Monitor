@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { SecurityHeader, SecurityTabs } from './security/components'
-import { OverviewTab, ThreatsTab, AccessTab, ComplianceTab, IncidentsTab } from './security/tabs'
+import { MetricCard } from '../components/analytics'
+import { OverviewTab, ThreatsTab, AccessTab, ComplianceTab, IncidentsTab, AlertingTab } from './security/tabs'
 import { useSecurityData } from './security/hooks'
 import { useTabNavigation } from '../hooks/shared'
 import { getSecurityData } from './security/utils/getSecurityData'
@@ -18,17 +19,28 @@ const Security = () => {
     fetchSecurityData
   } = useSecurityData(activeTab, timeRange)
 
+  const [animateContent, setAnimateContent] = useState(false)
+  const prevLoadingRef = useRef(loading)
+
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      setTimeout(() => setAnimateContent(true), 0)
+      const timer = setTimeout(() => setAnimateContent(false), 450)
+      return () => clearTimeout(timer)
+    }
+    prevLoadingRef.current = loading
+  }, [loading])
+
   // Helper for rendering metric cards (used by tab components)
-  const renderMetricCard = (title, value, subtitle, icon, trend) => (
-    <div className="metric-card">
-      <div className="metric-header">
-        <span className="metric-icon">{icon}</span>
-        <h3>{title}</h3>
-        {trend && <span className={`metric-trend ${trend.type}`}>{trend.value}</span>}
-      </div>
-      <div className="metric-value">{value}</div>
-      <div className="metric-subtitle">{subtitle}</div>
-    </div>
+  const renderMetricCard = (title, value, subtitle, icon, trend, options = {}) => (
+    <MetricCard
+      title={title}
+      value={value}
+      subtitle={subtitle}
+      icon={icon}
+      trend={trend}
+      isAlert={options.isAlert}
+    />
   )
 
   // Render tab based on active tab
@@ -54,6 +66,8 @@ const Security = () => {
         return <ComplianceTab {...tabProps} />
       case 'incidents':
         return <IncidentsTab {...tabProps} />
+      case 'alerting':
+        return <AlertingTab {...tabProps} />
       default:
         return <OverviewTab {...tabProps} />
     }
@@ -77,7 +91,7 @@ const Security = () => {
         onTabClick={handleTabClick}
       />
 
-      <div className="security-content">
+      <div className={`security-content ${animateContent ? 'content-transition' : ''}`}>
         {error && (
           <div className="security-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c33', marginBottom: '1rem', borderRadius: '4px' }}>
             ⚠️ {error}

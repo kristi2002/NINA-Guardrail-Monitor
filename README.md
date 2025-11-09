@@ -15,6 +15,12 @@ The system consists of three main components working together:
 │                │          │  • Detects PII       │         │  • Visualizes    │
 │                │          │  • Checks toxicity   │         │  • Responds      │
 └────────────────┘          └──────────────────────┘         └──────────────────┘
+          ▲                           │   ▲                           │
+          │                           │   │                           │
+          │           feedback        │   │ control feedback          │
+          │        (`guardrail_control`)  │  (`guardrail_control`)    │
+          │                           │   │                           │
+          └──────── Kafka (`operator_actions`) ───────────────────────┘
                                       │
                                       ▼
                               ┌──────────────┐
@@ -45,7 +51,7 @@ The system consists of three main components working together:
 
 3. **Kafka** (Port 9092)
    - Message queue for async communication
-   - Topics: `guardrail_events`, `operator_actions`, `dead_letter_queue`
+   - Topics: `guardrail_events`, `operator_actions`, `guardrail_control`, `dead_letter_queue`, *(optional)* `conversation_transcripts`
 
 ## 🚀 Quick Start
 
@@ -153,6 +159,9 @@ The frontend will start on **http://localhost:3000**
 # Kafka Configuration
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 KAFKA_OUTPUT_TOPIC=guardrail_events
+KAFKA_CONTROL_TOPIC=guardrail_control
+# Optional: wildcard family if you partition conversations per topic
+# KAFKA_OUTPUT_TOPIC_PATTERN=guardrail.conversation.*
 
 # Guardrails Configuration
 GUARDRAIL_ENABLE_PII_DETECTION=True
@@ -177,6 +186,11 @@ DATABASE_URL=sqlite:///nina_dashboard.db
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 KAFKA_GROUP_ID=ofh-dashboard-consumer
+KAFKA_TOPIC_GUARDRAIL=guardrail_events
+KAFKA_TOPIC_OPERATOR=operator_actions
+KAFKA_TOPIC_CONTROL=guardrail_control
+# Optional: subscribe via regex (e.g. guardrail\.conversation\..+)
+# KAFKA_TOPIC_GUARDRAIL_PATTERN=
 
 # Flask
 SECRET_KEY=your-secret-key-here
@@ -224,9 +238,17 @@ VITE_WS_URL=ws://localhost:5000
    - Admin sees alert in dashboard
 
 4. **Admin** can respond:
-   - Acknowledge the violation
-   - Escalate to supervisor
-   - Send action to AI agent (via `operator_actions` topic - note: field name is legacy, represents admin actions)
+   - Acknowledge, escalate, resolve, or override the event
+   - Dashboard publishes commands to the AI agent (`operator_actions` topic)
+   - Dashboard mirrors operator feedback to `guardrail_control` for guardrail learning
+
+5. **Guardrail-Strategy** consumes feedback:
+   - Updates adaptive thresholds via `FeedbackLearner`
+   - Logs operator corrections for telemetry
+
+6. *(Optional)* **Agent pushes transcript updates**:
+   - Use `POST /api/transcripts` (or publish to `conversation_transcripts`)
+   - Dashboard stores `ChatMessage` entries so moderators see full context
 
 ## 🧪 Testing
 
@@ -246,10 +268,10 @@ Or use PowerShell:
 ```
 
 This test:
-- Sends messages to Guardrail-Strategy
-- Verifies Kafka events are sent
-- Checks OFH Dashboard consumption
-- Validates frontend display
+- Sends a synthetic guardrail event into Kafka
+- Waits for the dashboard backend to persist it
+- Emits an operator action (mirrored to the AI agent topic)
+- Optionally verifies guardrail feedback metrics (if the strategy is running)
 
 ### Test Individual Components
 
@@ -280,6 +302,21 @@ cd OFH-Dashboard\backend\scripts
 ```
 
 This tests error handling for malformed Kafka messages.
+
+#### External Alerting Stub (optional)
+
+To exercise the alerting integration end to end:
+
+```powershell
+# Terminal 1 – start the alerting stub (consumes guardrail events and writes to Postgres)
+cd OFH-Dashboard\backend\scripts
+python run_alerting_stub.py
+
+# Terminal 2 – run the integration smoke test (publishes events + operator feedback)
+python run_integration_check.py
+```
+
+After both scripts report success, refresh the Security → Alerting tab on the dashboard to confirm the new alerts appear.
 
 ## 📚 API Documentation
 
@@ -545,34 +582,6 @@ cd OFH-Dashboard
 docker-compose up -d
 ```
 
-## 📖 Additional Documentation
-
-- **Architecture**: `OFH-Dashboard/ARCHITECTURE.md`
-- **API Documentation**: `OFH-Dashboard/API_DOCUMENTATION.md`
-- **User Guide**: `OFH-Dashboard/USER_DOCUMENTATION.md`
-- **Security**: `OFH-Dashboard/SECURITY_HARDENING.md`
-- **Kafka Messages**: `message_specs.md`
-- **Testing Guide**: `OFH-Dashboard/backend/TESTING_GUIDE.md`
-
-## 🤝 Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Test thoroughly (use provided test scripts)
-4. Submit a pull request
-
-## 📝 License
-
-See `OFH-Dashboard/LICENSE` for license information.
-
-## 🆘 Support
-
-For issues or questions:
-
-1. Check the troubleshooting section above
-2. Review the documentation files
-3. Check backend logs in `OFH-Dashboard/backend/logs/`
-4. Review Kafka connection issues: `OFH-Dashboard/backend/KAFKA_CONNECTION_ISSUES.md`
 
 ## 🎯 Key Features
 
@@ -586,6 +595,9 @@ For issues or questions:
 ✅ **Admin Access Control** - Admin role for full system access  
 ✅ **Audit Logging** - Complete audit trail  
 ✅ **Kafka Integration** - Scalable message queue architecture  
+✅ **Adaptive Guardrail Learning** - Operator feedback feeds `guardrail_control` for continuous tuning  
+✅ **External Alerting Stub** - Optional consumer that mirrors alerts to an external Postgres store  
+✅ **Resilient Connectivity** - Circuit breakers around Kafka and Guardrail Strategy requests prevent cascading failures  
 
 ---
 

@@ -4,12 +4,20 @@ Guardrail Service - System 2: The Guard
 Flask microservice for guardrail validation (port 5001)
 """
 
-from flask import Flask, request, jsonify
-from dotenv import load_dotenv 
 import os
+import sys
+from pathlib import Path
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+
+# Ensure repo root is on path for shared packages before local imports
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv 
 from services.validation import GuardrailValidator
 from services.infrastructure.kafka import GuardrailKafkaProducer, GuardrailKafkaConsumer
 
@@ -22,6 +30,7 @@ app = Flask(__name__)
 # Configuration
 PORT = int(os.getenv('PORT', 5001))
 SERVICE_NAME = os.getenv('SERVICE_NAME', 'guardrail-service')
+SERVICE_START_TIME = datetime.now(timezone.utc)
 
 # Setup logging
 logging.basicConfig(
@@ -143,16 +152,40 @@ def get_guardrail_performance():
         
         stats = feedback_learner.get_statistics()
         problematic_rules = feedback_learner.get_problematic_rules()
+        timeline = feedback_learner.get_feedback_timeline(days=7)
+        recent_feedback = feedback_learner.get_recent_feedback(limit=5)
+        last_feedback_at = feedback_learner.get_last_feedback_timestamp()
         
         # Get performance metrics for each rule
         rule_performance = {}
         for rule_name in feedback_learner.rule_statistics.keys():
             rule_performance[rule_name] = feedback_learner.get_rule_performance(rule_name)
+
+        uptime_seconds = max(
+            0,
+            int((datetime.now(timezone.utc) - SERVICE_START_TIME).total_seconds()),
+        )
+
+        trend_summary = {
+            'window_days': len(timeline),
+            'false_alarms': sum(item['false_alarms'] for item in timeline),
+            'true_positives': sum(item['true_positives'] for item in timeline),
+            'total_feedback': sum(item['total_feedback'] for item in timeline),
+        }
+        total_feedback_window = trend_summary['total_feedback']
+        trend_summary['accuracy'] = (
+            trend_summary['true_positives'] / total_feedback_window
+            if total_feedback_window > 0 else 0.0
+        )
         
         return jsonify({
             'success': True,
             'data': {
                 'available': True,  # Explicitly mark as available
+                'service': SERVICE_NAME,
+                'telemetry_version': 1,
+                'uptime_seconds': uptime_seconds,
+                'last_feedback_at': last_feedback_at,
                 'overview': {
                     'total_feedback': stats['total_feedback'],
                     'false_alarms': stats['false_alarms'],
@@ -164,6 +197,11 @@ def get_guardrail_performance():
                 'rules_tracked': stats['rules_tracked'],
                 'problematic_rules': problematic_rules,
                 'rule_performance': rule_performance,
+                'recent_feedback': recent_feedback,
+                'trend': {
+                    'summary': trend_summary,
+                    'daily': timeline,
+                },
                 'last_updated': stats['last_updated']
             }
         }), 200

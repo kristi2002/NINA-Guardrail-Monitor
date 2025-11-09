@@ -13,12 +13,14 @@ import logging
 from logging import Filter
 import os
 from datetime import datetime
-from kafka import KafkaProducer  # type: ignore
-from kafka.errors import KafkaError  # type: ignore
+from typing import Any, Dict, Optional
+from kafka import KafkaProducer
+from kafka.errors import KafkaError 
 
 # tenacity import removed - not used in this file
 from services.error_alerting_service import ErrorAlertingService
 from config import config, get_kafka_bootstrap_servers
+from core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 
 
 class NINAKafkaProducerV2:
@@ -74,6 +76,24 @@ class NINAKafkaProducerV2:
         
         # Initialize alerting service BEFORE connect() so it's available in error handlers
         self.alerting_service = ErrorAlertingService()
+
+        cb_failure_threshold = int(config.get("CB_KAFKA_FAILURE_THRESHOLD", 5))
+        cb_recovery_timeout = int(config.get("CB_KAFKA_RECOVERY_TIMEOUT", 120))
+        cb_half_open_success = int(config.get("CB_HALF_OPEN_SUCCESS_THRESHOLD", 1))
+        self.connection_breaker = CircuitBreaker(
+            name="kafka_producer_connection",
+            failure_threshold=cb_failure_threshold,
+            recovery_timeout=cb_recovery_timeout,
+            half_open_max_successes=cb_half_open_success,
+            expected_exception=(KafkaError, ConnectionError, TimeoutError, OSError),
+        )
+        self.send_breaker = CircuitBreaker(
+            name="kafka_producer_send",
+            failure_threshold=cb_failure_threshold,
+            recovery_timeout=cb_recovery_timeout,
+            half_open_max_successes=cb_half_open_success,
+            expected_exception=(KafkaError,),
+        )
         
         # Define our static topics
         self.topics = {
@@ -115,6 +135,7 @@ class NINAKafkaProducerV2:
     def _on_send_success(self, record_metadata, topic, message, key):
         """Callback function for successful message delivery"""
         try:
+            self.send_breaker.record_success()
             self.stats["messages_successful"] += 1
             self.logger.info(
                 f"✅ Message sent successfully to {topic}[{record_metadata.partition}] @ offset {record_metadata.offset}"
@@ -132,6 +153,7 @@ class NINAKafkaProducerV2:
     def _on_send_error(self, exception, topic, message, key):
         """Callback function for failed message delivery"""
         try:
+            self.send_breaker.record_failure(exception)
             error_str = str(exception)
             is_invalid_topic = (
                 "InvalidTopic" in error_str 
@@ -233,6 +255,14 @@ class NINAKafkaProducerV2:
     def connect(self):
         """Connect to Kafka broker with retry configuration"""
         try:
+            self.connection_breaker.before_call()
+        except CircuitBreakerOpenError as cb_error:
+            self.logger.error(
+                "Kafka producer connection circuit open: %s", cb_error
+            )
+            return False
+
+        try:
             # Configure producer for high-throughput asynchronous sending
             producer_config = {
                 "bootstrap_servers": self.bootstrap_servers,
@@ -264,10 +294,21 @@ class NINAKafkaProducerV2:
                 f"Enhanced Kafka Producer connected to {self.bootstrap_servers}"
             )
             self.logger.info(f"Producer connected with max_retries={self.max_retries}")
+            self.connection_breaker.record_success()
             return True
         except KafkaError as e:
+            self.connection_breaker.record_failure(e)
             self.logger.error(f"Failed to connect to Kafka: {e}", exc_info=True)
             # Only alert if alerting_service is initialized
+            if hasattr(self, "alerting_service") and self.alerting_service:
+                try:
+                    self.alerting_service.alert_kafka_connection_failure(str(e), "Producer")
+                except Exception as alert_error:
+                    self.logger.warning(f"Failed to send alert: {alert_error}")
+            return False
+        except Exception as e:
+            self.connection_breaker.record_failure(e)
+            self.logger.error(f"Unexpected error connecting to Kafka: {e}", exc_info=True)
             if hasattr(self, "alerting_service") and self.alerting_service:
                 try:
                     self.alerting_service.alert_kafka_connection_failure(str(e), "Producer")
@@ -278,51 +319,84 @@ class NINAKafkaProducerV2:
     def _send_async(self, topic, value, key=None):
         """Send message asynchronously with callback handling"""
         try:
-            if not self.producer:
-                self.logger.error("Producer not initialized, cannot send message")
-                self.stats["messages_failed"] += 1
-                return False
+            self.send_breaker.before_call()
+        except CircuitBreakerOpenError as cb_error:
+            self.logger.error(
+                "Kafka producer circuit open for topic %s: %s", topic, cb_error
+            )
+            self.stats["messages_failed"] += 1
+            if hasattr(self, "alerting_service"):
+                try:
+                    self.alerting_service.alert_kafka_connection_failure(
+                        str(cb_error), f"Producer-{topic}"
+                    )
+                except Exception as alert_error:
+                    self.logger.warning(f"Failed to send alert: {alert_error}")
+            return False
 
-            self.stats["messages_sent"] += 1
+        if not self.producer:
+            self.logger.error("Producer not initialized, cannot send message")
+            self.stats["messages_failed"] += 1
+            self.send_breaker.record_failure(RuntimeError("producer-not-initialized"))
+            return False
 
+        self.stats["messages_sent"] += 1
+
+        try:
             # Send message asynchronously
             future = self.producer.send(topic, value=value, key=key)
-
-            # Add success and error callbacks
-            future.add_callback(
-                lambda metadata, t=topic, m=value, k=key: self._on_send_success(
-                    metadata, t, m, k
-                )
-            )
-            future.add_errback(
-                lambda exception, t=topic, m=value, k=key: self._on_send_error(
-                    exception, t, m, k
-                )
-            )
-
-            self.logger.debug(f"Message sent asynchronously to {topic}")
-            return True
-
         except Exception as e:
             self.logger.error(f"Failed to send message to {topic}: {e}")
             self.stats["messages_failed"] += 1
+            self.send_breaker.record_failure(e)
             return False
+
+        # Add success and error callbacks
+        future.add_callback(
+            lambda metadata, t=topic, m=value, k=key: self._on_send_success(
+                metadata, t, m, k
+            )
+        )
+        future.add_errback(
+            lambda exception, t=topic, m=value, k=key: self._on_send_error(
+                exception, t, m, k
+            )
+        )
+
+        self.logger.debug(f"Message sent asynchronously to {topic}")
+        return True
 
     def _send_sync(self, topic, value, key=None):
         """Send message synchronously (fallback for critical messages)"""
         try:
-            if not self.producer:
-                self.logger.error("Producer not initialized, cannot send message")
-                raise KafkaError("Producer not initialized")
+            self.send_breaker.before_call()
+        except CircuitBreakerOpenError as cb_error:
+            self.logger.error(
+                "Kafka producer circuit open for topic %s: %s", topic, cb_error
+            )
+            self.stats["messages_failed"] += 1
+            raise cb_error
 
+        if not self.producer:
+            error = KafkaError("Producer not initialized")
+            self.logger.error("Producer not initialized, cannot send message")
+            self.send_breaker.record_failure(error)
+            raise error
+
+        try:
             future = self.producer.send(topic, value=value, key=key)
             record_metadata = future.get(timeout=10)
+            self.send_breaker.record_success()
             self.logger.info(
                 f"Message sent successfully to {topic}[{record_metadata.partition}] @ offset {record_metadata.offset}"
             )
             return record_metadata
         except KafkaError as e:
             self.logger.warning(f"Kafka error during send: {e}")
+            self.send_breaker.record_failure(e)
+            raise
+        except Exception as e:
+            self.send_breaker.record_failure(e)
             raise
 
     def _send_to_dlq(self, original_topic, message, key, error):
@@ -529,10 +603,36 @@ class NINAKafkaProducerV2:
             self._handle_send_failure(topic, event, conversation_id, e)
             return False
 
+    def _ensure_control_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize operator control payload to align with guardrail schema."""
+        normalized = dict(payload)
+
+        # Ensure schema metadata
+        normalized.setdefault("schema_version", "1.0")
+        normalized.setdefault("timestamp", datetime.now().isoformat())
+        normalized.setdefault("conversation_id", payload.get("conversation_id"))
+
+        # Canonical keys expected by guardrail strategy
+        normalized.setdefault("feedback_source", "operator")
+        action_type = normalized.get("action_type")
+        if action_type:
+            normalized["feedback_type"] = normalized.get("feedback_type", action_type)
+
+        # Required fields
+        normalized.setdefault("feedback_content", payload.get("reason") or payload.get("message") or "")
+        normalized.setdefault("priority", payload.get("priority", "normal"))
+        normalized.setdefault("operator_id", payload.get("operator_id", "dashboard_operator"))
+
+        # Optional extras
+        metadata = normalized.get("action_metadata") or {}
+        normalized["action_metadata"] = metadata
+
+        return normalized
+
     def send_operator_action(
         self, conversation_id, action_type="stop_conversation", custom_message=None
     ):
-        """Send operator action to the STATIC operator topic"""
+        """Send operator action to the dedicated operator topic."""
         if not self.producer:
             self.logger.error("Producer not connected")
             return False
@@ -584,6 +684,57 @@ class NINAKafkaProducerV2:
         except Exception as e:
             self.logger.error(f"Failed to send operator action: {e}", exc_info=True)
             self._handle_send_failure(topic, action_event, conversation_id, e)
+            return False
+
+    def send_control_command(
+        self,
+        conversation_id: str,
+        action_type: str,
+        control_payload: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Publish operator control command to guardrail_control topic."""
+        if not self.producer:
+            self.logger.error("Producer not connected")
+            return False
+
+        topic = self.topics.get("guardrail_control")
+        if not topic:
+            self.logger.warning("Guardrail control topic not configured; skipping Kafka publish.")
+            return False
+
+        if not control_payload:
+            control_payload = {
+                "conversation_id": conversation_id,
+                "action_type": action_type,
+                "feedback_content": f"Operator issued {action_type}",
+                "priority": "high"
+                if action_type in ["stop_conversation", "emergency_stop", "escalate"]
+                else "normal",
+            }
+
+        message = self._ensure_control_payload(control_payload)
+
+        try:
+            if self.async_mode:
+                success = self._send_async(topic, message, key=conversation_id)
+                if success:
+                    self.logger.info(f"Control message queued for {topic}")
+                return success
+            else:
+                record_metadata = self._send_sync(topic, message, conversation_id)
+                self.logger.info(
+                    f"Control message sent to {topic}[{record_metadata.partition}] @ offset {record_metadata.offset}"
+                )
+                return True
+        except Exception as e:
+            error_str = str(e)
+            if "InvalidTopic" in error_str or "InvalidTopicError" in error_str:
+                self.logger.warning(
+                    f"Control topic '{topic}' unavailable; operator command will not be forwarded. Payload logged."
+                )
+                return False
+            self.logger.error(f"Failed to send control message: {e}", exc_info=True)
+            self._handle_send_failure(topic, message, conversation_id, e)
             return False
 
     def get_stats(self):

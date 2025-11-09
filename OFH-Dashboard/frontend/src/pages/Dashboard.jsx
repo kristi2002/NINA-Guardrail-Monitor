@@ -1,21 +1,16 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { ConversationList, ConversationListSkeleton, ConversationStatus, ConversationStatusSkeleton } from '../components/conversations'
-import { Sidebar } from '../components/common'
 import { DashboardHeader, DashboardMetrics } from './dashboard/components'
 import { useDashboardData } from './dashboard/hooks'
 import './dashboard/Dashboard.css'
 
 function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  
   const {
     metrics,
     error,
-    alerts,
     conversations,
     lastUpdated,
     previousMetrics,
-    fetchAlerts,
     fetchConversations
   } = useDashboardData()
 
@@ -35,9 +30,7 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <DashboardHeader 
-        alerts={alerts}
         lastUpdated={lastUpdated}
-        onOpenSidebar={() => setSidebarOpen(true)}
       />
       
       {!metrics ? (
@@ -58,13 +51,6 @@ function Dashboard() {
       <DashboardMetrics 
         metrics={metrics}
         previousMetrics={previousMetrics}
-      />
-
-      <Sidebar 
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        alerts={alerts}
-        onAlertsRefresh={fetchAlerts}
       />
     </div>
   )

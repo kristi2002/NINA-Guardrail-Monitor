@@ -5,7 +5,15 @@ Main Flask application with modular route structure
 """
 
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv  # <-- IMPORT THIS
+
+# Ensure the repository root is on the Python path so shared packages are importable
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 load_dotenv()                   # <-- AND CALL THIS
 
 from flask import Flask, request, jsonify

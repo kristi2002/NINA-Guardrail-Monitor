@@ -189,6 +189,33 @@
   align-items: center;
 }
 
+.table-sort-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+}
+
+.table-sort-button:hover {
+  color: #2563eb;
+}
+
+.table-sort-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.table-sort-button .sort-indicator {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
 .total-conversations,
 .active-conversations {
   padding: 0.5rem 1rem;

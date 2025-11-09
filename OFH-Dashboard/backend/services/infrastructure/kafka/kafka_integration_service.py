@@ -7,7 +7,7 @@ Integrates the enhanced Kafka producer and consumer
 import time
 import logging
 from datetime import datetime, timezone
-from flask_socketio import emit  # type: ignore
+from flask_socketio import emit 
 from .kafka_producer import NINAKafkaProducerV2
 from .kafka_consumer import NINAKafkaConsumerV2
 from services.database_service import EnhancedDatabaseService
@@ -39,10 +39,11 @@ class KafkaIntegrationService:
 
         # --- MODIFICATION: Pass 'db' to the consumer ---
         self.consumer = NINAKafkaConsumerV2(
-            self.bootstrap_servers,
-            app=self.app,
-            db=self.db,  # Pass the db instance
-            on_event_callback=self.handle_consumed_event,
+        self.bootstrap_servers,
+        app=self.app,
+        db=self.db,  # Pass the db instance
+        on_event_callback=self.handle_consumed_event,
+        socketio=self.socketio,
         )
 
         # Track active conversations (in-memory cache)
@@ -279,11 +280,11 @@ class KafkaIntegrationService:
             return False
 
     def send_operator_action(
-        self, 
-        conversation_id, 
-        action_type, 
-        message, 
-        reason=None, 
+        self,
+        conversation_id,
+        action_type,
+        message,
+        reason=None,
         operator_id=None,
         target_event_id=None,
         priority=None,
@@ -387,12 +388,34 @@ class KafkaIntegrationService:
                 conversation_id, action_type, custom_message=operator_action
             )
 
-            if success:
+            control_payload = {
+                "conversation_id": conversation_id,
+                "action_type": action_type,
+                "message": message,
+                "reason": reason,
+                "operator_id": operator_id or "dashboard_operator",
+                "priority": priority,
+                "target_event_id": target_event_id,
+                "action_metadata": operator_action.get("action_metadata"),
+            }
+
+            control_sent = self.producer.send_control_command(
+                conversation_id,
+                action_type,
+                control_payload=control_payload,
+            )
+
+            if success and control_sent:
                 # Note: Socket.IO emission will be handled by the consumer callback
                 # after the event is successfully processed and saved to database
                 self.logger.info(
                     f"Operator action sent: {action_type} for conversation {conversation_id} "
                     f"with full metadata"
+                )
+                return True
+            elif success and not control_sent:
+                self.logger.warning(
+                    f"Operator action sent for {conversation_id} but control command was not published."
                 )
                 return True
 

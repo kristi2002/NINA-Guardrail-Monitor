@@ -7,17 +7,26 @@ Consumes from static Kafka topics: guardrail_events, operator_actions, guardrail
 import json
 import threading
 import logging
-import os
 import socket
 import time
-import jsonschema  # type: ignore
+import jsonschema 
 from datetime import datetime
 from kafka import KafkaConsumer, KafkaProducer
 from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable
 from services.database_service import EnhancedDatabaseService
 from collections import defaultdict
 from services.error_alerting_service import ErrorAlertingService
-from config import config, get_kafka_bootstrap_servers, get_kafka_group_id
+from config import (
+    config,
+    get_kafka_bootstrap_servers,
+    get_kafka_group_id,
+    get_kafka_topic_guardrail,
+    get_kafka_topic_operator,
+    get_kafka_topic_control,
+    get_kafka_topic_guardrail_pattern,
+)
+from core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+from shared.guardrail_schemas import GuardrailEvent, load_schema
 
 
 class NINAKafkaConsumerV2:
@@ -29,6 +38,7 @@ class NINAKafkaConsumerV2:
         db=None,
         max_retries=None,
         on_event_callback=None,
+        socketio=None,
     ):
         """Initialize enhanced Kafka consumer with dynamic topic support and DLQ handling"""
         self.bootstrap_servers = bootstrap_servers or get_kafka_bootstrap_servers()
@@ -38,6 +48,7 @@ class NINAKafkaConsumerV2:
         self.on_event_callback = on_event_callback
         self.consumer = None
         self.running = False
+        self.socketio = socketio
 
         # --- MODIFICATION: Pass 'db' to the service ---
         if not db:
@@ -53,11 +64,12 @@ class NINAKafkaConsumerV2:
 
         # Define our static topics
         self.topics = {
-            "guardrail_events": os.getenv("KAFKA_TOPIC_GUARDRAIL", "guardrail_events"),
-            "operator_actions": os.getenv("KAFKA_TOPIC_OPERATOR", "operator_actions"),
-            "guardrail_control": os.getenv("KAFKA_TOPIC_CONTROL", "guardrail_control"),
+            "guardrail_events": get_kafka_topic_guardrail(),
+            "operator_actions": get_kafka_topic_operator(),
+            "guardrail_control": get_kafka_topic_control(),
             "dead_letter_queue": "dead_letter_queue",
         }
+        self.guardrail_topic_pattern = get_kafka_topic_guardrail_pattern().strip()
 
         # Track active conversations
         self.active_conversations = set()
@@ -69,29 +81,45 @@ class NINAKafkaConsumerV2:
         # Initialize alerting service
         self.alerting_service = ErrorAlertingService()
 
-        # Schema validation setup
-        self._schemas = {}  # Cache for loaded schemas
-        # Schema directory is one level up from services/ (in backend/)
-        self._schema_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "schemas"
+        cb_failure_threshold = int(config.get("CB_KAFKA_FAILURE_THRESHOLD", 5))
+        cb_recovery_timeout = int(config.get("CB_KAFKA_RECOVERY_TIMEOUT", 120))
+        cb_half_open_success = int(config.get("CB_HALF_OPEN_SUCCESS_THRESHOLD", 1))
+        expected_errors = (
+            KafkaError,
+            KafkaTimeoutError,
+            KafkaConnectionError,
+            NoBrokersAvailable,
+            ConnectionRefusedError,
+            TimeoutError,
+            OSError,
+            socket.gaierror,
+            socket.timeout,
         )
+        self.connection_breaker = CircuitBreaker(
+            name="kafka_consumer_connection",
+            failure_threshold=cb_failure_threshold,
+            recovery_timeout=cb_recovery_timeout,
+            half_open_max_successes=cb_half_open_success,
+            expected_exception=expected_errors,
+        )
+
+        # Schema cache
+        self._schemas = {}
 
     def _load_schema(self, schema_name):
         """Loads a JSON schema from the schemas directory, caches it."""
         if schema_name in self._schemas:
             return self._schemas[schema_name]
         try:
-            schema_path = os.path.join(self._schema_dir, f"{schema_name}.schema.json")
-            with open(schema_path, "r") as f:
-                schema = json.load(f)
-                self._schemas[schema_name] = schema
-                self.logger.info(f"Loaded schema: {schema_name}")
-                return schema
+            schema = load_schema(schema_name)
+            self._schemas[schema_name] = schema
+            self.logger.debug(f"Loaded shared schema: {schema_name}")
+            return schema
         except FileNotFoundError:
-            self.logger.error(f"Schema file not found: {schema_path}")
+            self.logger.error(f"Schema '{schema_name}' not found in shared guardrail schemas package.")
             return None
-        except json.JSONDecodeError:
-            self.logger.error(f"Error decoding JSON schema: {schema_path}")
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Error decoding JSON schema '{schema_name}': {e}", exc_info=True)
             return None
         except Exception as e:
             self.logger.error(f"Error loading schema {schema_name}: {e}", exc_info=True)
@@ -183,11 +211,20 @@ class NINAKafkaConsumerV2:
 
     def connect(self, retry_count=3, retry_delay=2):
         """Connect to Kafka broker with topic list subscription and retry logic"""
+        try:
+            self.connection_breaker.before_call()
+        except CircuitBreakerOpenError as cb_error:
+            self.logger.error(
+                "Kafka consumer connection circuit open: %s", cb_error
+            )
+            return False
+
         # Validate bootstrap servers format first
         if not self._validate_bootstrap_servers(self.bootstrap_servers):
             self.logger.error(
                 f"Invalid bootstrap servers configuration: {self.bootstrap_servers}"
             )
+            self.connection_breaker.record_failure(ValueError("invalid-bootstrap-servers"))
             return False
 
         # Check Kafka connectivity before attempting connection
@@ -199,6 +236,7 @@ class NINAKafkaConsumerV2:
             self.alerting_service.alert_kafka_connection_failure(
                 f"Kafka broker not reachable at {self.bootstrap_servers}", "Consumer"
             )
+            self.connection_breaker.record_failure(ConnectionError("broker-unreachable"))
             return False
 
         # Retry connection logic
@@ -218,6 +256,8 @@ class NINAKafkaConsumerV2:
                     self.topics["operator_actions"],
                     # Note: guardrail_control is optional - only subscribe if topic exists
                 ]
+                if self.topics["guardrail_control"]:
+                    topics_to_subscribe.append(self.topics["guardrail_control"])
 
                 self.logger.info(
                     f"Attempting to create Kafka consumer for {self.bootstrap_servers}..."
@@ -254,9 +294,17 @@ class NINAKafkaConsumerV2:
                     # Continue without DLQ producer - consumer can still work
                     self.dlq_producer = None
 
-                # Subscribe to the list of topics
-                self.logger.info(f"Subscribing to topics: {topics_to_subscribe}")
-                self.consumer.subscribe(topics=topics_to_subscribe)
+                # Subscribe using either explicit topics or a regex pattern (mutually exclusive)
+                if self.guardrail_topic_pattern:
+                    self.logger.info(
+                        "Subscribing to pattern '%s' (ignoring static topic list %s)",
+                        self.guardrail_topic_pattern,
+                        topics_to_subscribe,
+                    )
+                    self.consumer.subscribe(pattern=self.guardrail_topic_pattern)
+                else:
+                    self.logger.info(f"Subscribing to topics: {topics_to_subscribe}")
+                    self.consumer.subscribe(topics=topics_to_subscribe)
 
                 # Verify subscription by polling (this will trigger partition assignment)
                 # This will raise an exception if connection fails
@@ -288,9 +336,11 @@ class NINAKafkaConsumerV2:
                 self.logger.info(
                     f"Consumer connected with max_retries={self.max_retries}"
                 )
+                self.connection_breaker.record_success()
                 return True
 
             except (KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable) as e:
+                self.connection_breaker.record_failure(e)
                 last_error = e
                 self.logger.warning(
                     f"⚠️ Kafka connection error (attempt {attempt + 1}/{retry_count}): {e}"
@@ -307,6 +357,7 @@ class NINAKafkaConsumerV2:
                 socket.gaierror,
                 socket.timeout,
             ) as e:
+                self.connection_breaker.record_failure(e)
                 last_error = e
                 self.logger.error(
                     f"Network error connecting to Kafka (attempt {attempt + 1}/{retry_count}): {e}",
@@ -318,6 +369,7 @@ class NINAKafkaConsumerV2:
                     self.logger.error("All connection attempts failed")
 
             except Exception as e:
+                self.connection_breaker.record_failure(e)
                 last_error = e
                 self.logger.error(
                     f"Unexpected error connecting to Kafka (attempt {attempt + 1}/{retry_count}): {e}",
@@ -438,6 +490,18 @@ class NINAKafkaConsumerV2:
                 )
             else:
                 self.logger.debug(f"Schema validation passed for {event_type_name}")
+
+        if schema_name == "guardrail_event":
+            try:
+                event = GuardrailEvent(**{
+                    key: value for key, value in event.items()
+                    if key in GuardrailEvent.__dataclass_fields__
+                }).to_dict()
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to coerce guardrail event dataclass: {e}", exc_info=True
+                )
+                return False
 
         # Check if Flask app context is available
         if not self.app:
@@ -609,12 +673,21 @@ class NINAKafkaConsumerV2:
                     )
             
             # Call the callback to notify the frontend after successful processing
-            if self.on_event_callback:
+            if self.on_event_callback or self.socketio:
                 try:
-                    self.on_event_callback("guardrail_event", conversation_id, event)
+                    payload = {
+                        "type": "guardrail_event",
+                        "conversation_id": conversation_id,
+                        "event": event,
+                    }
+                    if self.on_event_callback:
+                        self.on_event_callback("guardrail_event", conversation_id, event)
+                    if self.socketio:
+                        self.socketio.emit("guardrail_event", payload)
                 except Exception as e:
                     self.logger.error(
-                        f"Failed to call event callback: {e}", exc_info=True
+                        f"Failed to notify listeners for guardrail_event: {e}",
+                        exc_info=True,
                     )
 
             return True
@@ -669,11 +742,22 @@ class NINAKafkaConsumerV2:
             self.logger.info(f"Conversation {conversation_id} escalated to supervisor")
 
         # Call the callback to notify the frontend after successful processing
-        if self.on_event_callback:
+        if self.on_event_callback or self.socketio:
             try:
-                self.on_event_callback("operator_action", conversation_id, event)
+                payload = {
+                    "type": "operator_action",
+                    "conversation_id": conversation_id,
+                    "event": event,
+                }
+                if self.on_event_callback:
+                    self.on_event_callback("operator_action", conversation_id, event)
+                if self.socketio:
+                    self.socketio.emit("operator_action", payload)
             except Exception as e:
-                self.logger.error(f"Failed to call event callback: {e}", exc_info=True)
+                self.logger.error(
+                    f"Failed to notify listeners for operator_action: {e}",
+                    exc_info=True,
+                )
 
         return True
 
@@ -728,6 +812,20 @@ class NINAKafkaConsumerV2:
                         self.logger.error(
                             f"Failed to call event callback: {e}", exc_info=True
                         )
+
+            if self.socketio:
+                try:
+                    payload = {
+                        "type": "guardrail_control",
+                        "conversation_id": conversation_id,
+                        "event": event,
+                    }
+                    self.socketio.emit("guardrail_control", payload)
+                except Exception as emit_error:
+                    self.logger.error(
+                        f"Failed to emit guardrail_control event: {emit_error}",
+                        exc_info=True,
+                    )
 
             return True
 

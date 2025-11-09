@@ -7,7 +7,13 @@ Handles notification statistics and management
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta, timezone
 import logging
-from api.middleware.auth_middleware import token_required, get_current_user, admin_required
+from typing import Any, Dict, Optional
+from api.middleware.auth_middleware import (
+    token_required,
+    get_current_user,
+    admin_required,
+    get_current_user_id,
+)
 from services.notifications.notification_infrastructure_service import NotificationService, NotificationPriority, NotificationType
 from services.notifications.enhanced_notification_service import EnhancedNotificationService
 from services.notifications.notification_orchestrator import NotificationOrchestrator
@@ -22,6 +28,213 @@ from core.config_helper import ConfigHelper
 from core.database import get_session_context
 
 logger = logging.getLogger(__name__)
+
+
+def _coerce_bool(value: Any, default: bool = False) -> bool:
+    """Best-effort conversion of arbitrary input to bool."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return default
+
+
+def _coerce_int(value: Any, default: int) -> int:
+    """Safely parse int values, falling back to default."""
+    try:
+        if isinstance(value, bool):
+            return int(value)
+        if value is None or value == "":
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _sanitize_frequency(value: Optional[str], default: str = "daily") -> str:
+    allowed = {"hourly", "daily", "weekly"}
+    if value and value.lower() in allowed:
+        return value.lower()
+    return default
+
+
+def _get_flag(pref_dict: Dict[str, Any], *keys: str, default: bool = False) -> bool:
+    """Helper to extract boolean flags from channel/type preference dictionaries."""
+    if not isinstance(pref_dict, dict):
+        return default
+    for key in keys:
+        if key in pref_dict:
+            return _coerce_bool(pref_dict.get(key), default)
+    return default
+
+
+def _serialize_notification_preferences(preference) -> Dict[str, Any]:
+    """Convert NotificationPreference model into frontend-friendly structure."""
+    channel_prefs = preference.channel_preferences or {}
+    type_prefs = preference.type_preferences or {}
+
+    email_pref = channel_prefs.get("email", {})
+    sms_pref = channel_prefs.get("sms", {})
+    push_pref = channel_prefs.get("push", {})
+    webhook_pref = channel_prefs.get("webhook", {})
+    escalation_pref = type_prefs.get("escalation", {})
+
+    return {
+        "notificationsEnabled": bool(preference.notifications_enabled),
+        "email": {
+            "enabled": _get_flag(email_pref, "enabled", default=True),
+            "critical": _get_flag(email_pref, "critical", default=True),
+            "warning": _get_flag(email_pref, "warning", "high", default=True),
+            "info": _get_flag(email_pref, "info", "normal", default=False),
+            "digest": bool(preference.digest_enabled),
+            "digestFrequency": preference.digest_frequency or "daily",
+            "address": preference.email_address or email_pref.get("address", ""),
+        },
+        "sms": {
+            "enabled": _get_flag(sms_pref, "enabled", default=False),
+            "critical": _get_flag(sms_pref, "critical", default=True),
+            "warning": _get_flag(sms_pref, "warning", "high", default=False),
+            "info": _get_flag(sms_pref, "info", "normal", default=False),
+            "number": preference.phone_number or sms_pref.get("number", ""),
+        },
+        "push": {
+            "enabled": _get_flag(push_pref, "enabled", default=True),
+            "critical": _get_flag(push_pref, "critical", default=True),
+            "warning": _get_flag(push_pref, "warning", "high", default=True),
+            "info": _get_flag(push_pref, "info", "normal", default=True),
+            "deviceToken": push_pref.get("device_token", ""),
+        },
+        "webhook": {
+            "enabled": _get_flag(webhook_pref, "enabled", default=False),
+            "url": preference.webhook_url or webhook_pref.get("url", ""),
+            "critical": _get_flag(webhook_pref, "critical", default=True),
+            "warning": _get_flag(webhook_pref, "warning", "high", default=False),
+            "info": _get_flag(webhook_pref, "info", "normal", default=False),
+            "headers": webhook_pref.get("headers", {}),
+        },
+        "escalation": {
+            "enabled": _coerce_bool(escalation_pref.get("enabled"), default=True),
+            "autoEscalate": _coerce_bool(escalation_pref.get("auto_escalate"), default=False),
+            "escalationDelay": _coerce_int(escalation_pref.get("delay_minutes"), 15),
+            "maxEscalations": _coerce_int(escalation_pref.get("max_escalations"), 3),
+        },
+        "quietHours": {
+            "enabled": bool(preference.quiet_hours_enabled),
+            "start": preference.quiet_hours_start or "22:00",
+            "end": preference.quiet_hours_end or "08:00",
+            "timezone": preference.timezone or "UTC",
+        },
+        "meta": {
+            "updatedAt": preference.updated_at.isoformat() if preference.updated_at else None,
+            "createdAt": preference.created_at.isoformat() if preference.created_at else None,
+        },
+    }
+
+
+def _build_update_payload(preference, incoming: Dict[str, Any]) -> Dict[str, Any]:
+    """Translate frontend payload into model fields for persistence."""
+    existing_channels = dict(preference.channel_preferences or {})
+    existing_types = dict(preference.type_preferences or {})
+
+    email_in = incoming.get("email", {}) or {}
+    sms_in = incoming.get("sms", {}) or {}
+    push_in = incoming.get("push", {}) or {}
+    webhook_in = incoming.get("webhook", {}) or {}
+    escalation_in = incoming.get("escalation", {}) or {}
+    quiet_in = incoming.get("quietHours", {}) or {}
+
+    channel_email = dict(existing_channels.get("email", {}))
+    channel_email.update(
+        {
+            "enabled": _coerce_bool(email_in.get("enabled"), channel_email.get("enabled", True)),
+            "critical": _coerce_bool(email_in.get("critical"), channel_email.get("critical", True)),
+            "high": _coerce_bool(email_in.get("warning"), channel_email.get("high", True)),
+            "normal": _coerce_bool(email_in.get("info"), channel_email.get("normal", False)),
+            "low": _coerce_bool(email_in.get("low"), channel_email.get("low", False)),
+            "address": (email_in.get("address") or "").strip(),
+        }
+    )
+
+    channel_sms = dict(existing_channels.get("sms", {}))
+    channel_sms.update(
+        {
+            "enabled": _coerce_bool(sms_in.get("enabled"), channel_sms.get("enabled", False)),
+            "critical": _coerce_bool(sms_in.get("critical"), channel_sms.get("critical", True)),
+            "high": _coerce_bool(sms_in.get("warning"), channel_sms.get("high", False)),
+            "normal": _coerce_bool(sms_in.get("info"), channel_sms.get("normal", False)),
+            "number": (sms_in.get("number") or "").strip(),
+        }
+    )
+
+    channel_push = dict(existing_channels.get("push", {}))
+    channel_push.update(
+        {
+            "enabled": _coerce_bool(push_in.get("enabled"), channel_push.get("enabled", True)),
+            "critical": _coerce_bool(push_in.get("critical"), channel_push.get("critical", True)),
+            "high": _coerce_bool(push_in.get("warning"), channel_push.get("high", True)),
+            "normal": _coerce_bool(push_in.get("info"), channel_push.get("normal", True)),
+            "device_token": (push_in.get("deviceToken") or "").strip(),
+        }
+    )
+
+    channel_webhook = dict(existing_channels.get("webhook", {}))
+    channel_webhook.update(
+        {
+            "enabled": _coerce_bool(webhook_in.get("enabled"), channel_webhook.get("enabled", False)),
+            "critical": _coerce_bool(webhook_in.get("critical"), channel_webhook.get("critical", True)),
+            "high": _coerce_bool(webhook_in.get("warning"), channel_webhook.get("high", False)),
+            "normal": _coerce_bool(webhook_in.get("info"), channel_webhook.get("normal", False)),
+            "url": (webhook_in.get("url") or "").strip(),
+            "headers": webhook_in.get("headers", channel_webhook.get("headers", {})) or {},
+        }
+    )
+
+    existing_channels["email"] = channel_email
+    existing_channels["sms"] = channel_sms
+    existing_channels["push"] = channel_push
+    existing_channels["webhook"] = channel_webhook
+
+    type_escalation = dict(existing_types.get("escalation", {}))
+    type_escalation.update(
+        {
+            "enabled": _coerce_bool(escalation_in.get("enabled"), type_escalation.get("enabled", True)),
+            "auto_escalate": _coerce_bool(
+                escalation_in.get("autoEscalate"), type_escalation.get("auto_escalate", False)
+            ),
+            "delay_minutes": _coerce_int(escalation_in.get("escalationDelay"), type_escalation.get("delay_minutes", 15)),
+            "max_escalations": _coerce_int(
+                escalation_in.get("maxEscalations"), type_escalation.get("max_escalations", 3)
+            ),
+        }
+    )
+    existing_types["escalation"] = type_escalation
+
+    email_address = (email_in.get("address") or "").strip()
+    phone_number = (sms_in.get("number") or "").strip()
+    webhook_url = (webhook_in.get("url") or "").strip()
+
+    update_dict: Dict[str, Any] = {
+        "notifications_enabled": _coerce_bool(
+            incoming.get("notificationsEnabled"), getattr(preference, "notifications_enabled", True)
+        ),
+        "channel_preferences": existing_channels,
+        "type_preferences": existing_types,
+        "digest_enabled": _coerce_bool(email_in.get("digest"), preference.digest_enabled),
+        "digest_frequency": _sanitize_frequency(email_in.get("digestFrequency"), preference.digest_frequency or "daily"),
+        "email_address": email_address or None,
+        "phone_number": phone_number or None,
+        "webhook_url": webhook_url or None,
+        "quiet_hours_enabled": _coerce_bool(quiet_in.get("enabled"), preference.quiet_hours_enabled),
+        "quiet_hours_start": (quiet_in.get("start") or preference.quiet_hours_start or "22:00")[:5],
+        "quiet_hours_end": (quiet_in.get("end") or preference.quiet_hours_end or "08:00")[:5],
+        "timezone": (quiet_in.get("timezone") or preference.timezone or "UTC"),
+    }
+
+    return update_dict
 
 # Create Blueprint
 notifications_bp = Blueprint('notifications', __name__, url_prefix='/api/notifications')
@@ -103,6 +316,11 @@ def get_notification_history():
                 title = title_map.get(event_type, '📢 Guardrail Event')
                 
                 # Create notification object
+                status = (alert.status or '').upper()
+                acknowledged = bool(getattr(alert, 'acknowledged_at', None))
+                resolved = bool(getattr(alert, 'resolved_at', None))
+                is_read = acknowledged or resolved or status in {'ACKNOWLEDGED', 'RESOLVED', 'CLOSED', 'COMPLETED'}
+
                 notification = {
                     'id': f"notif_{alert.id}",
                     'title': title,
@@ -111,7 +329,10 @@ def get_notification_history():
                     'priority': priority,  # Frontend expects 'priority', not 'severity'
                     'severity': severity,  # Keep for reference
                     'timestamp': alert.created_at.isoformat() if alert.created_at else datetime.now(timezone.utc).isoformat(),
-                    'read': False,  # Could be enhanced to track read status in database
+                    'read': is_read,
+                    'acknowledged': acknowledged,
+                    'resolved': resolved,
+                    'status': status,
                     'conversation_id': alert.conversation_id or alert.session_id,
                     'event_id': alert.event_id,
                     'metadata': {
@@ -210,47 +431,22 @@ def get_notification_preferences():
     """Get user notification preferences"""
     try:
         current_user = get_current_user()
+        user_id = get_current_user_id()
+
+        if not user_id:
+            logger.warning("Notification preferences requested without user context.")
+            return jsonify({
+                'success': False,
+                'error': 'User context missing',
+                'message': 'Unable to determine user for notification preferences'
+            }), 400
         
-        logger.info(f"Notification preferences requested by {current_user}")
-        
-        # Mock notification preferences data
-        preferences_data = {
-            'email_notifications': True,
-            'push_notifications': True,
-            'alert_notifications': True,
-            'conversation_notifications': True,
-            'system_notifications': False,
-            'notification_frequency': 'immediate',  # immediate, hourly, daily
-            'quiet_hours': {
-                'enabled': True,
-                'start': '22:00',
-                'end': '08:00'
-            },
-            'channels': {
-                'email': {
-                    'enabled': True,
-                    'address': 'user@example.com'
-                },
-                'sms': {
-                    'enabled': False,
-                    'number': '+1234567890'
-                },
-                'push': {
-                    'enabled': True,
-                    'device_token': 'device_token_123'
-                }
-            },
-            'alert_types': {
-                'critical_alerts': True,
-                'warning_alerts': True,
-                'info_alerts': False,
-                'security_alerts': True,
-                'system_alerts': False
-            },
-            'escalation_notifications': True,
-            'digest_notifications': False,
-            'last_updated': datetime.now().isoformat()
-        }
+        logger.info(f"Notification preferences requested by {current_user} (user_id={user_id})")
+
+        with get_session_context() as session:
+            repo = NotificationPreferenceRepository(session)
+            preference = repo.get_or_create(user_id)
+            preferences_data = _serialize_notification_preferences(preference)
         
         return jsonify({
             'success': True,
@@ -271,26 +467,37 @@ def update_notification_preferences():
     """Update user notification preferences"""
     try:
         current_user = get_current_user()
+        user_id = get_current_user_id()
         data = request.get_json()
         
-        if not data:
+        if not user_id:
+            logger.warning("Notification preferences update attempted without user context.")
             return jsonify({
                 'success': False,
-                'error': 'No data provided'
+                'error': 'User context missing',
+                'message': 'Unable to determine user for notification preferences'
             }), 400
         
-        logger.info(f"Notification preferences updated by {current_user}")
+        if not data or not isinstance(data, dict):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid data',
+                'message': 'Notification preferences payload is required'
+            }), 400
         
-        # In a real application, you would save these preferences to a database
-        # For now, we'll just return a success response
+        logger.info(f"Notification preferences update requested by {current_user} (user_id={user_id})")
+        
+        with get_session_context() as session:
+            repo = NotificationPreferenceRepository(session)
+            preference = repo.get_or_create(user_id)
+            update_payload = _build_update_payload(preference, data)
+            updated_preference = repo.update_preferences(user_id, update_payload)
+            response_data = _serialize_notification_preferences(updated_preference)
         
         return jsonify({
             'success': True,
             'message': 'Notification preferences updated successfully',
-            'data': {
-                'updated_at': datetime.now().isoformat(),
-                'updated_by': current_user
-            }
+            'data': response_data
         })
         
     except Exception as e:

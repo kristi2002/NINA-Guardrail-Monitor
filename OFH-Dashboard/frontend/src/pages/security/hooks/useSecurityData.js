@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
+import { notificationService } from '../../../services/notifications'
 
 export function useSecurityData(activeTab, timeRange) {
   const [securityData, setSecurityData] = useState(null)
@@ -29,7 +30,8 @@ export function useSecurityData(activeTab, timeRange) {
         'threats': `/api/security/threats?timeRange=${timeRange}`,
         'access': `/api/security/access?timeRange=${timeRange}`,
         'compliance': '/api/security/compliance',
-        'incidents': `/api/security/incidents?timeRange=${timeRange}`
+        'incidents': `/api/security/incidents?timeRange=${timeRange}`,
+        'alerting': '/api/security/alerting?limit=20'
       }
 
       const endpoint = endpointMap[activeTab] || '/api/security/overview'
@@ -99,6 +101,23 @@ export function useSecurityData(activeTab, timeRange) {
       clearInterval(interval)
     }
   }, [timeRange, activeTab])
+
+  useEffect(() => {
+    let unsubscribeGuardrail = null
+    let unsubscribeOperator = null
+
+    const handleRealtimeUpdate = () => {
+      fetchSecurityData(false)
+    }
+
+    unsubscribeGuardrail = notificationService.subscribe('guardrail_event', handleRealtimeUpdate)
+    unsubscribeOperator = notificationService.subscribe('operator_action', handleRealtimeUpdate)
+
+    return () => {
+      if (unsubscribeGuardrail) unsubscribeGuardrail()
+      if (unsubscribeOperator) unsubscribeOperator()
+    }
+  }, [activeTab, timeRange])
 
   return {
     securityData,

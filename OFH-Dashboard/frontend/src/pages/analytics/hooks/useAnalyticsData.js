@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
+import { notificationService } from '../../../services/notifications'
 
 export function useAnalyticsData(activeTab, timeRange) {
   const [analyticsData, setAnalyticsData] = useState(null)
@@ -215,6 +216,23 @@ export function useAnalyticsData(activeTab, timeRange) {
       clearInterval(interval)
     }
   }, [timeRange, activeTab, analyticsData]) // Include analyticsData to properly detect when data exists
+
+  useEffect(() => {
+    let unsubscribeGuardrail = null
+    let unsubscribeOperator = null
+
+    const handleRealtimeUpdate = () => {
+      fetchAnalyticsData(false)
+    }
+
+    unsubscribeGuardrail = notificationService.subscribe('guardrail_event', handleRealtimeUpdate)
+    unsubscribeOperator = notificationService.subscribe('operator_action', handleRealtimeUpdate)
+
+    return () => {
+      if (unsubscribeGuardrail) unsubscribeGuardrail()
+      if (unsubscribeOperator) unsubscribeOperator()
+    }
+  }, [activeTab, timeRange])
 
   return {
     analyticsData,
