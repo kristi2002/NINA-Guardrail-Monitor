@@ -1,0 +1,280 @@
+{
+  "app": {
+    "title": "NINA Guardrail Monitor",
+    "subtitle": "Real-Time Safety Monitoring Dashboard",
+    "loading": "Initializing NINA Security Dashboard...",
+    "loadingDashboard": "Loading Dashboard...",
+    "loadingAnalytics": "Loading Analytics...",
+    "loadingSecurity": "Loading Security..."
+  },
+  "analytics": {
+    "header": {
+      "title": "📊 Analytics Dashboard",
+      "subtitle": "Comprehensive insights into alert management performance • Last updated:",
+      "timeRanges": {
+        "1d": "Last 24 Hours",
+        "7d": "Last 7 Days",
+        "30d": "Last 30 Days"
+      },
+      "export": {
+        "button": "📤 Export",
+        "exporting": "Exporting...",
+        "tooltip": {
+          "noData": "No data available to export",
+          "exporting": "Exporting...",
+          "ready": "Export current tab data as JSON"
+        },
+        "loadingSpinnerLabel": "Exporting..."
+      }
+    },
+    "tabs": {
+      "overview": { "label": "Overview" },
+      "notifications": { "label": "Notifications" },
+      "users": { "label": "Admin Performance" },
+      "alerts": { "label": "Alert Trends" },
+      "response": { "label": "Response Times" },
+      "escalations": { "label": "Escalations" },
+      "guardrail-performance": { "label": "Guardrail Performance" }
+    },
+    "messages": {
+      "loading": "Loading analytics dashboard...",
+      "loadingTab": "Loading {{tab}} data...",
+      "errorPrefix": "⚠️",
+      "retry": "Retry",
+      "noDataForExport": "No data available to export. Please wait for data to load."
+    }
+  },
+  "security": {
+    "header": {
+      "title": "🛡️ Security Dashboard",
+      "subtitle": "Comprehensive security monitoring and threat analysis • Last updated:",
+      "timeRanges": {
+        "1d": "Last 24 Hours",
+        "7d": "Last 7 Days",
+        "30d": "Last 30 Days"
+      }
+    },
+    "tabs": {
+      "overview": { "label": "Overview" },
+      "threats": { "label": "Threats" },
+      "access": { "label": "Access Control" },
+      "compliance": { "label": "Compliance" },
+      "incidents": { "label": "Incidents" },
+      "alerting": { "label": "Alerting" }
+    },
+    "messages": {
+      "loading": "Loading security dashboard...",
+      "loadingTab": "Loading {{tab}} data...",
+      "errorPrefix": "⚠️",
+      "retry": "Retry"
+    }
+  },
+  "conversationDetail": {
+    "title": "Conversation Detail",
+    "patient": {
+      "age": "Age",
+      "gender": "Gender",
+      "condition": "Condition",
+      "notAvailable": "N/A",
+      "ageValue_one": "{{count}} year",
+      "ageValue_other": "{{count}} years"
+    },
+    "session": {
+      "heading": "Conversation on {{date}}",
+      "summary": "Started at {{time}} • Status:",
+      "duration": " • Duration {{duration}} min"
+    },
+    "history": {
+      "toggle": "{{icon}} Action History ({{count}})",
+      "title": "Recent Actions",
+      "emptyDescription": "No recent actions recorded.",
+      "defaultAction": "Action",
+      "noDescription": "No description",
+      "operator": " (Operator: {{name}})"
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "security": "Security"
+  },
+  "navbar": {
+    "notifications": "Notifications",
+    "preferences": "Notification Preferences"
+  },
+  "user": {
+    "role": "User",
+    "tokenExpiresIn": "Token expires in:",
+    "sessionExpired": "Expired",
+    "sessionExpiring": "Your session is expiring soon",
+    "signOut": "Sign Out",
+    "secureSessionActive": "Secure Session Active"
+  },
+  "login": {
+    "initializing": "Initializing...",
+    "subtitle": "Healthcare AI Security Dashboard",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "buttonSignIn": "Sign In",
+    "buttonAuthenticating": "Authenticating...",
+    "errorDefault": "Login failed",
+    "errorRequiredFields": "Please enter both username and password",
+    "errorLocked": "Account temporarily locked. Try again in {{seconds}} seconds.",
+    "errorLockedUntil": "Too many failed attempts. Account locked for 5 minutes. Try again at {{time}}.",
+    "errorWarning": "{{message}} Warning: {{remaining}} attempts remaining before account lockout.",
+    "errorFailed": "{{message}}",
+    "errorUnexpected": "An unexpected error occurred. Please try again.",
+    "attemptsStatus": "Failed attempts: {{count}}/5",
+    "lockoutWarning": "Account will be locked after {{remaining}} more failed attempts",
+    "lockoutStatus": "Account Locked • Unlocks in {{minutes}}:{{seconds}}",
+    "securityHeading": "Secure Healthcare System",
+    "securityDetails": "HIPAA compliant • End-to-end encryption • Audit logging",
+    "featureAuthenticationTitle": "Secure Authentication",
+    "featureAuthenticationDescription": "JWT authentication with secure session management",
+    "featureMonitoringTitle": "Real-time Monitoring",
+    "featureMonitoringDescription": "Live guardrail violation tracking and alerts",
+    "featureHealthcareTitle": "Healthcare Ready",
+    "featureHealthcareDescription": "HIPAA compliance and audit trail support"
+  },
+  "notifications": {
+    "unreadBadge": "{{count}}"
+  },
+  "dashboard": {
+    "header": {
+      "title": "Conversation Monitoring",
+      "subtitle": "Real-time monitoring system for therapeutic conversations",
+      "systemOnline": "System Online"
+    },
+    "metrics": {
+      "activeConversations": "Active Conversations",
+      "criticalAlerts": "Critical Alerts",
+      "totalConversations": "Conversations Today",
+      "averageDuration": "Average Duration",
+      "durationValue": "{{minutes}} min",
+      "noData": "N/A"
+    }
+  },
+  "conversationStatus": {
+    "overall": {
+      "danger": "Highest risk level detected",
+      "warning": "Attention required situations detected",
+      "active": "Operations normal",
+      "inactive": "No active conversations",
+      "summary": {
+        "monitored": "{{count}} conversations monitored",
+        "danger": "{{count}} at risk",
+        "warning": "{{count}} requiring attention"
+      }
+    },
+    "cards": {
+      "total": "Total",
+      "active": "Active",
+      "warning": "Attention",
+      "danger": "Risk",
+      "completed": "Completed"
+    }
+  },
+  "conversationList": {
+    "title": "Conversation Monitoring",
+    "stats": {
+      "total_one": "{{count}} conversation",
+      "total_other": "{{count}} conversations",
+      "active_one": "{{count}} active",
+      "active_other": "{{count}} active"
+    },
+    "filters": {
+      "toggle": "Filters",
+      "searchLabel": "Search Patient (ID)",
+      "searchPlaceholder": "Enter patient ID...",
+      "statusLabel": "Status",
+      "status": {
+        "placeholder": "All",
+        "options": {
+          "all": "All",
+          "inProgress": "In progress",
+          "completed": "Completed",
+          "stopped": "Stopped",
+          "new": "New",
+          "cancelled": "Cancelled"
+        }
+      },
+      "situationLabel": "Situation",
+      "situation": {
+        "placeholder": "All",
+        "options": {
+          "all": "All",
+          "regular": "Regular",
+          "warning": "Self-harm indicators",
+          "danger": "Dangerous actions"
+        }
+      },
+      "dateCreatedFrom": "Created from",
+      "dateCreatedTo": "Created to",
+      "dateUpdatedFrom": "Updated from",
+      "dateUpdatedTo": "Updated to",
+      "datePlaceholder": "dd/mm/yyyy",
+      "reset": "Reset filters"
+    },
+    "empty": {
+      "title": "No results found",
+      "filtered": "No conversations match the selected filters. Try adjusting your criteria.",
+      "unfiltered": "The system is waiting for new conversations."
+    },
+    "table": {
+      "patient": "Patient",
+      "status": "Status",
+      "situation": "Situation",
+      "createdAt": "Created",
+      "updatedAt": "Last update"
+    },
+    "statusLabels": {
+      "new": "New",
+      "inProgress": "In progress",
+      "stopped": "Stopped",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "situationLabels": {
+      "regular": "Regular",
+      "warning": "Self-harm indicators",
+      "danger": "Dangerous actions"
+    },
+    "patientLabel": "Patient {{id}}",
+    "patientAge_one": "{{count}} year old",
+    "patientAge_other": "{{count}} years old",
+    "patientMeta": "{{age}}, {{gender}}",
+    "gender": {
+      "male": "Male",
+      "female": "Female",
+      "unknown": "Unknown"
+    },
+    "notAvailable": "N/A",
+    "date": {
+      "invalid": "Invalid date"
+    },
+    "pagination": {
+      "showing": "Showing {{start}}-{{end}} of {{total}} conversations",
+      "prev": "Previous page",
+      "next": "Next page",
+      "goto": "Go to page {{page}}"
+    }
+  },
+  "timeAgo": {
+    "updated": "Updated {{time}}",
+    "secondsAgo": "{{count}}s ago",
+    "minutesAgo": "{{count}}m ago",
+    "justNow": "just now"
+  },
+  "language": {
+    "english": "English",
+    "italian": "Italian",
+    "switchToEnglish": "Switch to English",
+    "switchToItalian": "Switch to Italian"
+  },
+  "common": {
+    "loading": "Loading..."
+  }
+}
+

@@ -2,8 +2,10 @@
  * Alert Trends Tab Component
  */
 import { LineChart, Line, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useTranslation } from 'react-i18next'
 
 export default function AlertsTab({ data, loading, renderMetricCard }) {
+  const { t } = useTranslation()
   if (!data) {
     return (
       <div className="analytics-tab-skeleton">
@@ -20,7 +22,7 @@ export default function AlertsTab({ data, loading, renderMetricCard }) {
   }
 
   if (Object.keys(data).length === 0) {
-    return <div className="analytics-loading">No alert trends data available. Try refreshing.</div>
+    return <div className="analytics-loading">{t('analytics.tabs.alerts.messages.noData')}</div>
   }
 
   try {
@@ -33,18 +35,44 @@ export default function AlertsTab({ data, loading, renderMetricCard }) {
     const eventTypes = distributions.by_event_type || {}
     const mostCommonType = Object.keys(eventTypes).reduce((a, b) => eventTypes[a] > eventTypes[b] ? a : b, 'N/A') || 'N/A'
 
+    const metrics = [
+      {
+        title: t('analytics.tabs.alerts.metrics.total.title'),
+        subtitle: t('analytics.tabs.alerts.metrics.total.subtitle'),
+        value: summary.total_alerts || 0,
+        icon: '🚨'
+      },
+      {
+        title: t('analytics.tabs.alerts.metrics.critical.title'),
+        subtitle: t('analytics.tabs.alerts.metrics.critical.subtitle'),
+        value: summary.critical_alerts || 0,
+        icon: '⚠️'
+      },
+      {
+        title: t('analytics.tabs.alerts.metrics.active.title'),
+        subtitle: t('analytics.tabs.alerts.metrics.active.subtitle'),
+        value: summary.active_alerts || 0,
+        icon: '📊'
+      },
+      {
+        title: t('analytics.tabs.alerts.metrics.commonType.title'),
+        subtitle: t('analytics.tabs.alerts.metrics.commonType.subtitle'),
+        value: mostCommonType,
+        icon: '📈'
+      }
+    ]
+
     return (
       <div className="analytics-tab">
         <div className="metrics-grid">
-          {renderMetricCard('Total Alerts', summary.total_alerts || 0, 'This period', '🚨')}
-          {renderMetricCard('Critical Alerts', summary.critical_alerts || 0, 'High priority', '⚠️')}
-          {renderMetricCard('Active Alerts', summary.active_alerts || 0, 'Currently open', '📊')}
-          {renderMetricCard('Most Common Type', mostCommonType, 'Event type', '📈')}
+          {metrics.map(metric =>
+            renderMetricCard(metric.title, metric.value, metric.subtitle, metric.icon)
+          )}
         </div>
 
         <div className="charts-grid">
           <div className="chart-container">
-            <h3>Alert Trends Over Time</h3>
+            <h3>{t('analytics.tabs.alerts.charts.trends.title')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={performanceMetrics.resolution_time_trends || []}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -52,24 +80,39 @@ export default function AlertsTab({ data, loading, renderMetricCard }) {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="average_resolution_time_minutes" stroke="#dc2626" name="Avg Resolution (min)" />
-                <Line type="monotone" dataKey="count" stroke="#3b82f6" name="Alert Count" />
+                <Line
+                  type="monotone"
+                  dataKey="average_resolution_time_minutes"
+                  stroke="#dc2626"
+                  name={t('analytics.tabs.alerts.charts.trends.series.avgResolution')}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#3b82f6"
+                  name={t('analytics.tabs.alerts.charts.trends.series.count')}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           <div className="chart-container">
-            <h3>Alert Type Distribution</h3>
+            <h3>{t('analytics.tabs.alerts.charts.typeDistribution.title')}</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={Object.entries(eventTypes).map(([type, count]) => ({ type, count }))}
+                  data={Object.entries(eventTypes).map(([type, count]) => ({
+                    type: t(`analytics.tabs.alerts.eventTypes.${type.toLowerCase?.() || String(type).toLowerCase()}`, {
+                      defaultValue: type
+                    }),
+                    count
+                  }))}
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
                   dataKey="count"
                   nameKey="type"
-                  label={({type, count}) => `${type}: ${count}`}
+                  label={({type, count}) => t('analytics.tabs.alerts.charts.typeDistribution.label', { type, count })}
                 >
                   {Object.entries(eventTypes).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={['#dc2626', '#f97316', '#fbbf24', '#3b82f6', '#22c55e'][index % 5]} />
@@ -82,22 +125,23 @@ export default function AlertsTab({ data, loading, renderMetricCard }) {
         </div>
 
         <div className="severity-analysis">
-          <h3>Severity Distribution</h3>
+          <h3>{t('analytics.tabs.alerts.severity.title')}</h3>
           <div className="severity-bars">
             {Object.entries(distributions.by_severity || {}).map(([severity, count], index) => {
               const colors = { 'CRITICAL': '#dc2626', 'critical': '#dc2626', 'HIGH': '#f97316', 'high': '#f97316', 'MEDIUM': '#fbbf24', 'medium': '#fbbf24', 'LOW': '#22c55e', 'low': '#22c55e' }
               const maxCount = Math.max(...Object.values(distributions.by_severity || {}))
+              const severityKey = typeof severity === 'string' ? severity.toLowerCase() : String(severity).toLowerCase()
               return (
                 <div key={index} className="severity-bar">
-                  <div className="severity-label" style={{ color: colors[severity] || '#64748b' }}>
-                    {severity}
+                  <div className="severity-label" style={{ color: colors[severity] || colors[severityKey] || '#64748b' }}>
+                    {t(`analytics.tabs.alerts.severity.labels.${severityKey}`, { defaultValue: severity })}
                   </div>
                   <div className="severity-progress">
                     <div
                       className="severity-fill"
                       style={{
                         width: `${maxCount > 0 ? (count / maxCount) * 100 : 0}%`,
-                        backgroundColor: colors[severity] || '#64748b'
+                        backgroundColor: colors[severity] || colors[severityKey] || '#64748b'
                       }}
                     ></div>
                   </div>
@@ -113,7 +157,7 @@ export default function AlertsTab({ data, loading, renderMetricCard }) {
     console.error(`Error rendering alerts tab:`, err)
     return (
       <div className="analytics-error">
-        <h3>Error displaying alert trends data</h3>
+        <h3>{t('analytics.tabs.alerts.messages.errorTitle')}</h3>
         <p>{err.message}</p>
       </div>
     )

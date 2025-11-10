@@ -3,13 +3,18 @@
  */
 import { MetricCard, MetricCardSkeleton } from '../../../components/analytics'
 import { calculateTrend } from '../../../utils/trendCalculator'
+import { useTranslation } from 'react-i18next'
 
 
 export default function DashboardMetrics({ metrics, previousMetrics }) {
+  const { t } = useTranslation()
   const activeConversations = metrics?.conversation_metrics?.active_sessions || 0
   const criticalAlerts = metrics?.alert_metrics?.critical_alerts || 0
   const totalConversations = metrics?.conversation_metrics?.total_sessions || 0
   const averageDuration = metrics?.conversation_metrics?.average_session_duration || 0
+  const durationLabel = averageDuration
+    ? t('dashboard.metrics.durationValue', { minutes: Math.round(averageDuration) })
+    : t('dashboard.metrics.noData')
 
   if (!metrics) {
     return (
@@ -25,7 +30,7 @@ export default function DashboardMetrics({ metrics, previousMetrics }) {
   return (
     <div className="metrics-grid">
       <MetricCard 
-        title="Conversazioni Attive"
+        title={t('dashboard.metrics.activeConversations')}
         value={activeConversations}
         icon="💬"
         trend={previousMetrics ? calculateTrend(
@@ -34,7 +39,7 @@ export default function DashboardMetrics({ metrics, previousMetrics }) {
         ) : undefined}
       />
       <MetricCard 
-        title="Allarmi Critici"
+        title={t('dashboard.metrics.criticalAlerts')}
         value={criticalAlerts}
         icon="🚨"
         trend={previousMetrics ? calculateTrend(
@@ -44,7 +49,7 @@ export default function DashboardMetrics({ metrics, previousMetrics }) {
         isAlert={true}
       />
       <MetricCard 
-        title="Conversazioni Oggi"
+        title={t('dashboard.metrics.totalConversations')}
         value={totalConversations}
         icon="📅"
         trend={previousMetrics ? calculateTrend(
@@ -53,8 +58,8 @@ export default function DashboardMetrics({ metrics, previousMetrics }) {
         ) : undefined}
       />
       <MetricCard 
-        title="Durata Media"
-        value={averageDuration ? `${Math.round(averageDuration)} min` : 'N/A'}
+        title={t('dashboard.metrics.averageDuration')}
+        value={durationLabel}
         icon="⏱️"
         trend={previousMetrics ? calculateTrend(
           averageDuration,

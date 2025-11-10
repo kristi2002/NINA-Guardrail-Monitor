@@ -1,19 +1,30 @@
 /**
  * Analytics Tab Navigation Component
  */
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import './AnalyticsTabs.css'
 
-const tabs = [
-  { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'notifications', label: 'Notifications', icon: '📧' },
-  { id: 'users', label: 'Admin Performance', icon: '👥' },
-  { id: 'alerts', label: 'Alert Trends', icon: '📈' },
-  { id: 'response', label: 'Response Times', icon: '⏱️' },
-  { id: 'escalations', label: 'Escalations', icon: '⬆️' },
-  { id: 'guardrail-performance', label: 'Guardrail Performance', icon: '🛡️' }
+const TAB_CONFIG = [
+  { id: 'overview', icon: '📊' },
+  { id: 'notifications', icon: '📧' },
+  { id: 'users', icon: '👥' },
+  { id: 'alerts', icon: '📈' },
+  { id: 'response', icon: '⏱️' },
+  { id: 'escalations', icon: '⬆️' },
+  { id: 'guardrail-performance', icon: '🛡️' }
 ]
 
 export default function AnalyticsTabs({ activeTab, onTabClick }) {
+  const { t } = useTranslation()
+
+  const tabs = useMemo(() => (
+    TAB_CONFIG.map(tab => ({
+      ...tab,
+      label: t(`analytics.tabs.${tab.id}.label`)
+    }))
+  ), [t])
+
   return (
     <div className="analytics-tabs">
       {tabs.map(tab => (

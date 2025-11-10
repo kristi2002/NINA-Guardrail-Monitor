@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import './ConversationStatus.css'
 
 function ConversationStatus({ conversations = [] }) {
+  const { t } = useTranslation()
   const [statusCounts, setStatusCounts] = useState({
     total: 0,
     active: 0,
@@ -25,75 +27,83 @@ function ConversationStatus({ conversations = [] }) {
     setStatusCounts(counts)
   }, [conversations])
 
-  const getStatusConfig = (type) => {
-    const configs = {
-      total: {
-        label: 'Totale',
-        icon: '📊',
-        class: 'status-total',
-        color: '#1976d2'
-      },
-      active: {
-        label: 'Attive',
-        icon: '⚡',
-        class: 'status-active',
-        color: '#4caf50'
-      },
-      warning: {
-        label: 'Attenzione',
-        icon: '⚠️',
-        class: 'status-warning',
-        color: '#ffa726'
-      },
-      danger: {
-        label: 'Pericolo',
-        icon: '🚨',
-        class: 'status-danger',
-        color: '#f44336'
-      },
-      completed: {
-        label: 'Completate',
-        icon: '✅',
-        class: 'status-completed',
-        color: '#2e7d32'
-      }
+  const statusConfigs = useMemo(() => ({
+    total: {
+      label: t('conversationStatus.cards.total'),
+      icon: '📊',
+      class: 'status-total',
+      color: '#1976d2'
+    },
+    active: {
+      label: t('conversationStatus.cards.active'),
+      icon: '⚡',
+      class: 'status-active',
+      color: '#4caf50'
+    },
+    warning: {
+      label: t('conversationStatus.cards.warning'),
+      icon: '⚠️',
+      class: 'status-warning',
+      color: '#ffa726'
+    },
+    danger: {
+      label: t('conversationStatus.cards.danger'),
+      icon: '🚨',
+      class: 'status-danger',
+      color: '#f44336'
+    },
+    completed: {
+      label: t('conversationStatus.cards.completed'),
+      icon: '✅',
+      class: 'status-completed',
+      color: '#2e7d32'
     }
-    return configs[type] || configs.total
-  }
+  }), [t])
 
-  const getOverallStatus = () => {
+  const overallStatus = useMemo(() => {
     if (statusCounts.danger > 0) {
       return {
         level: 'danger',
-        message: 'Livello massimo di pericolosità rilevato',
+        message: t('conversationStatus.overall.danger'),
         color: '#f44336',
         icon: '🚨'
       }
-    } else if (statusCounts.warning > 0) {
+    }
+    if (statusCounts.warning > 0) {
       return {
         level: 'warning',
-        message: 'Situazioni di attenzione rilevate',
+        message: t('conversationStatus.overall.warning'),
         color: '#ffa726',
         icon: '⚠️'
       }
-    } else if (statusCounts.active > 0) {
+    }
+    if (statusCounts.active > 0) {
       return {
         level: 'active',
-        message: 'Tutto regolare',
+        message: t('conversationStatus.overall.active'),
         color: '#4caf50',
         icon: '👍'
       }
-    } else {
-      return {
-        level: 'inactive',
-        message: 'Nessuna conversazione attiva',
-        color: '#9e9e9e',
-        icon: '💤'
-      }
     }
-  }
+    return {
+      level: 'inactive',
+      message: t('conversationStatus.overall.inactive'),
+      color: '#9e9e9e',
+      icon: '💤'
+    }
+  }, [statusCounts.active, statusCounts.danger, statusCounts.warning, t])
 
-  const overallStatus = getOverallStatus()
+  const monitoredSummary = t('conversationStatus.overall.summary.monitored', {
+    count: statusCounts.total
+  })
+  const dangerSummary =
+    statusCounts.danger > 0
+      ? t('conversationStatus.overall.summary.danger', { count: statusCounts.danger })
+      : ''
+  const warningSummary =
+    statusCounts.warning > 0 && statusCounts.danger === 0
+      ? t('conversationStatus.overall.summary.warning', { count: statusCounts.warning })
+      : ''
 
   return (
     <div className="conversation-status">
@@ -105,9 +115,9 @@ function ConversationStatus({ conversations = [] }) {
         <div className="status-content">
           <h3>{overallStatus.message}</h3>
           <p>
-            {statusCounts.total} conversazioni monitorate
-            {statusCounts.danger > 0 && ` • ${statusCounts.danger} in pericolo`}
-            {statusCounts.warning > 0 && statusCounts.danger === 0 && ` • ${statusCounts.warning} richiedono attenzione`}
+            {monitoredSummary}
+            {dangerSummary && ` • ${dangerSummary}`}
+            {warningSummary && ` • ${warningSummary}`}
           </p>
         </div>
       </div>
@@ -115,7 +125,7 @@ function ConversationStatus({ conversations = [] }) {
       {/* Status Grid */}
       <div className="status-grid">
         {Object.entries(statusCounts).map(([key, count]) => {
-          const config = getStatusConfig(key)
+          const config = statusConfigs[key] || statusConfigs.total
           return (
             <div key={key} className={`status-card ${config.class}`}>
               <div className="status-card-icon">{config.icon}</div>

@@ -1,18 +1,29 @@
 /**
  * Security Tab Navigation Component
  */
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import './SecurityTabs.css'
 
-const tabs = [
-  { id: 'overview', label: 'Overview', icon: '🛡️' },
-  { id: 'threats', label: 'Threats', icon: '⚠️' },
-  { id: 'access', label: 'Access Control', icon: '🔐' },
-  { id: 'compliance', label: 'Compliance', icon: '📋' },
-  { id: 'incidents', label: 'Incidents', icon: '🚨' },
-  { id: 'alerting', label: 'Alerting', icon: '📡' }
+const TAB_CONFIG = [
+  { id: 'overview', icon: '🛡️' },
+  { id: 'threats', icon: '⚠️' },
+  { id: 'access', icon: '🔐' },
+  { id: 'compliance', icon: '📋' },
+  { id: 'incidents', icon: '🚨' },
+  { id: 'alerting', icon: '📡' }
 ]
 
 export default function SecurityTabs({ activeTab, onTabClick }) {
+  const { t } = useTranslation()
+
+  const tabs = useMemo(() => (
+    TAB_CONFIG.map(tab => ({
+      ...tab,
+      label: t(`security.tabs.${tab.id}.label`)
+    }))
+  ), [t])
+
   return (
     <div className="security-tabs">
       {tabs.map(tab => (

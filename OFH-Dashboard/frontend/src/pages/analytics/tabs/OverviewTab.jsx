@@ -1,6 +1,8 @@
 /**
  * Overview Tab Component
  */
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import MetricCard from './MetricCard'
 
@@ -21,16 +23,9 @@ function PerformanceCard({ icon, iconClass, label, value, trend }) {
   )
 }
 
-function timeRangeLabel(range) {
-  switch (range) {
-    case '1d': return '24 hours'
-    case '7d': return '7 days'
-    case '30d': return '30 days'
-    default: return 'period'
-  }
-}
-
 export default function OverviewTab({ data, loading, renderMetricCard, timeRange = '7d' }) {
+  const { t } = useTranslation()
+  const timeRangeLabel = useMemo(() => t(`analytics.tabs.overview.timeRange.${timeRange}`), [t, timeRange])
   if (!data && !loading) {
     return (
       <div className="analytics-tab-skeleton">
@@ -65,20 +60,80 @@ export default function OverviewTab({ data, loading, renderMetricCard, timeRange
       : 0
     const escalationRate = systemHealth.conversation_escalation_rate || 0
 
+    const metrics = [
+      {
+        title: t('analytics.tabs.overview.metrics.totalAlerts.title'),
+        subtitle: t('analytics.tabs.overview.metrics.totalAlerts.subtitle'),
+        value: totalAlerts,
+        icon: '🎯'
+      },
+      {
+        title: t('analytics.tabs.overview.metrics.avgResponseTime.title'),
+        subtitle: t('analytics.tabs.overview.metrics.avgResponseTime.subtitle'),
+        value: avgResponseTimeFormatted,
+        icon: '⚡'
+      },
+      {
+        title: t('analytics.tabs.overview.metrics.resolutionRate.title'),
+        subtitle: t('analytics.tabs.overview.metrics.resolutionRate.subtitle'),
+        value: `${resolutionRate}%`,
+        icon: '✅'
+      },
+      {
+        title: t('analytics.tabs.overview.metrics.activeConversations.title'),
+        subtitle: t('analytics.tabs.overview.metrics.activeConversations.subtitle'),
+        value: activeConversations,
+        icon: '💬'
+      },
+      {
+        title: t('analytics.tabs.overview.metrics.highRisk.title'),
+        subtitle: t('analytics.tabs.overview.metrics.highRisk.subtitle'),
+        value: conversations.high_risk || 0,
+        icon: '🚨'
+      },
+      {
+        title: t('analytics.tabs.overview.metrics.escalationRate.title'),
+        subtitle: t('analytics.tabs.overview.metrics.escalationRate.subtitle'),
+        value: `${Math.round(escalationRate * 100)}%`,
+        icon: '⬆️'
+      }
+    ]
+
+    const performanceCards = [
+      {
+        icon: '💬',
+        iconClass: 'total',
+        label: t('analytics.tabs.overview.performance.cards.totalConversations.label'),
+        value: totalConversations,
+        trend: { type: 'positive', label: t('analytics.tabs.overview.performance.cards.totalConversations.trend') }
+      },
+      {
+        icon: '🧑‍💻',
+        iconClass: 'users',
+        label: t('analytics.tabs.overview.performance.cards.activeUsers.label'),
+        value: users.active || 0,
+        trend: { type: 'neutral', label: t('analytics.tabs.overview.performance.cards.activeUsers.trend') }
+      },
+      {
+        icon: '⏱️',
+        iconClass: 'duration',
+        label: t('analytics.tabs.overview.performance.cards.averageDuration.label'),
+        value: `${Math.round(conversations.average_duration || 0)}m`,
+        trend: { type: 'negative', label: t('analytics.tabs.overview.performance.cards.averageDuration.trend') }
+      }
+    ]
+
     return (
       <div className="analytics-tab">
         <div className="metrics-grid">
-          {renderMetricCard('Total Alerts', totalAlerts, 'Processed', '🎯')}
-          {renderMetricCard('Avg Response Time', avgResponseTimeFormatted, 'Target: < 10m', '⚡')}
-          {renderMetricCard('Resolution Rate', `${resolutionRate}%`, 'Successfully resolved', '✅')}
-          {renderMetricCard('Active Conversations', activeConversations, 'Currently active', '💬')}
-          {renderMetricCard('High Risk Conversations', conversations.high_risk || 0, 'Requiring attention', '🚨')}
-          {renderMetricCard('Escalation Rate', `${Math.round(escalationRate * 100)}%`, 'Auto-escalated', '⬆️')}
+          {metrics.map(metric =>
+            renderMetricCard(metric.title, metric.value, metric.subtitle, metric.icon)
+          )}
         </div>
 
         <div className="charts-grid">
           <div className="alert-summary">
-            <h3>Alert Distribution by Severity</h3>
+            <h3>{t('analytics.tabs.overview.charts.alertDistribution.title')}</h3>
             {Object.keys(alerts.severity_distribution || {}).length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -99,45 +154,29 @@ export default function OverviewTab({ data, loading, renderMetricCard, timeRange
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="chart-placeholder">No severity distribution data available</div>
+              <div className="chart-placeholder">
+                {t('analytics.tabs.overview.charts.alertDistribution.noData')}
+              </div>
             )}
           </div>
 
           <div className="performance-summary">
             <div className="summary-header">
               <div>
-                <h3>Performance Summary</h3>
+                <h3>{t('analytics.tabs.overview.performance.title')}</h3>
                 <p className="summary-subtitle">
-                  Conversation health vs. goals (last {timeRangeLabel(timeRange)})
+                  {t('analytics.tabs.overview.performance.subtitle', { timeRange: timeRangeLabel })}
                 </p>
               </div>
               <div className="summary-badge">
                 <span className="trend-icon">↗</span>
-                <span>+8% overall improvement</span>
+                <span>{t('analytics.tabs.overview.performance.badge')}</span>
               </div>
             </div>
             <div className="summary-grid">
-              <PerformanceCard
-                icon="💬"
-                iconClass="total"
-                label="Total Conversations"
-                value={totalConversations}
-                trend={{ type: 'positive', label: '+12% vs last period' }}
-              />
-              <PerformanceCard
-                icon="🧑‍💻"
-                iconClass="users"
-                label="Active Users"
-                value={users.active || 0}
-                trend={{ type: 'neutral', label: 'Stable engagement' }}
-              />
-              <PerformanceCard
-                icon="⏱️"
-                iconClass="duration"
-                label="Average Duration"
-                value={`${Math.round(conversations.average_duration || 0)}m`}
-                trend={{ type: 'negative', label: '+3m vs target' }}
-              />
+              {performanceCards.map(card => (
+                <PerformanceCard key={card.label} {...card} />
+              ))}
             </div>
           </div>
         </div>
@@ -147,7 +186,7 @@ export default function OverviewTab({ data, loading, renderMetricCard, timeRange
     console.error(`Error rendering overview tab:`, err)
     return (
       <div className="analytics-error">
-        <h3>Error displaying overview data</h3>
+        <h3>{t('analytics.tabs.overview.messages.errorTitle')}</h3>
         <p>{err.message}</p>
       </div>
     )

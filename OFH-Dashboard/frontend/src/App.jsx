@@ -8,6 +8,7 @@ import { ProtectedRoute, UserProfile, UserInfo, ErrorBoundary } from './componen
 import { NotificationPreferences, NotificationCenter } from './components/notifications'
 import Login from './pages/Login'
 import './App.css'
+import { useTranslation } from 'react-i18next'
 
 // Lazy load page components for code splitting and better performance
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -17,6 +18,7 @@ const Security = lazy(() => import('./pages/Security'))
 function Navbar() {
   // const location = useLocation() // --- IMPROVEMENT ---: No longer needed
   const { isAuthenticated, user } = useAuth()
+  const { t, i18n } = useTranslation()
   
   // --- IMPROVEMENT ---
   // Use a single state to manage which modal is open.
@@ -28,6 +30,12 @@ function Navbar() {
   
   if (!isAuthenticated) return null
   
+  const changeLanguage = (language) => {
+    if (i18n.resolvedLanguage !== language) {
+      i18n.changeLanguage(language)
+    }
+  }
+
   return (
     <nav className="navbar">
       <div className="navbar-content">
@@ -36,8 +44,8 @@ function Navbar() {
             <img src="/favicon.svg" alt="NINA Logo" className="logo-icon" />
           </div>
           <div className="brand-text">
-            <h1>NINA Guardrail Monitor</h1>
-            <p className="subtitle">Real-Time Safety Monitoring Dashboard</p>
+            <h1>{t('app.title')}</h1>
+            <p className="subtitle">{t('app.subtitle')}</p>
           </div>
         </div>
         
@@ -54,7 +62,7 @@ function Navbar() {
                 className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               >
                 <span className="nav-icon">📊</span>
-                Dashboard
+                {t('nav.dashboard')}
               </NavLink>
             </li>
             <li>
@@ -63,7 +71,7 @@ function Navbar() {
                 className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               >
                 <span className="nav-icon">📈</span>
-                Analytics
+                {t('nav.analytics')}
               </NavLink>
             </li>
             <li>
@@ -72,7 +80,7 @@ function Navbar() {
                 className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               >
                 <span className="nav-icon">🔒</span>
-                Security
+                {t('nav.security')}
               </NavLink>
             </li>
           </ul>
@@ -80,11 +88,34 @@ function Navbar() {
 
         <div className="navbar-user">
           <div className="navbar-controls">
+            <div
+              className="language-switcher"
+              style={{ '--language-active-index': i18n.resolvedLanguage === 'it' ? 1 : 0 }}
+            >
+              <button
+                type="button"
+                className={`language-button ${i18n.resolvedLanguage === 'en' ? 'active' : ''}`}
+                onClick={() => changeLanguage('en')}
+                aria-label={t('language.switchToEnglish')}
+                aria-pressed={i18n.resolvedLanguage === 'en'}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`language-button ${i18n.resolvedLanguage === 'it' ? 'active' : ''}`}
+                onClick={() => changeLanguage('it')}
+                aria-label={t('language.switchToItalian')}
+                aria-pressed={i18n.resolvedLanguage === 'it'}
+              >
+                IT
+              </button>
+            </div>
             <button 
               className="btn-notifications-nav"
               // --- IMPROVEMENT ---: Set modal state by name
               onClick={() => setOpenModal('center')}
-              title="Notifications"
+              title={t('navbar.notifications')}
             >
               <span className="notification-icon">🔔</span>
               {unreadCount > 0 && (
@@ -96,7 +127,7 @@ function Navbar() {
               className="btn-notification-preferences"
               // --- IMPROVEMENT ---: Set modal state by name
               onClick={() => setOpenModal('preferences')}
-              title="Notification Preferences"
+              title={t('navbar.preferences')}
             >
               <span className="preferences-icon">⚙️</span>
             </button>
@@ -138,12 +169,13 @@ function Navbar() {
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth()
+  const { t } = useTranslation()
   
   if (loading) {
     return (
       <div className="app-loading">
         <div className="loading-spinner"></div>
-        <p>Initializing NINA Security Dashboard...</p>
+        <p>{t('app.loading')}</p>
       </div>
     )
   }
@@ -165,7 +197,7 @@ function AppContent() {
                   <Suspense fallback={
                     <div className="app-loading">
                       <div className="loading-spinner"></div>
-                      <p>Loading Dashboard...</p>
+                      <p>{t('app.loadingDashboard')}</p>
                     </div>
                   }>
                     <Dashboard />
@@ -180,7 +212,7 @@ function AppContent() {
                   <Suspense fallback={
                     <div className="app-loading">
                       <div className="loading-spinner"></div>
-                      <p>Loading Analytics...</p>
+                      <p>{t('app.loadingAnalytics')}</p>
                     </div>
                   }>
                     <Analytics />
@@ -195,7 +227,7 @@ function AppContent() {
                   <Suspense fallback={
                     <div className="app-loading">
                       <div className="loading-spinner"></div>
-                      <p>Loading Security...</p>
+                      <p>{t('app.loadingSecurity')}</p>
                     </div>
                   }>
                     <Security />

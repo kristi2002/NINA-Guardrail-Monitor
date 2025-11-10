@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import './UserProfile.css';
 
 function UserProfile({ isDropdownOpen, onClose }) {
   const { user, logout, getTokenExpiry, isTokenExpiringSoon } = useAuth();
   const [timeUntilExpiry, setTimeUntilExpiry] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     const updateTokenTimer = () => {
@@ -18,7 +20,7 @@ function UserProfile({ isDropdownOpen, onClose }) {
           const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
           setTimeUntilExpiry(`${hours}h ${minutes}m`);
         } else {
-          setTimeUntilExpiry('Expired');
+          setTimeUntilExpiry('expired');
         }
       }
     };
@@ -80,16 +82,16 @@ function UserProfile({ isDropdownOpen, onClose }) {
 
         <div className="session-info">
           <div className="session-item">
-            <span className="session-label">Token expires in:</span>
+            <span className="session-label">{t('user.tokenExpiresIn')}</span>
             <span className={`session-value ${isTokenExpiringSoon() ? 'expiring' : ''}`}>
-              {timeUntilExpiry}
+              {timeUntilExpiry === 'expired' ? t('user.sessionExpired') : timeUntilExpiry}
             </span>
           </div>
           
           {isTokenExpiringSoon() && (
             <div className="expiry-warning">
               <span className="warning-icon">⚠️</span>
-              Your session is expiring soon
+              {t('user.sessionExpiring')}
             </div>
           )}
         </div>
@@ -100,14 +102,14 @@ function UserProfile({ isDropdownOpen, onClose }) {
             onClick={handleLogout}
           >
             <span className="action-icon">🚪</span>
-            Sign Out
+            {t('user.signOut')}
           </button>
         </div>
 
         <div className="profile-footer">
           <div className="security-status">
             <span className="status-icon">🛡️</span>
-            <span className="status-text">Secure Session Active</span>
+            <span className="status-text">{t('user.secureSessionActive')}</span>
           </div>
         </div>
       </div>
@@ -118,6 +120,7 @@ function UserProfile({ isDropdownOpen, onClose }) {
 // Compact user info for the navbar
 export function UserInfo({ onClick }) {
   const { user, isTokenExpiringSoon } = useAuth();
+  const { t } = useTranslation();
 
   if (!user) return null;
 
@@ -133,7 +136,7 @@ export function UserInfo({ onClick }) {
       <div className="user-details-compact">
         <div className="user-name-compact">{user.username}</div>
         <div className={`user-status-compact ${isTokenExpiringSoon() ? 'expiring' : ''}`}>
-          User
+          {t('user.role')}
           {isTokenExpiringSoon() && <span className="expiry-indicator">⚠️</span>}
         </div>
       </div>

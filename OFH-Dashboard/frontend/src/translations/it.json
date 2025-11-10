@@ -1,0 +1,1012 @@
+{
+  "app": {
+    "title": "NINA Guardrail Monitor",
+    "subtitle": "Dashboard di monitoraggio della sicurezza in tempo reale",
+    "loading": "Inizializzazione del cruscotto di sicurezza NINA...",
+    "loadingDashboard": "Caricamento dashboard...",
+    "loadingAnalytics": "Caricamento analisi...",
+    "loadingSecurity": "Caricamento sicurezza..."
+  },
+  "dashboard": {
+    "metrics": {
+      "activeConversations": "Conversazioni attive",
+      "criticalAlerts": "Allarmi critici",
+      "totalConversations": "Conversazioni odierne",
+      "averageDuration": "Durata media",
+      "durationValue": "{{minutes}} min",
+      "noData": "N/D"
+    }
+  },
+  "conversationDetail": {
+    "title": "Dettaglio conversazione",
+    "patient": {
+      "age": "Età",
+      "gender": "Sesso",
+      "condition": "Patologia",
+      "notAvailable": "N/D",
+      "ageValue_one": "{{count}} anno",
+      "ageValue_other": "{{count}} anni"
+    },
+    "session": {
+      "heading": "Conversazione del {{date}}",
+      "summary": "Iniziata alle {{time}} • Stato:",
+      "duration": " • Durata {{duration}} min"
+    },
+    "history": {
+      "toggle": "{{icon}} Cronologia azioni ({{count}})",
+      "title": "Azioni recenti",
+      "emptyDescription": "Nessuna azione recente registrata.",
+      "defaultAction": "Azione",
+      "noDescription": "Nessuna descrizione",
+      "operator": " (Operatore: {{name}})"
+    },
+    "common": {
+      "processing": "Elaborazione...",
+      "notAvailable": "N/D",
+      "invalidDate": "Data non valida"
+    },
+    "sections": {
+      "lifecycle": "Ciclo di vita",
+      "escalation": "Escalation e attenzione",
+      "systemControl": "Controllo sistema",
+      "report": "Report conversazione",
+      "events": "Eventi conversazione",
+      "alternative": "Alternative"
+    },
+    "actions": {
+      "stopReport": {
+        "label": "Ferma e segnala",
+        "tooltip": "Ferma la conversazione normalmente (per interruzioni standard)"
+      },
+      "complete": {
+        "label": "Completa conversazione"
+      },
+      "cancel": {
+        "label": "Annulla conversazione"
+      },
+      "resume": {
+        "label": "Riprendi conversazione",
+        "tooltip": "Riprendi una conversazione pausata"
+      },
+      "emergencyStop": {
+        "label": "Fermata emergenza",
+        "tooltip": "Fermata di emergenza immediata"
+      },
+      "escalate": {
+        "label": "Escala al supervisore",
+        "tooltip": "Escala formalmente al supervisore (cambia status a ESCALATED)"
+      },
+      "manualIntervention": {
+        "label": "Intervento manuale urgente",
+        "tooltip": "Richiedi intervento manuale urgente (priorità URGENT, senza cambiare status)"
+      },
+      "acknowledge": {
+        "label": "Riconosci"
+      },
+      "resolve": {
+        "label": "Risolvi"
+      },
+      "overrideGuardrail": {
+        "label": "Sovrascrivi guardrail",
+        "tooltip": "Sovrascrivi una decisione specifica del guardrail (per falsi positivi)"
+      },
+      "systemOverride": {
+        "label": "Override sistema completo",
+        "tooltip": "Bypass completo a livello di sistema (riduce rischio a LOW)"
+      },
+      "unreliableAlarm": {
+        "label": "Allarme non attendibile"
+      }
+    },
+    "report": {
+      "title": "Report conversazione",
+      "generating": "Generazione...",
+      "pdf": "PDF"
+    },
+    "events": {
+      "info": "Info",
+      "warning": "Attenzione",
+      "alert": "Allarme",
+      "noDetails": "Nessun dettaglio disponibile",
+      "table": {
+        "event": "Evento",
+        "description": "Descrizione",
+        "details": "Dettagli",
+        "empty": "Nessun evento registrato"
+      },
+      "noDescription": "Nessuna descrizione disponibile"
+    },
+    "situation": {
+      "regular": {
+        "title": "Tutto regolare",
+        "description": "Niente da segnalare."
+      },
+      "warning": {
+        "title": "Attenzione",
+        "description": "Durante la conversazione sono stati utilizzati termini che possono far credere a possibili gesti di autolesionismo con rischio moderato."
+      },
+      "danger": {
+        "title": "Allarme",
+        "description": "Livello massimo di pericolosità rilevato. Sono stati utilizzati termini di lesioni gravi autoinflitte."
+      }
+    }
+  },
+  "notificationCenter": {
+    "title": "Notifiche",
+    "badgeLabel": "Non lette",
+    "markAll": "Segna tutte come lette",
+    "close": "Chiudi",
+    "filter": {
+      "label": "Filtro:",
+      "options": {
+        "all": "Tutte",
+        "unread": "Non lette",
+        "critical": "Critiche",
+        "warning": "Avviso",
+        "info": "Info"
+      }
+    },
+    "sort": {
+      "label": "Ordina per:",
+      "options": {
+        "newest": "Dalla più recente",
+        "oldest": "Dalla più vecchia",
+        "priority": "Priorità"
+      }
+    },
+    "loading": "Caricamento notifiche...",
+    "empty": {
+      "title": "Nessuna notifica",
+      "description": "Hai letto tutto! Le nuove notifiche compariranno qui."
+    },
+    "error": {
+      "dismiss": "Chiudi"
+    },
+    "priorityLabels": {
+      "critical": "Critica",
+      "high": "Alta",
+      "warning": "Avviso",
+      "medium": "Media",
+      "info": "Info",
+      "low": "Bassa"
+    },
+    "timestamp": {
+      "justNow": "Proprio ora",
+      "minutes": "{{count}} min fa",
+      "hours": "{{count}} h fa",
+      "days": "{{count}} gg fa"
+    },
+    "footer": {
+      "total": "Totale: {{count}}",
+      "unread": "Non lette: {{count}}"
+    },
+    "events": {
+      "common": {
+        "unknownConversation": "N/D",
+        "unknownEvent": "N/D",
+        "noRules": "",
+        "ruleSummary_one": "Regola guardrail: {{rules}}.",
+        "ruleSummary_other": "Regole guardrail: {{rules}}.",
+        "violationSummary_one": "Violazione rilevata: {{violations}}.",
+        "violationSummary_other": "Violazioni rilevate: {{violations}}.",
+        "originalMessage": "Dettagli: {{message}}",
+        "severity": {
+          "critical": "Critica",
+          "high": "Alta",
+          "medium": "Media",
+          "low": "Bassa",
+          "info": "Informativa"
+        }
+      },
+      "alarm_triggered": {
+        "title": "🚨 Allarme attivato",
+        "message": "Allarme guardrail {{severityLabel}} attivato per la conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "warning_triggered": {
+        "title": "⚠️ Avviso",
+        "message": "Avviso guardrail {{severityLabel}} per la conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "privacy_violation_prevented": {
+        "title": "🔒 Violazione privacy evitata",
+        "message": "Il guardrail privacy è intervenuto nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "medication_warning": {
+        "title": "💊 Avviso farmaci",
+        "message": "Richiesta attenzione sui farmaci nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "inappropriate_content": {
+        "title": "🚫 Contenuto inappropriato",
+        "message": "Contenuto inappropriato rilevato nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "emergency_protocol": {
+        "title": "🚨 Protocollo di emergenza",
+        "message": "Protocollo di emergenza attivato per la conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "false_alarm_reported": {
+        "title": "ℹ️ Falso allarme segnalato",
+        "message": "Falso allarme risolto per la conversazione {{conversationId}}. {{originalMessage}}"
+      },
+      "operator_intervention": {
+        "title": "👤 Intervento operatore",
+        "message": "Intervento manuale registrato per la conversazione {{conversationId}}. {{originalMessage}}"
+      },
+      "system_alert": {
+        "title": "📢 Avviso di sistema",
+        "message": "Allerta di sistema (gravità {{severityLabel}}). {{originalMessage}}"
+      },
+      "compliance_check": {
+        "title": "✅ Verifica di compliance",
+        "message": "Verifica di compliance in corso per la conversazione {{conversationId}}. {{originalMessage}}"
+      },
+      "context_violation": {
+        "title": "⚠️ Violazione contesto",
+        "message": "Violazione di contesto rilevata nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "conversation_started": {
+        "title": "💬 Conversazione avviata",
+        "message": "Nuova conversazione {{conversationId}} avviata. {{originalMessage}}"
+      },
+      "conversation_ended": {
+        "title": "✅ Conversazione conclusa",
+        "message": "Conversazione {{conversationId}} terminata. {{originalMessage}}"
+      },
+      "default": {
+        "title": "📢 Evento guardrail",
+        "message": "{{originalMessage}}"
+      }
+    }
+  },
+  "notificationPreferences": {
+    "title": "Preferenze notifiche",
+    "loading": "Caricamento preferenze...",
+    "actions": {
+      "close": "Annulla",
+      "save": "Salva modifiche",
+      "saving": "Salvataggio...",
+      "testEmail": "Invia email di test",
+      "testSms": "Invia SMS di test",
+      "testPush": "Invia push di test",
+      "testEmailDisabled": "Nessuna email disponibile",
+      "testSmsDisabled": "Nessun numero disponibile",
+      "testEmailTooltip": "Invia una notifica email di test",
+      "testSmsTooltip": "Invia una notifica SMS di test",
+      "testPushTooltip": "Invia una notifica push di test"
+    },
+    "messages": {
+      "updateSuccess": "Preferenze notifiche aggiornate correttamente.",
+      "loadError": "Impossibile caricare le preferenze notifiche.",
+      "saveError": "Impossibile salvare le preferenze notifiche.",
+      "testEmailMissing": "Nessun indirizzo email configurato per inviare email di test.",
+      "testSmsMissing": "Nessun numero di telefono configurato per inviare SMS di test.",
+      "testSuccess": "Notifica di test {{type}} inviata correttamente!",
+      "testError": "Invio della notifica di test {{type}} non riuscito.",
+      "testSubject": "Notifica di test {{type}}",
+      "testMessage": "Questa è una notifica di test {{type}} inviata dal sistema."
+    },
+    "testTypes": {
+      "email": "email",
+      "sms": "SMS",
+      "push": "notifica push"
+    },
+    "global": {
+      "title": "Notifiche globali",
+      "description": "Controlla se le notifiche devono essere consegnate. Se disattivato, gli avvisi dei singoli canali vengono sospesi finché non vengono riattivati."
+    },
+    "email": {
+      "title": "Notifiche email",
+      "description": "Scegli quali avvisi email desideri ricevere.",
+      "toggles": {
+        "critical": "Avvisi critici",
+        "warning": "Avvisi attenzione",
+        "info": "Aggiornamenti informativi"
+      },
+      "digestLabel": "Email riepilogative",
+      "frequencyLabel": "Frequenza riepilogo",
+      "frequencyOptions": {
+        "hourly": "Ogni ora",
+        "daily": "Quotidiano",
+        "weekly": "Settimanale"
+      },
+      "addressLabel": "Indirizzo email",
+      "placeholders": {
+        "address": "Inserisci indirizzo email"
+      },
+      "testButton": "Invia email di test",
+      "testTooltip": "Invia una notifica email di test"
+    },
+    "sms": {
+      "title": "Notifiche SMS",
+      "description": "Ricevi avvisi via SMS per aggiornamenti urgenti.",
+      "toggles": {
+        "critical": "Avvisi critici",
+        "warning": "Avvisi attenzione",
+        "info": "Aggiornamenti informativi"
+      },
+      "numberLabel": "Numero di telefono",
+      "placeholders": {
+        "number": "Inserisci numero di telefono"
+      },
+      "testButton": "Invia SMS di test",
+      "testTooltip": "Invia una notifica SMS di test"
+    },
+    "push": {
+      "title": "Notifiche push",
+      "description": "Avvisi in app/dispositivo per aggiornamenti in tempo reale.",
+      "toggles": {
+        "critical": "Avvisi critici",
+        "warning": "Avvisi attenzione",
+        "info": "Aggiornamenti informativi"
+      },
+      "deviceTokenLabel": "Device token",
+      "placeholders": {
+        "deviceToken": "Device token opzionale"
+      },
+      "testButton": "Invia push di test",
+      "testTooltip": "Invia una notifica push di test"
+    },
+    "webhook": {
+      "title": "Notifiche webhook",
+      "description": "Invia notifiche a un endpoint esterno.",
+      "urlLabel": "URL webhook",
+      "headersLabel": "Intestazioni personalizzate (JSON)",
+      "toggles": {
+        "critical": "Avvisi critici",
+        "warning": "Avvisi attenzione",
+        "info": "Aggiornamenti informativi"
+      },
+      "placeholders": {
+        "url": "https://tuo-webhook-url.com"
+      }
+    },
+    "escalation": {
+      "title": "Regole di escalation",
+      "description": "Gestisci l'escalation automatica per gli incidenti non risolti.",
+      "autoLabel": "Escala automaticamente gli avvisi non risolti",
+      "delayLabel": "Ritardo escalation (minuti)",
+      "maxLabel": "Numero massimo di escalation"
+    },
+    "quietHours": {
+      "title": "Orario silenzioso",
+      "description": "Disattiva temporaneamente le notifiche non critiche in orari specifici.",
+      "startLabel": "Ora inizio",
+      "endLabel": "Ora fine",
+      "timezoneLabel": "Fuso orario",
+      "timezoneOptions": {
+        "UTC": "UTC",
+        "America_New_York": "Eastern Time",
+        "America_Chicago": "Central Time",
+        "America_Denver": "Mountain Time",
+        "America_Los_Angeles": "Pacific Time",
+        "Europe_London": "Londra",
+        "Europe_Paris": "Parigi",
+        "Asia_Tokyo": "Tokyo"
+      }
+    }
+  },
+  "analytics": {
+    "header": {
+      "title": "📊 Dashboard analitica",
+      "subtitle": "Approfondimenti completi sulle prestazioni di gestione degli allarmi • Ultimo aggiornamento:",
+      "timeRanges": {
+        "1d": "Ultime 24 ore",
+        "7d": "Ultimi 7 giorni",
+        "30d": "Ultimi 30 giorni"
+      },
+      "export": {
+        "button": "📤 Esporta",
+        "exporting": "Esportazione...",
+        "tooltip": {
+          "noData": "Nessun dato disponibile da esportare",
+          "exporting": "Esportazione in corso...",
+          "ready": "Esporta i dati della scheda corrente in JSON"
+        },
+        "loadingSpinnerLabel": "Esportazione..."
+      }
+    },
+    "tabs": {
+      "overview": {
+        "label": "Panoramica",
+        "timeRange": {
+          "1d": "24 ore",
+          "7d": "7 giorni",
+          "30d": "30 giorni",
+          "period": "periodo"
+        },
+        "metrics": {
+          "totalAlerts": {
+            "title": "Allarmi totali",
+            "subtitle": "Elaborati"
+          },
+          "avgResponseTime": {
+            "title": "Tempo medio di risposta",
+            "subtitle": "Obiettivo: < 10m"
+          },
+          "resolutionRate": {
+            "title": "Tasso di risoluzione",
+            "subtitle": "Risolti con successo"
+          },
+          "activeConversations": {
+            "title": "Conversazioni attive",
+            "subtitle": "Attualmente attive"
+          },
+          "highRisk": {
+            "title": "Conversazioni ad alto rischio",
+            "subtitle": "Richiedono attenzione"
+          },
+          "escalationRate": {
+            "title": "Tasso di escalation",
+            "subtitle": "Escalation automatiche"
+          }
+        },
+        "charts": {
+          "alertDistribution": {
+            "title": "Distribuzione allarmi per gravità",
+            "noData": "Nessun dato sulla distribuzione delle gravità disponibile"
+          }
+        },
+        "performance": {
+          "title": "Riepilogo prestazioni",
+          "subtitle": "Salute delle conversazioni vs obiettivi (ultimi {{timeRange}})",
+          "badge": "+8% miglioramento complessivo",
+          "cards": {
+            "totalConversations": {
+              "label": "Conversazioni totali",
+              "trend": "+12% vs periodo precedente"
+            },
+            "activeUsers": {
+              "label": "Utenti attivi",
+              "trend": "Coinvolgimento stabile"
+            },
+            "averageDuration": {
+              "label": "Durata media",
+              "trend": "+3m vs obiettivo"
+            }
+          }
+        },
+        "messages": {
+          "errorTitle": "Errore nella visualizzazione dei dati panoramici"
+        }
+      },
+      "notifications": {
+        "label": "Notifiche",
+        "metrics": {
+          "deliveryRate": {
+            "title": "Tasso di consegna",
+            "subtitle": "Successo complessivo"
+          },
+          "totalSent": {
+            "title": "Totale inviati",
+            "subtitle": "Tutti i canali"
+          },
+          "pending": {
+            "title": "In attesa",
+            "subtitle": "In consegna"
+          },
+          "totalNotifications": {
+            "title": "Notifiche totali",
+            "subtitle": "Questo periodo"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Andamento notifiche nel tempo",
+            "series": {
+              "notifications": "Notifiche"
+            }
+          },
+          "breakdown": {
+            "title": "Ripartizione notifiche per tipo",
+            "noData": "Nessun dato dettagli notifiche disponibile"
+          }
+        },
+        "labels": {
+          "unknown": "Sconosciuto",
+          "count": "Conteggio: {{count}}",
+          "status": "Stato: {{status}}",
+          "na": "N/D"
+        },
+        "messages": {
+          "noData": "Nessun dato notifiche disponibile. Prova ad aggiornare.",
+          "errorTitle": "Errore nella visualizzazione dei dati notifiche"
+        }
+      },
+      "users": {
+        "label": "Prestazioni amministratori"
+      },
+      "alerts": {
+        "label": "Tendenze allarmi",
+        "metrics": {
+          "total": {
+            "title": "Allarmi totali",
+            "subtitle": "Questo periodo"
+          },
+          "critical": {
+            "title": "Allarmi critici",
+            "subtitle": "Alta priorità"
+          },
+          "active": {
+            "title": "Allarmi attivi",
+            "subtitle": "Attualmente aperti"
+          },
+          "commonType": {
+            "title": "Tipo più comune",
+            "subtitle": "Tipo di evento"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Andamento allarmi nel tempo",
+            "series": {
+              "avgResolution": "Tempo medio di risoluzione (min)",
+              "count": "Numero di allarmi"
+            }
+          },
+          "typeDistribution": {
+            "title": "Distribuzione tipi di allarme",
+            "label": "{{type}}: {{count}}"
+          }
+        },
+        "severity": {
+          "title": "Distribuzione gravità",
+          "labels": {
+            "critical": "Critica",
+            "high": "Alta",
+            "medium": "Media",
+            "low": "Bassa"
+          }
+        },
+        "messages": {
+          "noData": "Nessun dato tendenze allarmi disponibile. Prova ad aggiornare.",
+          "errorTitle": "Errore nella visualizzazione dei dati allarmi"
+        },
+        "eventTypes": {}
+      },
+      "response": {
+        "label": "Tempi di risposta"
+      },
+      "escalations": {
+        "label": "Escalation"
+      },
+      "guardrail-performance": {
+        "label": "Prestazioni guardrail"
+      }
+    },
+    "messages": {
+      "loading": "Caricamento dashboard analitica...",
+      "loadingTab": "Caricamento dati {{tab}}...",
+      "errorPrefix": "⚠️",
+      "retry": "Riprova",
+      "noDataForExport": "Nessun dato disponibile da esportare. Attendere il completamento del caricamento."
+    }
+  },
+  "security": {
+    "header": {
+      "title": "🛡️ Dashboard sicurezza",
+      "subtitle": "Monitoraggio della sicurezza e analisi delle minacce • Ultimo aggiornamento:",
+      "timeRanges": {
+        "1d": "Ultime 24 ore",
+        "7d": "Ultimi 7 giorni",
+        "30d": "Ultimi 30 giorni"
+      }
+    },
+    "tabs": {
+      "overview": {
+        "label": "Panoramica",
+        "metrics": {
+          "securityScore": {
+            "title": "Punteggio sicurezza",
+            "subtitle": "Valutazione complessiva"
+          },
+          "totalThreats": {
+            "title": "Minacce totali",
+            "subtitle": "In questo periodo"
+          },
+          "activeSessions": {
+            "title": "Sessioni attive",
+            "subtitle": "Monitorate"
+          },
+          "resolvedThreats": {
+            "title": "Minacce risolte",
+            "subtitle": "Gestite con successo"
+          }
+        },
+        "charts": {
+          "incidents": {
+            "title": "Incidenti di sicurezza recenti",
+            "placeholder": "Nessun incidente di sicurezza recente"
+          },
+          "distribution": {
+            "title": "Distribuzione minacce",
+            "placeholder": "Nessun dato sulla distribuzione delle minacce disponibile"
+          }
+        },
+        "events": {
+          "unknownType": "Incidente sconosciuto",
+          "unknownSeverity": "Sconosciuto",
+          "noDescription": "Nessuna descrizione disponibile",
+          "time": "Ora",
+          "status": "Stato",
+          "id": "ID"
+        },
+        "compliance": {
+          "title": "Stato conformità",
+          "labels": {
+            "gdpr": "Conformità GDPR",
+            "hipaa": "Conformità HIPAA",
+            "pci": "Conformità PCI",
+            "activeThreats": "Minacce attive"
+          },
+          "requirements": "{{met}}/{{total}} requisiti soddisfatti"
+        },
+        "messages": {
+          "errorTitle": "Errore nella visualizzazione della panoramica"
+        }
+      },
+      "threats": {
+        "label": "Minacce",
+        "metrics": {
+          "total": {
+            "title": "Minacce totali",
+            "subtitle": "Rilevate in questo periodo"
+          },
+          "blocked": {
+            "title": "Minacce bloccate",
+            "subtitle": "Bloccate con successo"
+          },
+          "resolutionRate": {
+            "title": "Tasso di risoluzione",
+            "subtitle": "Minacce risolte"
+          },
+          "avgResponse": {
+            "title": "Tempo medio di risposta",
+            "subtitle": "Tempo di intervento"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Andamento minacce nel tempo",
+            "series": {
+              "total": "Minacce totali",
+              "malware": "Malware",
+              "phishing": "Phishing",
+              "bruteForce": "Brute force"
+            }
+          },
+          "distribution": {
+            "title": "Distribuzione tipologie di minaccia",
+            "label": "{{type}}: {{count}}"
+          }
+        },
+        "messages": {
+          "errorTitle": "Errore nella visualizzazione delle minacce"
+        }
+      },
+      "access": {
+        "label": "Controllo accessi",
+        "metrics": {
+          "successRate": {
+            "title": "Tasso di successo",
+            "subtitle": "Autenticazioni riuscite"
+          },
+          "failedAttempts": {
+            "title": "Tentativi falliti",
+            "subtitle": "Accessi non riusciti"
+          },
+          "mfaAdoption": {
+            "title": "Adozione MFA",
+            "subtitle": "Autenticazione multifattore"
+          },
+          "suspiciousActivity": {
+            "title": "Attività sospette",
+            "subtitle": "Attività rilevate"
+          },
+          "adminActivity": {
+            "title": "Attività amministratori",
+            "subtitle": "Accessi admin nel periodo"
+          }
+        },
+        "charts": {
+          "authTrends": {
+            "title": "Andamento autenticazioni",
+            "series": {
+              "successful": "Riuscite",
+              "failed": "Fallite",
+              "admin": "Attività admin"
+            }
+          },
+          "userPatterns": {
+            "title": "Pattern di accesso utenti"
+          }
+        },
+        "messages": {
+          "errorTitle": "Errore nella visualizzazione del controllo accessi"
+        }
+      },
+      "compliance": {
+        "label": "Conformità",
+        "metrics": {
+          "overall": {
+            "title": "Punteggio complessivo",
+            "subtitle": "Valutazione conformità"
+          },
+          "gdpr": {
+            "title": "Punteggio GDPR",
+            "subtitle": "Conformità GDPR"
+          },
+          "hipaa": {
+            "title": "Punteggio HIPAA",
+            "subtitle": "Conformità HIPAA"
+          },
+          "soc2": {
+            "title": "Punteggio SOC2",
+            "subtitle": "Conformità SOC2"
+          }
+        },
+        "charts": {
+          "frameworks": {
+            "title": "Framework di conformità",
+            "requirements": "{{met}}/{{total}} requisiti rispettati"
+          },
+          "controls": {
+            "title": "Controlli di sicurezza",
+            "count": "{{implemented}}/{{total}}"
+          }
+        },
+        "messages": {
+          "errorTitle": "Errore nella visualizzazione della conformità"
+        }
+      },
+      "incidents": {
+        "label": "Incidenti",
+        "metrics": {
+          "total": {
+            "title": "Incidenti totali",
+            "subtitle": "In questo periodo"
+          },
+          "resolved": {
+            "title": "Risolti",
+            "subtitle": "Gestiti con successo"
+          },
+          "resolutionRate": {
+            "title": "Tasso di risoluzione",
+            "subtitle": "Incidenti risolti"
+          },
+          "avgResponse": {
+            "title": "Tempo medio di risposta",
+            "subtitle": "Tempo di intervento"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Andamento incidenti",
+            "series": {
+              "detected": "Rilevati",
+              "resolved": "Risolti",
+              "escalated": "Scalati"
+            }
+          },
+          "recent": {
+            "title": "Incidenti recenti",
+            "labels": {
+              "assigned": "Assegnato",
+              "resolvedIn": "Risolto in {{time}}"
+            }
+          }
+        },
+        "messages": {
+          "errorTitle": "Errore nella visualizzazione degli incidenti"
+        }
+      },
+      "alerting": {
+        "label": "Alerting",
+        "loading": "Caricamento dati alerting...",
+        "summary": {
+          "latest": "Ultimi alert: {{count}}",
+          "updated": "Ultimo aggiornamento {{time}}"
+        },
+        "warning": {
+          "title": "Servizio di alerting"
+        },
+        "empty": {
+          "title": "Nessun alert ricevuto",
+          "description": "La pipeline di alerting esterna è collegata. Una volta che gli eventi guardrail vengono acquisiti dal servizio di alerting compariranno automaticamente qui."
+        },
+        "card": {
+          "fallbackTitle": "Evento guardrail",
+          "fallbackMessage": "Alert ricevuto dalla pipeline guardrail.",
+          "conversation": "Conversazione: {{id}}"
+        }
+      }
+    },
+    "messages": {
+      "loading": "Caricamento dashboard sicurezza...",
+      "loadingTab": "Caricamento dati {{tab}}...",
+      "errorPrefix": "⚠️",
+      "retry": "Riprova"
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "analytics": "Analisi",
+    "security": "Sicurezza"
+  },
+  "navbar": {
+    "notifications": "Notifiche",
+    "preferences": "Preferenze di notifica"
+  },
+  "user": {
+    "role": "Utente",
+    "tokenExpiresIn": "Il token scade tra:",
+    "sessionExpired": "Scaduto",
+    "sessionExpiring": "La sessione sta per scadere",
+    "signOut": "Esci",
+    "secureSessionActive": "Sessione sicura attiva"
+  },
+  "login": {
+    "initializing": "Inizializzazione...",
+    "subtitle": "Dashboard di sicurezza per l'IA sanitaria",
+    "usernameLabel": "Nome utente",
+    "usernamePlaceholder": "Inserisci il tuo nome utente",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Inserisci la tua password",
+    "buttonSignIn": "Accedi",
+    "buttonAuthenticating": "Autenticazione in corso...",
+    "errorDefault": "Accesso non riuscito",
+    "errorRequiredFields": "Inserisci sia il nome utente che la password",
+    "errorLocked": "Account temporaneamente bloccato. Riprova tra {{seconds}} secondi.",
+    "errorLockedUntil": "Troppi tentativi falliti. Account bloccato per 5 minuti. Riprova alle {{time}}.",
+    "errorWarning": "{{message}} Attenzione: rimangono {{remaining}} tentativi prima del blocco dell'account.",
+    "errorFailed": "{{message}}",
+    "errorUnexpected": "Si è verificato un errore imprevisto. Riprova.",
+    "attemptsStatus": "Tentativi falliti: {{count}}/5",
+    "lockoutWarning": "L'account verrà bloccato dopo altri {{remaining}} tentativi falliti",
+    "lockoutStatus": "Account bloccato • Sblocco tra {{minutes}}:{{seconds}}",
+    "securityHeading": "Sistema sanitario sicuro",
+    "securityDetails": "Conforme HIPAA • Crittografia end-to-end • Registrazione audit",
+    "featureAuthenticationTitle": "Autenticazione sicura",
+    "featureAuthenticationDescription": "Autenticazione JWT con gestione sicura della sessione",
+    "featureMonitoringTitle": "Monitoraggio in tempo reale",
+    "featureMonitoringDescription": "Tracciamento e avvisi in tempo reale delle violazioni delle guardrail",
+    "featureHealthcareTitle": "Pronto per la sanità",
+    "featureHealthcareDescription": "Conformità HIPAA e supporto per il registro delle attività"
+  },
+  "notifications": {
+    "unreadBadge": "{{count}}"
+  },
+  "dashboard": {
+    "header": {
+      "title": "Monitoraggio conversazioni",
+      "subtitle": "Sistema di monitoraggio in tempo reale per conversazioni terapeutiche",
+      "systemOnline": "Sistema online"
+    },
+    "metrics": {
+      "activeConversations": "Conversazioni attive",
+      "criticalAlerts": "Allarmi critici",
+      "totalConversations": "Conversazioni odierne",
+      "averageDuration": "Durata media",
+      "durationValue": "{{minutes}} min",
+      "noData": "N/D"
+    }
+  },
+  "conversationStatus": {
+    "overall": {
+      "danger": "Livello massimo di pericolosità rilevato",
+      "warning": "Situazioni che richiedono attenzione rilevate",
+      "active": "Operatività regolare",
+      "inactive": "Nessuna conversazione attiva",
+      "summary": {
+        "monitored": "{{count}} conversazioni monitorate",
+        "danger": "{{count}} in pericolo",
+        "warning": "{{count}} richiedono attenzione"
+      }
+    },
+    "cards": {
+      "total": "Totale",
+      "active": "Attive",
+      "warning": "Attenzione",
+      "danger": "Pericolo",
+      "completed": "Completate"
+    }
+  },
+  "conversationList": {
+    "title": "Monitoraggio conversazioni",
+    "stats": {
+      "total_one": "{{count}} conversazione",
+      "total_other": "{{count}} conversazioni",
+      "active_one": "{{count}} attiva",
+      "active_other": "{{count}} attive"
+    },
+    "filters": {
+      "toggle": "Filtri",
+      "searchLabel": "Cerca paziente (ID)",
+      "searchPlaceholder": "Inserisci ID paziente...",
+      "statusLabel": "Stato",
+      "status": {
+        "placeholder": "Tutti",
+        "options": {
+          "all": "Tutti",
+          "inProgress": "In corso",
+          "completed": "Terminata",
+          "stopped": "Fermata",
+          "new": "Nuova",
+          "cancelled": "Annullata"
+        }
+      },
+      "situationLabel": "Situazione",
+      "situation": {
+        "placeholder": "Tutte",
+        "options": {
+          "all": "Tutte",
+          "regular": "Regolare",
+          "warning": "Segni di autolesionismo",
+          "danger": "Gesti pericolosi"
+        }
+      },
+      "dateCreatedFrom": "Data creazione da",
+      "dateCreatedTo": "Data creazione a",
+      "dateUpdatedFrom": "Ultimo aggiornamento da",
+      "dateUpdatedTo": "Ultimo aggiornamento a",
+      "datePlaceholder": "gg/mm/aaaa",
+      "reset": "Reset filtri"
+    },
+    "empty": {
+      "title": "Nessun risultato trovato",
+      "filtered": "Nessuna conversazione corrisponde ai filtri selezionati. Prova a modificare i criteri di ricerca.",
+      "unfiltered": "Il sistema è in attesa di nuove conversazioni."
+    },
+    "table": {
+      "patient": "Paziente",
+      "status": "Stato",
+      "situation": "Situazione",
+      "createdAt": "Data creazione",
+      "updatedAt": "Ultimo aggiornamento"
+    },
+    "statusLabels": {
+      "new": "Nuova",
+      "inProgress": "In corso",
+      "stopped": "Fermata",
+      "cancelled": "Annullata",
+      "completed": "Terminata"
+    },
+    "situationLabels": {
+      "regular": "Regolare",
+      "warning": "Segni di autolesionismo",
+      "danger": "Gesti pericolosi"
+    },
+    "patientLabel": "Paziente {{id}}",
+    "patientAge_one": "{{count}} anno",
+    "patientAge_other": "{{count}} anni",
+    "patientMeta": "{{age}}, {{gender}}",
+    "gender": {
+      "male": "Maschio",
+      "female": "Femmina",
+      "unknown": "Sconosciuto"
+    },
+    "notAvailable": "N/D",
+    "date": {
+      "invalid": "Data non valida"
+    },
+    "pagination": {
+      "showing": "Mostrando {{start}}-{{end}} di {{total}} conversazioni",
+      "prev": "Pagina precedente",
+      "next": "Pagina successiva",
+      "goto": "Vai alla pagina {{page}}"
+    }
+  },
+  "timeAgo": {
+    "updated": "Aggiornato {{time}}",
+    "secondsAgo": "{{count}}s fa",
+    "minutesAgo": "{{count}}m fa",
+    "justNow": "proprio ora"
+  },
+  "language": {
+    "english": "Inglese",
+    "italian": "Italiano",
+    "switchToEnglish": "Passa all'inglese",
+    "switchToItalian": "Passa all'italiano"
+  },
+  "common": {
+    "loading": "Caricamento..."
+  }
+}
+

@@ -1,0 +1,280 @@
+{
+  "app": {
+    "title": "NINA Guardrail Monitor",
+    "subtitle": "Dashboard di monitoraggio della sicurezza in tempo reale",
+    "loading": "Inizializzazione del cruscotto di sicurezza NINA...",
+    "loadingDashboard": "Caricamento dashboard...",
+    "loadingAnalytics": "Caricamento analisi...",
+    "loadingSecurity": "Caricamento sicurezza..."
+  },
+  "analytics": {
+    "header": {
+      "title": "📊 Dashboard analitica",
+      "subtitle": "Approfondimenti completi sulle prestazioni di gestione degli allarmi • Ultimo aggiornamento:",
+      "timeRanges": {
+        "1d": "Ultime 24 ore",
+        "7d": "Ultimi 7 giorni",
+        "30d": "Ultimi 30 giorni"
+      },
+      "export": {
+        "button": "📤 Esporta",
+        "exporting": "Esportazione...",
+        "tooltip": {
+          "noData": "Nessun dato disponibile da esportare",
+          "exporting": "Esportazione in corso...",
+          "ready": "Esporta i dati della scheda corrente in JSON"
+        },
+        "loadingSpinnerLabel": "Esportazione..."
+      }
+    },
+    "tabs": {
+      "overview": { "label": "Panoramica" },
+      "notifications": { "label": "Notifiche" },
+      "users": { "label": "Prestazioni amministratori" },
+      "alerts": { "label": "Tendenze allarmi" },
+      "response": { "label": "Tempi di risposta" },
+      "escalations": { "label": "Escalation" },
+      "guardrail-performance": { "label": "Prestazioni guardrail" }
+    },
+    "messages": {
+      "loading": "Caricamento dashboard analitica...",
+      "loadingTab": "Caricamento dati {{tab}}...",
+      "errorPrefix": "⚠️",
+      "retry": "Riprova",
+      "noDataForExport": "Nessun dato disponibile da esportare. Attendere il completamento del caricamento."
+    }
+  },
+  "security": {
+    "header": {
+      "title": "🛡️ Dashboard sicurezza",
+      "subtitle": "Monitoraggio della sicurezza e analisi delle minacce • Ultimo aggiornamento:",
+      "timeRanges": {
+        "1d": "Ultime 24 ore",
+        "7d": "Ultimi 7 giorni",
+        "30d": "Ultimi 30 giorni"
+      }
+    },
+    "tabs": {
+      "overview": { "label": "Panoramica" },
+      "threats": { "label": "Minacce" },
+      "access": { "label": "Controllo accessi" },
+      "compliance": { "label": "Conformità" },
+      "incidents": { "label": "Incidenti" },
+      "alerting": { "label": "Alerting" }
+    },
+    "messages": {
+      "loading": "Caricamento dashboard sicurezza...",
+      "loadingTab": "Caricamento dati {{tab}}...",
+      "errorPrefix": "⚠️",
+      "retry": "Riprova"
+    }
+  },
+  "conversationDetail": {
+    "title": "Dettaglio conversazione",
+    "patient": {
+      "age": "Età",
+      "gender": "Sesso",
+      "condition": "Patologia",
+      "notAvailable": "N/D",
+      "ageValue_one": "{{count}} anno",
+      "ageValue_other": "{{count}} anni"
+    },
+    "session": {
+      "heading": "Conversazione del {{date}}",
+      "summary": "Iniziata alle {{time}} • Stato:",
+      "duration": " • Durata {{duration}} min"
+    },
+    "history": {
+      "toggle": "{{icon}} Cronologia azioni ({{count}})",
+      "title": "Azioni recenti",
+      "emptyDescription": "Nessuna azione recente registrata.",
+      "defaultAction": "Azione",
+      "noDescription": "Nessuna descrizione",
+      "operator": " (Operatore: {{name}})"
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "analytics": "Analisi",
+    "security": "Sicurezza"
+  },
+  "navbar": {
+    "notifications": "Notifiche",
+    "preferences": "Preferenze di notifica"
+  },
+  "user": {
+    "role": "Utente",
+    "tokenExpiresIn": "Il token scade tra:",
+    "sessionExpired": "Scaduto",
+    "sessionExpiring": "La sessione sta per scadere",
+    "signOut": "Esci",
+    "secureSessionActive": "Sessione sicura attiva"
+  },
+  "login": {
+    "initializing": "Inizializzazione...",
+    "subtitle": "Dashboard di sicurezza per l'IA sanitaria",
+    "usernameLabel": "Nome utente",
+    "usernamePlaceholder": "Inserisci il tuo nome utente",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Inserisci la tua password",
+    "buttonSignIn": "Accedi",
+    "buttonAuthenticating": "Autenticazione in corso...",
+    "errorDefault": "Accesso non riuscito",
+    "errorRequiredFields": "Inserisci sia il nome utente che la password",
+    "errorLocked": "Account temporaneamente bloccato. Riprova tra {{seconds}} secondi.",
+    "errorLockedUntil": "Troppi tentativi falliti. Account bloccato per 5 minuti. Riprova alle {{time}}.",
+    "errorWarning": "{{message}} Attenzione: rimangono {{remaining}} tentativi prima del blocco dell'account.",
+    "errorFailed": "{{message}}",
+    "errorUnexpected": "Si è verificato un errore imprevisto. Riprova.",
+    "attemptsStatus": "Tentativi falliti: {{count}}/5",
+    "lockoutWarning": "L'account verrà bloccato dopo altri {{remaining}} tentativi falliti",
+    "lockoutStatus": "Account bloccato • Sblocco tra {{minutes}}:{{seconds}}",
+    "securityHeading": "Sistema sanitario sicuro",
+    "securityDetails": "Conforme HIPAA • Crittografia end-to-end • Registrazione audit",
+    "featureAuthenticationTitle": "Autenticazione sicura",
+    "featureAuthenticationDescription": "Autenticazione JWT con gestione sicura della sessione",
+    "featureMonitoringTitle": "Monitoraggio in tempo reale",
+    "featureMonitoringDescription": "Tracciamento e avvisi in tempo reale delle violazioni delle guardrail",
+    "featureHealthcareTitle": "Pronto per la sanità",
+    "featureHealthcareDescription": "Conformità HIPAA e supporto per il registro delle attività"
+  },
+  "notifications": {
+    "unreadBadge": "{{count}}"
+  },
+  "dashboard": {
+    "header": {
+      "title": "Monitoraggio conversazioni",
+      "subtitle": "Sistema di monitoraggio in tempo reale per conversazioni terapeutiche",
+      "systemOnline": "Sistema online"
+    },
+    "metrics": {
+      "activeConversations": "Conversazioni attive",
+      "criticalAlerts": "Allarmi critici",
+      "totalConversations": "Conversazioni odierne",
+      "averageDuration": "Durata media",
+      "durationValue": "{{minutes}} min",
+      "noData": "N/D"
+    }
+  },
+  "conversationStatus": {
+    "overall": {
+      "danger": "Livello massimo di pericolosità rilevato",
+      "warning": "Situazioni che richiedono attenzione rilevate",
+      "active": "Operatività regolare",
+      "inactive": "Nessuna conversazione attiva",
+      "summary": {
+        "monitored": "{{count}} conversazioni monitorate",
+        "danger": "{{count}} in pericolo",
+        "warning": "{{count}} richiedono attenzione"
+      }
+    },
+    "cards": {
+      "total": "Totale",
+      "active": "Attive",
+      "warning": "Attenzione",
+      "danger": "Pericolo",
+      "completed": "Completate"
+    }
+  },
+  "conversationList": {
+    "title": "Monitoraggio conversazioni",
+    "stats": {
+      "total_one": "{{count}} conversazione",
+      "total_other": "{{count}} conversazioni",
+      "active_one": "{{count}} attiva",
+      "active_other": "{{count}} attive"
+    },
+    "filters": {
+      "toggle": "Filtri",
+      "searchLabel": "Cerca paziente (ID)",
+      "searchPlaceholder": "Inserisci ID paziente...",
+      "statusLabel": "Stato",
+      "status": {
+        "placeholder": "Tutti",
+        "options": {
+          "all": "Tutti",
+          "inProgress": "In corso",
+          "completed": "Terminata",
+          "stopped": "Fermata",
+          "new": "Nuova",
+          "cancelled": "Annullata"
+        }
+      },
+      "situationLabel": "Situazione",
+      "situation": {
+        "placeholder": "Tutte",
+        "options": {
+          "all": "Tutte",
+          "regular": "Regolare",
+          "warning": "Segni di autolesionismo",
+          "danger": "Gesti pericolosi"
+        }
+      },
+      "dateCreatedFrom": "Data creazione da",
+      "dateCreatedTo": "Data creazione a",
+      "dateUpdatedFrom": "Ultimo aggiornamento da",
+      "dateUpdatedTo": "Ultimo aggiornamento a",
+      "datePlaceholder": "gg/mm/aaaa",
+      "reset": "Reset filtri"
+    },
+    "empty": {
+      "title": "Nessun risultato trovato",
+      "filtered": "Nessuna conversazione corrisponde ai filtri selezionati. Prova a modificare i criteri di ricerca.",
+      "unfiltered": "Il sistema è in attesa di nuove conversazioni."
+    },
+    "table": {
+      "patient": "Paziente",
+      "status": "Stato",
+      "situation": "Situazione",
+      "createdAt": "Data creazione",
+      "updatedAt": "Ultimo aggiornamento"
+    },
+    "statusLabels": {
+      "new": "Nuova",
+      "inProgress": "In corso",
+      "stopped": "Fermata",
+      "cancelled": "Annullata",
+      "completed": "Terminata"
+    },
+    "situationLabels": {
+      "regular": "Regolare",
+      "warning": "Segni di autolesionismo",
+      "danger": "Gesti pericolosi"
+    },
+    "patientLabel": "Paziente {{id}}",
+    "patientAge_one": "{{count}} anno",
+    "patientAge_other": "{{count}} anni",
+    "patientMeta": "{{age}}, {{gender}}",
+    "gender": {
+      "male": "Maschio",
+      "female": "Femmina",
+      "unknown": "Sconosciuto"
+    },
+    "notAvailable": "N/D",
+    "date": {
+      "invalid": "Data non valida"
+    },
+    "pagination": {
+      "showing": "Mostrando {{start}}-{{end}} di {{total}} conversazioni",
+      "prev": "Pagina precedente",
+      "next": "Pagina successiva",
+      "goto": "Vai alla pagina {{page}}"
+    }
+  },
+  "timeAgo": {
+    "updated": "Aggiornato {{time}}",
+    "secondsAgo": "{{count}}s fa",
+    "minutesAgo": "{{count}}m fa",
+    "justNow": "proprio ora"
+  },
+  "language": {
+    "english": "Inglese",
+    "italian": "Italiano",
+    "switchToEnglish": "Passa all'inglese",
+    "switchToItalian": "Passa all'italiano"
+  },
+  "common": {
+    "loading": "Caricamento..."
+  }
+}
+

@@ -57,6 +57,93 @@ body {
   margin-left: 2rem; /* Add space between security tab and notification icon */
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.2) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  gap: 0.15rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.language-button {
+  position: relative;
+  background: transparent;
+  border: none;
+  color: rgba(15, 23, 42, 0.6);
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+  min-width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.language-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.language-button:hover {
+  color: rgba(15, 23, 42, 0.85);
+}
+
+.language-button:focus-visible {
+  outline: 2px solid rgba(76, 110, 245, 0.6);
+  outline-offset: 2px;
+}
+
+.language-button.active {
+  color: #fff;
+  background: linear-gradient(135deg, #4c6ef5 0%, #7c3aed 100%);
+  box-shadow:
+    0 6px 14px rgba(76, 110, 245, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.language-button.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 55%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.language-switcher::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(76, 110, 245, 0.22), rgba(124, 58, 237, 0.22));
+  transform: translateX(calc(var(--language-active-index, 0) * 100%));
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .btn-notifications-nav {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
   color: #1a202c;

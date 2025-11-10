@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AnalyticsHeader, AnalyticsTabs } from './analytics/components'
 import { MetricCard } from '../components/analytics'
 import { OverviewTab, NotificationsTab, UsersTab, AlertsTab, ResponseTimesTab, EscalationsTab, GuardrailPerformanceTab } from './analytics/tabs'
@@ -8,6 +9,7 @@ import { exportAnalyticsData } from './analytics/utils/exportData'
 import './analytics/Analytics.css'
 
 function Analytics() {
+  const { t } = useTranslation()
   const [timeRange, setTimeRange] = useState('7d')
   const [exporting, setExporting] = useState(false)
   const { activeTab, handleTabClick } = useTabNavigation('overview')
@@ -35,7 +37,7 @@ function Analytics() {
 
   const handleExport = async () => {
     if (!analyticsData) {
-      alert('No data available to export. Please wait for data to load.')
+      alert(t('analytics.messages.noDataForExport'))
       return
     }
     
@@ -101,7 +103,7 @@ function Analytics() {
 
   // Loading state
   if (loading && !analyticsData) {
-    return <div className="analytics-loading">Loading analytics dashboard...</div>
+    return <div className="analytics-loading">{t('analytics.messages.loading')}</div>
   }
 
   return (
@@ -124,12 +126,16 @@ function Analytics() {
       <div className={`analytics-content ${animateContent ? 'content-transition' : ''}`}>
         {error && (
           <div className="analytics-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c33', marginBottom: '1rem', borderRadius: '4px' }}>
-            ⚠️ {error}
-            <button onClick={() => { fetchAnalyticsData(); }} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem' }}>Retry</button>
+            {t('analytics.messages.errorPrefix')} {error}
+            <button onClick={() => { fetchAnalyticsData(); }} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem' }}>
+              {t('analytics.messages.retry')}
+            </button>
           </div>
         )}
         {loading && analyticsData && (
-          <div className="analytics-loading-indicator" style={{ padding: '1rem', textAlign: 'center' }}>Loading {activeTab} data...</div>
+          <div className="analytics-loading-indicator" style={{ padding: '1rem', textAlign: 'center' }}>
+            {t('analytics.messages.loadingTab', { tab: t(`analytics.tabs.${activeTab}.label`) })}
+          </div>
         )}
         {renderTabContent()}
       </div>

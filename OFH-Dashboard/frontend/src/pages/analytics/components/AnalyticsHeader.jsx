@@ -1,22 +1,32 @@
 /**
  * Analytics Header Component
  */
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TimeAgo } from '../../../components/ui'
 import './AnalyticsHeader.css'
 
 export default function AnalyticsHeader({ timeRange, onTimeRangeChange, onExport, lastUpdated, exporting = false, hasData = true }) {
-  const timeRanges = [
-    { value: '1d', label: 'Last 24 Hours' },
-    { value: '7d', label: 'Last 7 Days' },
-    { value: '30d', label: 'Last 30 Days' }
-  ]
+  const { t } = useTranslation()
+
+  const timeRanges = useMemo(() => ([
+    { value: '1d', label: t('analytics.header.timeRanges.1d') },
+    { value: '7d', label: t('analytics.header.timeRanges.7d') },
+    { value: '30d', label: t('analytics.header.timeRanges.30d') }
+  ]), [t])
+
+  const exportTitle = !hasData
+    ? t('analytics.header.export.tooltip.noData')
+    : exporting
+      ? t('analytics.header.export.tooltip.exporting')
+      : t('analytics.header.export.tooltip.ready')
 
   return (
     <div className="analytics-header">
       <div className="header-left">
-        <h1>📊 Analytics Dashboard</h1>
+        <h1>{t('analytics.header.title')}</h1>
         <p className="header-subtitle">
-          Comprehensive insights into alert management performance • Last updated: <TimeAgo timestamp={lastUpdated} />
+          {t('analytics.header.subtitle')} <TimeAgo timestamp={lastUpdated} />
         </p>
       </div>
       
@@ -37,15 +47,15 @@ export default function AnalyticsHeader({ timeRange, onTimeRangeChange, onExport
           onClick={() => onExport()}
           className="export-btn"
           disabled={exporting || !hasData}
-          title={!hasData ? 'No data available to export' : exporting ? 'Exporting...' : 'Export current tab data as JSON'}
+          title={exportTitle}
         >
           {exporting ? (
             <>
               <span className="loading-spinner" style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.6s linear infinite', marginRight: '6px' }}></span>
-              Exporting...
+              {t('analytics.header.export.exporting')}
             </>
           ) : (
-            '📤 Export'
+            t('analytics.header.export.button')
           )}
         </button>
       </div>

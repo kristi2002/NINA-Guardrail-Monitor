@@ -1,9 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { messagingService } from '../../services/api'
 import { notificationService } from '../../services/notifications'
 import './NotificationPreferences.css'
 
+const TIMEZONE_VALUES = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Europe/Paris',
+  'Asia/Tokyo'
+]
+
 function NotificationPreferences({ isOpen, onClose, user }) {
+  const { t } = useTranslation()
+
+  const digestOptions = useMemo(
+    () => [
+      { value: 'hourly', label: t('notificationPreferences.email.frequencyOptions.hourly') },
+      { value: 'daily', label: t('notificationPreferences.email.frequencyOptions.daily') },
+      { value: 'weekly', label: t('notificationPreferences.email.frequencyOptions.weekly') }
+    ],
+    [t]
+  )
+
+  const timezoneOptions = useMemo(
+    () =>
+      TIMEZONE_VALUES.map((zone) => ({
+        value: zone,
+        label: t(
+          `notificationPreferences.quietHours.timezoneOptions.${zone.replace(/\//g, '_')}`,
+          { defaultValue: zone }
+        )
+      })),
+    [t]
+  )
+
   // Helper function to safely access nested properties
   const safeGet = (obj, path, defaultValue = false) => {
     try {
@@ -141,7 +176,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
       }
     } catch (err) {
       console.error('Failed to load preferences:', err)
-      setError('Failed to load notification preferences')
+      setError(t('notificationPreferences.messages.loadError'))
       // Keep default preferences if loading fails
     } finally {
       setLoading(false)
@@ -233,18 +268,18 @@ function NotificationPreferences({ isOpen, onClose, user }) {
           escalation: { ...prev.escalation, ...payload.escalation },
           quietHours: { ...prev.quietHours, ...payload.quietHours }
         }))
-        setSuccess('Notification preferences updated successfully.')
+        setSuccess(t('notificationPreferences.messages.updateSuccess'))
         // Close modal after successful save
         setTimeout(() => {
           setSuccess('')
           onClose()
         }, 1500) // Show success message for 1.5 seconds before closing
       } else {
-        setError(result.error || 'Failed to save notification preferences')
+        setError(result.error || t('notificationPreferences.messages.saveError'))
       }
     } catch (err) {
       console.error('Failed to save preferences:', err)
-      setError('Failed to save notification preferences')
+      setError(t('notificationPreferences.messages.saveError'))
     } finally {
       setSaving(false)
     }
@@ -258,21 +293,23 @@ function NotificationPreferences({ isOpen, onClose, user }) {
     const emailTarget = (preferences.email?.address || user?.email || '').trim()
     const smsTarget = (preferences.sms?.number || user?.phone || '').trim()
 
+    const typeLabel = t(`notificationPreferences.testTypes.${type}`, { defaultValue: type })
+
     if (type === 'email' && !emailTarget) {
-      setError('No email address configured for test email notifications.')
+      setError(t('notificationPreferences.messages.testEmailMissing'))
       return
     }
 
     if (type === 'sms' && !smsTarget) {
-      setError('No phone number configured for test SMS notifications.')
+      setError(t('notificationPreferences.messages.testSmsMissing'))
       return
     }
 
     try {
       const testNotification = {
         type,
-        subject: `Test ${type} notification`,
-        message: `This is a test ${type} notification from the system.`,
+        subject: t('notificationPreferences.messages.testSubject', { type: typeLabel }),
+        message: t('notificationPreferences.messages.testMessage', { type: typeLabel }),
         priority: 'info',
         recipients: {
           email: type === 'email' ? emailTarget : null,
@@ -285,14 +322,14 @@ function NotificationPreferences({ isOpen, onClose, user }) {
       console.log('Test notification result:', result)
       
       if (result.success) {
-        setSuccess(`Test ${type} notification sent successfully!`)
+        setSuccess(t('notificationPreferences.messages.testSuccess', { type: typeLabel }))
         setTimeout(() => setSuccess(''), 5000)
       } else {
-        setError(`Failed to send test ${type} notification: ${result.error}`)
+        setError(result.error || t('notificationPreferences.messages.testError', { type: typeLabel }))
       }
     } catch (err) {
       console.error('Test notification failed:', err)
-      setError(`Failed to send test ${type} notification`)
+      setError(t('notificationPreferences.messages.testError', { type: typeLabel }))
     }
   }
 
@@ -320,11 +357,11 @@ function NotificationPreferences({ isOpen, onClose, user }) {
     <div className="notification-preferences-overlay">
       <div className="notification-preferences-modal">
         <div className="notification-preferences-header">
-          <h2>🔔 Notification Preferences</h2>
+          <h2>🔔 {t('notificationPreferences.title')}</h2>
           <button 
             className="close-btn"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('notificationPreferences.actions.close')}
           >
             ×
           </button>
@@ -334,7 +371,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
           {(loading || !initialized) ? (
             <div className="loading-state">
               <div className="spinner"></div>
-              <p>Loading preferences...</p>
+              <p>{t('notificationPreferences.loading')}</p>
             </div>
           ) : (
             <>
@@ -355,7 +392,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
               <div className="notification-preferences-content">
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>🔔 Global Notifications</h3>
+                    <h3>🔔 {t('notificationPreferences.global.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -366,15 +403,14 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                     </label>
                   </div>
                   <p className="section-description">
-                    Control whether notifications are delivered at all. When disabled, channel-specific alerts are
-                    suppressed until re-enabled.
+                    {t('notificationPreferences.global.description')}
                   </p>
                 </div>
 
                 {/* Email Notifications */}
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>📧 Email Notifications</h3>
+                    <h3>📧 {t('notificationPreferences.email.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -387,6 +423,9 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                   
                   {preferences.email?.enabled && (
                     <div className="preference-options">
+                      <p className="section-description">
+                        {t('notificationPreferences.email.description')}
+                      </p>
                       <div className="option-group">
                         <label>
                           <input
@@ -394,7 +433,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={safeGet(preferences, 'email.critical', false)}
                             onChange={(e) => updatePreference('email.critical', e.target.checked)}
                           />
-                          Critical Alerts
+                          {t('notificationPreferences.email.toggles.critical')}
                         </label>
                         <label>
                           <input
@@ -402,7 +441,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={safeGet(preferences, 'email.warning', false)}
                             onChange={(e) => updatePreference('email.warning', e.target.checked)}
                           />
-                          Warning Alerts
+                          {t('notificationPreferences.email.toggles.warning')}
                         </label>
                         <label>
                           <input
@@ -410,7 +449,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={safeGet(preferences, 'email.info', false)}
                             onChange={(e) => updatePreference('email.info', e.target.checked)}
                           />
-                          Info Alerts
+                          {t('notificationPreferences.email.toggles.info')}
                         </label>
                       </div>
                       
@@ -421,28 +460,31 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={safeGet(preferences, 'email.digest', false)}
                             onChange={(e) => updatePreference('email.digest', e.target.checked)}
                           />
-                          Daily Digest
+                          {t('notificationPreferences.email.digestLabel')}
                         </label>
                         
                         {safeGet(preferences, 'email.digest', false) && (
                           <select
                             value={safeGet(preferences, 'email.digestFrequency', 'daily')}
                             onChange={(e) => updatePreference('email.digestFrequency', e.target.value)}
+                            aria-label={t('notificationPreferences.email.frequencyLabel')}
                           >
-                            <option value="hourly">Hourly</option>
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
+                            {digestOptions.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
                         )}
                       </div>
 
                       <div className="input-group">
-                        <label>Email Address:</label>
+                        <label>{t('notificationPreferences.email.addressLabel')}</label>
                         <input
                           type="email"
                           value={preferences.email.address}
                           onChange={(e) => updatePreference('email.address', e.target.value)}
-                          placeholder={user?.email || 'operator@example.com'}
+                          placeholder={user?.email || t('notificationPreferences.email.placeholders.address')}
                         />
                       </div>
                       
@@ -450,9 +492,9 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                         className="test-btn"
                         onClick={() => handleTestNotification('email')}
                         disabled={!emailTestTarget}
-                        title={!emailTestTarget ? 'No email address available' : 'Send test email notification'}
+                        title={emailTestTarget ? t('notificationPreferences.actions.testEmailTooltip') : t('notificationPreferences.messages.testEmailMissing')}
                       >
-                        {!emailTestTarget ? 'No Email Available' : 'Test Email'}
+                        {emailTestTarget ? t('notificationPreferences.actions.testEmail') : t('notificationPreferences.actions.testEmailDisabled')}
                       </button>
                     </div>
                   )}
@@ -461,7 +503,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                 {/* SMS Notifications */}
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>📱 SMS Notifications</h3>
+                    <h3>📱 {t('notificationPreferences.sms.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -474,6 +516,9 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                   
                   {safeGet(preferences, 'sms.enabled', false) && (
                     <div className="preference-options">
+                      <p className="section-description">
+                        {t('notificationPreferences.sms.description')}
+                      </p>
                       <div className="option-group">
                         <label>
                           <input
@@ -481,17 +526,17 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={preferences.sms.critical}
                             onChange={(e) => updatePreference('sms.critical', e.target.checked)}
                           />
-                          Critical Alerts Only
+                          {t('notificationPreferences.sms.toggles.critical')}
                         </label>
                       </div>
 
                       <div className="input-group">
-                        <label>Phone Number:</label>
+                        <label>{t('notificationPreferences.sms.numberLabel')}</label>
                         <input
                           type="tel"
                           value={preferences.sms.number}
                           onChange={(e) => updatePreference('sms.number', e.target.value)}
-                          placeholder="+1234567890"
+                          placeholder={t('notificationPreferences.sms.placeholders.number')}
                         />
                       </div>
                       
@@ -499,8 +544,9 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                         className="test-btn"
                         onClick={() => handleTestNotification('sms')}
                         disabled={!smsTestTarget}
+                        title={smsTestTarget ? t('notificationPreferences.actions.testSmsTooltip') : t('notificationPreferences.messages.testSmsMissing')}
                       >
-                        {!smsTestTarget ? 'No Phone Available' : 'Test SMS'}
+                        {smsTestTarget ? t('notificationPreferences.actions.testSms') : t('notificationPreferences.actions.testSmsDisabled')}
                       </button>
                     </div>
                   )}
@@ -509,7 +555,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                 {/* Push Notifications */}
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>🔔 Push Notifications</h3>
+                    <h3>🔔 {t('notificationPreferences.push.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -522,6 +568,9 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                   
                   {safeGet(preferences, 'push.enabled', false) && (
                     <div className="preference-options">
+                      <p className="section-description">
+                        {t('notificationPreferences.push.description')}
+                      </p>
                       <div className="option-group">
                         <label>
                           <input
@@ -529,7 +578,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={preferences.push.critical}
                             onChange={(e) => updatePreference('push.critical', e.target.checked)}
                           />
-                          Critical Alerts
+                          {t('notificationPreferences.push.toggles.critical')}
                         </label>
                         <label>
                           <input
@@ -537,7 +586,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={preferences.push.warning}
                             onChange={(e) => updatePreference('push.warning', e.target.checked)}
                           />
-                          Warning Alerts
+                          {t('notificationPreferences.push.toggles.warning')}
                         </label>
                         <label>
                           <input
@@ -545,17 +594,17 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={preferences.push.info}
                             onChange={(e) => updatePreference('push.info', e.target.checked)}
                           />
-                          Info Alerts
+                          {t('notificationPreferences.push.toggles.info')}
                         </label>
                       </div>
 
                       <div className="input-group">
-                        <label>Device Token:</label>
+                        <label>{t('notificationPreferences.push.deviceTokenLabel')}</label>
                         <input
                           type="text"
                           value={preferences.push.deviceToken}
                           onChange={(e) => updatePreference('push.deviceToken', e.target.value)}
-                          placeholder="Optional device token"
+                          placeholder={t('notificationPreferences.push.placeholders.deviceToken')}
                         />
                       </div>
                     </div>
@@ -565,7 +614,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                 {/* Webhook Notifications */}
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>🔗 Webhook Notifications</h3>
+                    <h3>🔗 {t('notificationPreferences.webhook.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -578,13 +627,16 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                   
                   {safeGet(preferences, 'webhook.enabled', false) && (
                     <div className="preference-options">
+                      <p className="section-description">
+                        {t('notificationPreferences.webhook.description')}
+                      </p>
                       <div className="input-group">
-                        <label>Webhook URL:</label>
+                        <label>{t('notificationPreferences.webhook.urlLabel')}</label>
                         <input
                           type="url"
                           value={preferences.webhook.url}
                           onChange={(e) => updatePreference('webhook.url', e.target.value)}
-                          placeholder="https://your-webhook-url.com"
+                          placeholder={t('notificationPreferences.webhook.placeholders.url')}
                         />
                       </div>
                       
@@ -595,7 +647,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={preferences.webhook.critical}
                             onChange={(e) => updatePreference('webhook.critical', e.target.checked)}
                           />
-                          Critical Alerts Only
+                          {t('notificationPreferences.webhook.toggles.critical')}
                         </label>
                       </div>
                     </div>
@@ -605,7 +657,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                 {/* Escalation Settings */}
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>🚨 Escalation Settings</h3>
+                    <h3>🚨 {t('notificationPreferences.escalation.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -618,6 +670,9 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                   
                   {preferences.escalation.enabled && (
                     <div className="preference-options">
+                      <p className="section-description">
+                        {t('notificationPreferences.escalation.description')}
+                      </p>
                       <div className="option-group">
                         <label>
                           <input
@@ -625,12 +680,12 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                             checked={preferences.escalation.autoEscalate}
                             onChange={(e) => updatePreference('escalation.autoEscalate', e.target.checked)}
                           />
-                          Auto-escalate unresolved alerts
+                          {t('notificationPreferences.escalation.autoLabel')}
                         </label>
                       </div>
                       
                       <div className="input-group">
-                        <label>Escalation Delay (minutes):</label>
+                        <label>{t('notificationPreferences.escalation.delayLabel')}</label>
                         <div className="number-input-wrapper">
                           <input
                             type="number"
@@ -676,7 +731,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                       </div>
                       
                       <div className="input-group">
-                        <label>Max Escalations:</label>
+                        <label>{t('notificationPreferences.escalation.maxLabel')}</label>
                         <div className="number-input-wrapper">
                           <input
                             type="number"
@@ -727,7 +782,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                 {/* Quiet Hours */}
                 <div className="preference-section">
                   <div className="section-header">
-                    <h3>🌙 Quiet Hours</h3>
+                    <h3>🌙 {t('notificationPreferences.quietHours.title')}</h3>
                     <label className="toggle-switch">
                       <input
                         type="checkbox"
@@ -740,8 +795,11 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                   
                   {preferences.quietHours.enabled && (
                     <div className="preference-options">
+                      <p className="section-description">
+                        {t('notificationPreferences.quietHours.description')}
+                      </p>
                       <div className="input-group">
-                        <label>Start Time:</label>
+                        <label>{t('notificationPreferences.quietHours.startLabel')}</label>
                         <input
                           type="time"
                           value={preferences.quietHours.start}
@@ -750,7 +808,7 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                       </div>
                       
                       <div className="input-group">
-                        <label>End Time:</label>
+                        <label>{t('notificationPreferences.quietHours.endLabel')}</label>
                         <input
                           type="time"
                           value={preferences.quietHours.end}
@@ -759,19 +817,16 @@ function NotificationPreferences({ isOpen, onClose, user }) {
                       </div>
                       
                       <div className="input-group">
-                        <label>Timezone:</label>
+                        <label>{t('notificationPreferences.quietHours.timezoneLabel')}</label>
                         <select
                           value={preferences.quietHours.timezone}
                           onChange={(e) => updatePreference('quietHours.timezone', e.target.value)}
                         >
-                          <option value="UTC">UTC</option>
-                          <option value="America/New_York">Eastern Time</option>
-                          <option value="America/Chicago">Central Time</option>
-                          <option value="America/Denver">Mountain Time</option>
-                          <option value="America/Los_Angeles">Pacific Time</option>
-                          <option value="Europe/London">London</option>
-                          <option value="Europe/Paris">Paris</option>
-                          <option value="Asia/Tokyo">Tokyo</option>
+                          {timezoneOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -787,14 +842,14 @@ function NotificationPreferences({ isOpen, onClose, user }) {
             className="cancel-btn"
             onClick={onClose}
           >
-            Cancel
+            {t('notificationPreferences.actions.close')}
           </button>
           <button
             className="save-btn"
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? 'Saving...' : 'Save Preferences'}
+            {saving ? t('notificationPreferences.actions.saving') : t('notificationPreferences.actions.save')}
           </button>
         </div>
       </div>

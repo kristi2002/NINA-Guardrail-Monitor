@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SecurityHeader, SecurityTabs } from './security/components'
 import { MetricCard } from '../components/analytics'
 import { OverviewTab, ThreatsTab, AccessTab, ComplianceTab, IncidentsTab, AlertingTab } from './security/tabs'
@@ -8,6 +9,7 @@ import { getSecurityData } from './security/utils/getSecurityData'
 import './security/Security.css'
 
 const Security = () => {
+  const { t } = useTranslation()
   const [timeRange, setTimeRange] = useState('7d')
   const { activeTab, handleTabClick } = useTabNavigation('overview')
   
@@ -75,7 +77,7 @@ const Security = () => {
 
   // Loading state
   if (loading && !securityData) {
-    return <div className="security-loading">Loading security dashboard...</div>
+    return <div className="security-loading">{t('security.messages.loading')}</div>
   }
 
   return (
@@ -94,12 +96,16 @@ const Security = () => {
       <div className={`security-content ${animateContent ? 'content-transition' : ''}`}>
         {error && (
           <div className="security-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c33', marginBottom: '1rem', borderRadius: '4px' }}>
-            ⚠️ {error}
-            <button onClick={() => fetchSecurityData(true)} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem' }}>Retry</button>
+            {t('security.messages.errorPrefix')} {error}
+            <button onClick={() => fetchSecurityData(true)} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem' }}>
+              {t('security.messages.retry')}
+            </button>
           </div>
         )}
         {loading && securityData && (
-          <div className="security-loading-indicator" style={{ padding: '1rem', textAlign: 'center' }}>Loading {activeTab} data...</div>
+          <div className="security-loading-indicator" style={{ padding: '1rem', textAlign: 'center' }}>
+            {t('security.messages.loadingTab', { tab: t(`security.tabs.${activeTab}.label`) })}
+          </div>
         )}
         {renderTabContent()}
       </div>

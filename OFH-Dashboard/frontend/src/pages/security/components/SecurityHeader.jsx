@@ -1,22 +1,26 @@
 /**
  * Security Header Component
  */
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TimeAgo } from '../../../components/ui'
 import './SecurityHeader.css'
 
 export default function SecurityHeader({ timeRange, onTimeRangeChange, lastUpdated }) {
-  const timeRanges = [
-    { value: '1d', label: 'Last 24 Hours' },
-    { value: '7d', label: 'Last 7 Days' },
-    { value: '30d', label: 'Last 30 Days' }
-  ]
+  const { t } = useTranslation()
+
+  const timeRanges = useMemo(() => ([
+    { value: '1d', label: t('security.header.timeRanges.1d') },
+    { value: '7d', label: t('security.header.timeRanges.7d') },
+    { value: '30d', label: t('security.header.timeRanges.30d') }
+  ]), [t])
 
   return (
     <div className="security-header">
       <div className="header-left">
-        <h1>🛡️ Security Dashboard</h1>
+        <h1>{t('security.header.title')}</h1>
         <p className="header-subtitle">
-          Comprehensive security monitoring and threat analysis • Last updated: <TimeAgo timestamp={lastUpdated} />
+          {t('security.header.subtitle')} <TimeAgo timestamp={lastUpdated} />
         </p>
       </div>
       

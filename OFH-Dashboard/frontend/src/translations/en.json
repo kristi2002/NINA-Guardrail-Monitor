@@ -1,0 +1,1012 @@
+{
+  "app": {
+    "title": "NINA Guardrail Monitor",
+    "subtitle": "Real-Time Safety Monitoring Dashboard",
+    "loading": "Initializing NINA Security Dashboard...",
+    "loadingDashboard": "Loading Dashboard...",
+    "loadingAnalytics": "Loading Analytics...",
+    "loadingSecurity": "Loading Security..."
+  },
+  "dashboard": {
+    "metrics": {
+      "activeConversations": "Active Conversations",
+      "criticalAlerts": "Critical Alerts",
+      "totalConversations": "Conversations Today",
+      "averageDuration": "Average Duration",
+      "durationValue": "{{minutes}} min",
+      "noData": "N/A"
+    }
+  },
+  "conversationDetail": {
+    "title": "Conversation Detail",
+    "patient": {
+      "age": "Age",
+      "gender": "Gender",
+      "condition": "Condition",
+      "notAvailable": "N/A",
+      "ageValue_one": "{{count}} year",
+      "ageValue_other": "{{count}} years"
+    },
+    "session": {
+      "heading": "Conversation on {{date}}",
+      "summary": "Started at {{time}} • Status:",
+      "duration": " • Duration {{duration}} min"
+    },
+    "history": {
+      "toggle": "{{icon}} Action History ({{count}})",
+      "title": "Recent Actions",
+      "emptyDescription": "No recent actions recorded.",
+      "defaultAction": "Action",
+      "noDescription": "No description",
+      "operator": " (Operator: {{name}})"
+    },
+    "common": {
+      "processing": "Processing...",
+      "notAvailable": "N/A",
+      "invalidDate": "Invalid date"
+    },
+    "sections": {
+      "lifecycle": "Lifecycle",
+      "escalation": "Escalation & Attention",
+      "systemControl": "System Control",
+      "report": "Conversation Report",
+      "events": "Conversation Events",
+      "alternative": "Alternative"
+    },
+    "actions": {
+      "stopReport": {
+        "label": "Stop & Report",
+        "tooltip": "Stop the conversation normally (use for standard interruptions)"
+      },
+      "complete": {
+        "label": "Complete Conversation"
+      },
+      "cancel": {
+        "label": "Cancel Conversation"
+      },
+      "resume": {
+        "label": "Resume Conversation",
+        "tooltip": "Resume a paused conversation"
+      },
+      "emergencyStop": {
+        "label": "Emergency Stop",
+        "tooltip": "Trigger an immediate emergency stop"
+      },
+      "escalate": {
+        "label": "Escalate to Supervisor",
+        "tooltip": "Formally escalate to a supervisor (status becomes ESCALATED)"
+      },
+      "manualIntervention": {
+        "label": "Urgent Manual Intervention",
+        "tooltip": "Request urgent manual intervention (priority URGENT, status unchanged)"
+      },
+      "acknowledge": {
+        "label": "Acknowledge"
+      },
+      "resolve": {
+        "label": "Resolve"
+      },
+      "overrideGuardrail": {
+        "label": "Override Guardrail",
+        "tooltip": "Override a specific guardrail decision (useful for false positives)"
+      },
+      "systemOverride": {
+        "label": "System Override",
+        "tooltip": "Full system bypass (reduces risk to LOW)"
+      },
+      "unreliableAlarm": {
+        "label": "Mark Alarm Unreliable"
+      }
+    },
+    "report": {
+      "title": "Conversation Report",
+      "generating": "Generating...",
+      "pdf": "PDF"
+    },
+    "events": {
+      "info": "Info",
+      "warning": "Warning",
+      "alert": "Alert",
+      "noDetails": "No details available",
+      "table": {
+        "event": "Event",
+        "description": "Description",
+        "details": "Details",
+        "empty": "No events recorded"
+      },
+      "noDescription": "No description available"
+    },
+    "situation": {
+      "regular": {
+        "title": "All Clear",
+        "description": "Nothing to report."
+      },
+      "warning": {
+        "title": "Warning",
+        "description": "The conversation included language that may indicate potential self-harm with moderate risk."
+      },
+      "danger": {
+        "title": "Alert",
+        "description": "Highest risk detected. Severe self-harm language identified."
+      }
+    }
+  },
+  "notificationCenter": {
+    "title": "Notifications",
+    "badgeLabel": "Unread",
+    "markAll": "Mark all as read",
+    "close": "Close",
+    "filter": {
+      "label": "Filter:",
+      "options": {
+        "all": "All",
+        "unread": "Unread",
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info"
+      }
+    },
+    "sort": {
+      "label": "Sort by:",
+      "options": {
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "priority": "Priority"
+      }
+    },
+    "loading": "Loading notifications...",
+    "empty": {
+      "title": "No notifications",
+      "description": "You're all caught up! New notifications will appear here."
+    },
+    "error": {
+      "dismiss": "Dismiss"
+    },
+    "priorityLabels": {
+      "critical": "Critical",
+      "high": "High",
+      "warning": "Warning",
+      "medium": "Medium",
+      "info": "Info",
+      "low": "Low"
+    },
+    "timestamp": {
+      "justNow": "Just now",
+      "minutes": "{{count}}m ago",
+      "hours": "{{count}}h ago",
+      "days": "{{count}}d ago"
+    },
+    "footer": {
+      "total": "Total: {{count}}",
+      "unread": "Unread: {{count}}"
+    },
+    "events": {
+      "common": {
+        "unknownConversation": "N/A",
+        "unknownEvent": "N/A",
+        "noRules": "",
+        "ruleSummary_one": "Guardrail rule: {{rules}}.",
+        "ruleSummary_other": "Guardrail rules: {{rules}}.",
+        "violationSummary_one": "Detected violation: {{violations}}.",
+        "violationSummary_other": "Detected violations: {{violations}}.",
+        "originalMessage": "Details: {{message}}",
+        "severity": {
+          "critical": "Critical",
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low",
+          "info": "Info"
+        }
+      },
+      "alarm_triggered": {
+        "title": "🚨 Alarm Triggered",
+        "message": "{{severityLabel}} guardrail alarm triggered for conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "warning_triggered": {
+        "title": "⚠️ Warning",
+        "message": "{{severityLabel}} guardrail warning for conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "privacy_violation_prevented": {
+        "title": "🔒 Privacy Violation Prevented",
+        "message": "Privacy guardrail intervened for conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "medication_warning": {
+        "title": "💊 Medication Warning",
+        "message": "Medication guidance required in conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "inappropriate_content": {
+        "title": "🚫 Inappropriate Content",
+        "message": "Inappropriate content detected in conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "emergency_protocol": {
+        "title": "🚨 Emergency Protocol",
+        "message": "Emergency protocol activated for conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "false_alarm_reported": {
+        "title": "ℹ️ False Alarm Reported",
+        "message": "False alarm resolved for conversation {{conversationId}}. {{originalMessage}}"
+      },
+      "operator_intervention": {
+        "title": "👤 Operator Intervention",
+        "message": "Manual operator intervention recorded for conversation {{conversationId}}. {{originalMessage}}"
+      },
+      "system_alert": {
+        "title": "📢 System Alert",
+        "message": "System alert (severity {{severityLabel}}). {{originalMessage}}"
+      },
+      "compliance_check": {
+        "title": "✅ Compliance Check",
+        "message": "Compliance review in progress for conversation {{conversationId}}. {{originalMessage}}"
+      },
+      "context_violation": {
+        "title": "⚠️ Context Violation",
+        "message": "Context violation detected in conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "conversation_started": {
+        "title": "💬 Conversation Started",
+        "message": "New conversation {{conversationId}} started. {{originalMessage}}"
+      },
+      "conversation_ended": {
+        "title": "✅ Conversation Completed",
+        "message": "Conversation {{conversationId}} ended. {{originalMessage}}"
+      },
+      "default": {
+        "title": "📢 Guardrail Event",
+        "message": "{{originalMessage}}"
+      }
+    }
+  },
+  "notificationPreferences": {
+    "title": "Notification Preferences",
+    "loading": "Loading preferences...",
+    "actions": {
+      "close": "Cancel",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "testEmail": "Send test email",
+      "testSms": "Send test SMS",
+      "testPush": "Send test push",
+      "testEmailDisabled": "No email available",
+      "testSmsDisabled": "No phone available",
+      "testEmailTooltip": "Send test email notification",
+      "testSmsTooltip": "Send test SMS notification",
+      "testPushTooltip": "Send test push notification"
+    },
+    "messages": {
+      "updateSuccess": "Notification preferences updated successfully.",
+      "loadError": "Failed to load notification preferences.",
+      "saveError": "Failed to save notification preferences.",
+      "testEmailMissing": "No email address configured for test email notifications.",
+      "testSmsMissing": "No phone number configured for test SMS notifications.",
+      "testSuccess": "Test {{type}} notification sent successfully!",
+      "testError": "Failed to send test {{type}} notification.",
+      "testSubject": "Test {{type}} notification",
+      "testMessage": "This is a test {{type}} notification from the system."
+    },
+    "testTypes": {
+      "email": "email",
+      "sms": "SMS",
+      "push": "push notification"
+    },
+    "global": {
+      "title": "Global Notifications",
+      "description": "Control whether notifications are delivered at all. When disabled, channel-specific alerts are paused until re-enabled."
+    },
+    "email": {
+      "title": "Email Notifications",
+      "description": "Select which email alerts you want to receive.",
+      "toggles": {
+        "critical": "Critical alerts",
+        "warning": "Warning alerts",
+        "info": "Informational updates"
+      },
+      "digestLabel": "Summary emails",
+      "frequencyLabel": "Digest frequency",
+      "frequencyOptions": {
+        "hourly": "Hourly",
+        "daily": "Daily",
+        "weekly": "Weekly"
+      },
+      "addressLabel": "Email address",
+      "placeholders": {
+        "address": "Enter email address"
+      },
+      "testButton": "Send test email",
+      "testTooltip": "Send test email notification"
+    },
+    "sms": {
+      "title": "SMS Notifications",
+      "description": "Receive text alerts for urgent updates.",
+      "toggles": {
+        "critical": "Critical alerts",
+        "warning": "Warning alerts",
+        "info": "Informational updates"
+      },
+      "numberLabel": "Mobile number",
+      "placeholders": {
+        "number": "Enter phone number"
+      },
+      "testButton": "Send test SMS",
+      "testTooltip": "Send test SMS notification"
+    },
+    "push": {
+      "title": "Push Notifications",
+      "description": "In-app or device alerts for realtime updates.",
+      "toggles": {
+        "critical": "Critical alerts",
+        "warning": "Warning alerts",
+        "info": "Informational updates"
+      },
+      "deviceTokenLabel": "Device token",
+      "placeholders": {
+        "deviceToken": "Optional device token"
+      },
+      "testButton": "Send test push",
+      "testTooltip": "Send test push notification"
+    },
+    "webhook": {
+      "title": "Webhook Notifications",
+      "description": "Forward notifications to an external endpoint.",
+      "urlLabel": "Webhook URL",
+      "headersLabel": "Custom headers (JSON)",
+      "toggles": {
+        "critical": "Critical alerts",
+        "warning": "Warning alerts",
+        "info": "Informational updates"
+      },
+      "placeholders": {
+        "url": "https://your-webhook-url.com"
+      }
+    },
+    "escalation": {
+      "title": "Escalation Rules",
+      "description": "Control automatic escalation behaviour for unresolved incidents.",
+      "autoLabel": "Automatically escalate unresolved alerts",
+      "delayLabel": "Escalation delay (minutes)",
+      "maxLabel": "Maximum escalations"
+    },
+    "quietHours": {
+      "title": "Quiet Hours",
+      "description": "Temporarily mute non-critical notifications during specific hours.",
+      "startLabel": "Start time",
+      "endLabel": "End time",
+      "timezoneLabel": "Timezone",
+      "timezoneOptions": {
+        "UTC": "UTC",
+        "America_New_York": "Eastern Time",
+        "America_Chicago": "Central Time",
+        "America_Denver": "Mountain Time",
+        "America_Los_Angeles": "Pacific Time",
+        "Europe_London": "London",
+        "Europe_Paris": "Paris",
+        "Asia_Tokyo": "Tokyo"
+      }
+    }
+  },
+  "analytics": {
+    "header": {
+      "title": "📊 Analytics Dashboard",
+      "subtitle": "Comprehensive insights into alert management performance • Last updated:",
+      "timeRanges": {
+        "1d": "Last 24 Hours",
+        "7d": "Last 7 Days",
+        "30d": "Last 30 Days"
+      },
+      "export": {
+        "button": "📤 Export",
+        "exporting": "Exporting...",
+        "tooltip": {
+          "noData": "No data available to export",
+          "exporting": "Exporting...",
+          "ready": "Export current tab data as JSON"
+        },
+        "loadingSpinnerLabel": "Exporting..."
+      }
+    },
+    "tabs": {
+      "overview": {
+        "label": "Overview",
+        "timeRange": {
+          "1d": "24 hours",
+          "7d": "7 days",
+          "30d": "30 days",
+          "period": "period"
+        },
+        "metrics": {
+          "totalAlerts": {
+            "title": "Total Alerts",
+            "subtitle": "Processed"
+          },
+          "avgResponseTime": {
+            "title": "Avg Response Time",
+            "subtitle": "Target: < 10m"
+          },
+          "resolutionRate": {
+            "title": "Resolution Rate",
+            "subtitle": "Successfully resolved"
+          },
+          "activeConversations": {
+            "title": "Active Conversations",
+            "subtitle": "Currently active"
+          },
+          "highRisk": {
+            "title": "High Risk Conversations",
+            "subtitle": "Requiring attention"
+          },
+          "escalationRate": {
+            "title": "Escalation Rate",
+            "subtitle": "Auto-escalated"
+          }
+        },
+        "charts": {
+          "alertDistribution": {
+            "title": "Alert Distribution by Severity",
+            "noData": "No severity distribution data available"
+          }
+        },
+        "performance": {
+          "title": "Performance Summary",
+          "subtitle": "Conversation health vs. goals (last {{timeRange}})",
+          "badge": "+8% overall improvement",
+          "cards": {
+            "totalConversations": {
+              "label": "Total Conversations",
+              "trend": "+12% vs last period"
+            },
+            "activeUsers": {
+              "label": "Active Users",
+              "trend": "Stable engagement"
+            },
+            "averageDuration": {
+              "label": "Average Duration",
+              "trend": "+3m vs target"
+            }
+          }
+        },
+        "messages": {
+          "errorTitle": "Error displaying overview data"
+        }
+      },
+      "notifications": {
+        "label": "Notifications",
+        "metrics": {
+          "deliveryRate": {
+            "title": "Delivery Rate",
+            "subtitle": "Overall success"
+          },
+          "totalSent": {
+            "title": "Total Sent",
+            "subtitle": "All channels"
+          },
+          "pending": {
+            "title": "Pending",
+            "subtitle": "Awaiting delivery"
+          },
+          "totalNotifications": {
+            "title": "Total Notifications",
+            "subtitle": "This period"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Notification Trends Over Time",
+            "series": {
+              "notifications": "Notifications"
+            }
+          },
+          "breakdown": {
+            "title": "Notification Breakdown by Type",
+            "noData": "No notification breakdown data available"
+          }
+        },
+        "labels": {
+          "unknown": "Unknown",
+          "count": "Count: {{count}}",
+          "status": "Status: {{status}}",
+          "na": "N/A"
+        },
+        "messages": {
+          "noData": "No notifications data available. Try refreshing.",
+          "errorTitle": "Error displaying notifications data"
+        }
+      },
+      "users": {
+        "label": "Admin Performance"
+      },
+      "alerts": {
+        "label": "Alert Trends",
+        "metrics": {
+          "total": {
+            "title": "Total Alerts",
+            "subtitle": "This period"
+          },
+          "critical": {
+            "title": "Critical Alerts",
+            "subtitle": "High priority"
+          },
+          "active": {
+            "title": "Active Alerts",
+            "subtitle": "Currently open"
+          },
+          "commonType": {
+            "title": "Most Common Type",
+            "subtitle": "Event type"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Alert Trends Over Time",
+            "series": {
+              "avgResolution": "Avg Resolution (min)",
+              "count": "Alert Count"
+            }
+          },
+          "typeDistribution": {
+            "title": "Alert Type Distribution",
+            "label": "{{type}}: {{count}}"
+          }
+        },
+        "severity": {
+          "title": "Severity Distribution",
+          "labels": {
+            "critical": "Critical",
+            "high": "High",
+            "medium": "Medium",
+            "low": "Low"
+          }
+        },
+        "messages": {
+          "noData": "No alert trends data available. Try refreshing.",
+          "errorTitle": "Error displaying alert trends data"
+        },
+        "eventTypes": {}
+      },
+      "response": {
+        "label": "Response Times"
+      },
+      "escalations": {
+        "label": "Escalations"
+      },
+      "guardrail-performance": {
+        "label": "Guardrail Performance"
+      }
+    },
+    "messages": {
+      "loading": "Loading analytics dashboard...",
+      "loadingTab": "Loading {{tab}} data...",
+      "errorPrefix": "⚠️",
+      "retry": "Retry",
+      "noDataForExport": "No data available to export. Please wait for data to load."
+    }
+  },
+  "security": {
+    "header": {
+      "title": "🛡️ Security Dashboard",
+      "subtitle": "Comprehensive security monitoring and threat analysis • Last updated:",
+      "timeRanges": {
+        "1d": "Last 24 Hours",
+        "7d": "Last 7 Days",
+        "30d": "Last 30 Days"
+      }
+    },
+    "tabs": {
+      "overview": {
+        "label": "Overview",
+        "metrics": {
+          "securityScore": {
+            "title": "Security Score",
+            "subtitle": "Overall security rating"
+          },
+          "totalThreats": {
+            "title": "Total Threats",
+            "subtitle": "This period"
+          },
+          "activeSessions": {
+            "title": "Active Sessions",
+            "subtitle": "Being monitored"
+          },
+          "resolvedThreats": {
+            "title": "Resolved Threats",
+            "subtitle": "Successfully resolved"
+          }
+        },
+        "charts": {
+          "incidents": {
+            "title": "Recent Security Incidents",
+            "placeholder": "No recent security incidents"
+          },
+          "distribution": {
+            "title": "Threat Distribution",
+            "placeholder": "No threat distribution data available"
+          }
+        },
+        "events": {
+          "unknownType": "Unknown incident",
+          "unknownSeverity": "Unknown",
+          "noDescription": "No description available",
+          "time": "Time",
+          "status": "Status",
+          "id": "ID"
+        },
+        "compliance": {
+          "title": "Compliance Status",
+          "labels": {
+            "gdpr": "GDPR Compliance",
+            "hipaa": "HIPAA Compliance",
+            "pci": "PCI Compliance",
+            "activeThreats": "Active Threats"
+          },
+          "requirements": "{{met}}/{{total}} requirements met"
+        },
+        "messages": {
+          "errorTitle": "Error rendering overview tab"
+        }
+      },
+      "threats": {
+        "label": "Threats",
+        "metrics": {
+          "total": {
+            "title": "Total Threats",
+            "subtitle": "Detected this period"
+          },
+          "blocked": {
+            "title": "Threats Blocked",
+            "subtitle": "Successfully blocked"
+          },
+          "resolutionRate": {
+            "title": "Resolution Rate",
+            "subtitle": "Threats resolved"
+          },
+          "avgResponse": {
+            "title": "Avg Response",
+            "subtitle": "Time to respond"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Threat Trends Over Time",
+            "series": {
+              "total": "Total Threats",
+              "malware": "Malware",
+              "phishing": "Phishing",
+              "bruteForce": "Brute Force"
+            }
+          },
+          "distribution": {
+            "title": "Threat Types Distribution",
+            "label": "{{type}}: {{count}}"
+          }
+        },
+        "messages": {
+          "errorTitle": "Error rendering threats tab"
+        }
+      },
+      "access": {
+        "label": "Access Control",
+        "metrics": {
+          "successRate": {
+            "title": "Success Rate",
+            "subtitle": "Authentication success"
+          },
+          "failedAttempts": {
+            "title": "Failed Attempts",
+            "subtitle": "Failed logins"
+          },
+          "mfaAdoption": {
+            "title": "MFA Adoption",
+            "subtitle": "Multi-factor auth"
+          },
+          "suspiciousActivity": {
+            "title": "Suspicious Activity",
+            "subtitle": "Detected activities"
+          },
+          "adminActivity": {
+            "title": "Admin Activity",
+            "subtitle": "Admin logins this period"
+          }
+        },
+        "charts": {
+          "authTrends": {
+            "title": "Authentication Trends",
+            "series": {
+              "successful": "Successful",
+              "failed": "Failed",
+              "admin": "Admin Activity"
+            }
+          },
+          "userPatterns": {
+            "title": "User Access Patterns"
+          }
+        },
+        "messages": {
+          "errorTitle": "Error rendering access tab"
+        }
+      },
+      "compliance": {
+        "label": "Compliance",
+        "metrics": {
+          "overall": {
+            "title": "Overall Score",
+            "subtitle": "Compliance rating"
+          },
+          "gdpr": {
+            "title": "GDPR Score",
+            "subtitle": "GDPR compliance"
+          },
+          "hipaa": {
+            "title": "HIPAA Score",
+            "subtitle": "HIPAA compliance"
+          },
+          "soc2": {
+            "title": "SOC2 Score",
+            "subtitle": "SOC2 compliance"
+          }
+        },
+        "charts": {
+          "frameworks": {
+            "title": "Compliance Frameworks",
+            "requirements": "{{met}}/{{total}} requirements met"
+          },
+          "controls": {
+            "title": "Security Controls",
+            "count": "{{implemented}}/{{total}}"
+          }
+        },
+        "messages": {
+          "errorTitle": "Error rendering compliance tab"
+        }
+      },
+      "incidents": {
+        "label": "Incidents",
+        "metrics": {
+          "total": {
+            "title": "Total Incidents",
+            "subtitle": "This period"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "subtitle": "Successfully resolved"
+          },
+          "resolutionRate": {
+            "title": "Resolution Rate",
+            "subtitle": "Incidents resolved"
+          },
+          "avgResponse": {
+            "title": "Avg Response",
+            "subtitle": "Response time"
+          }
+        },
+        "charts": {
+          "trends": {
+            "title": "Incident Trends",
+            "series": {
+              "detected": "Detected",
+              "resolved": "Resolved",
+              "escalated": "Escalated"
+            }
+          },
+          "recent": {
+            "title": "Recent Incidents",
+            "labels": {
+              "assigned": "Assigned",
+              "resolvedIn": "Resolved in {{time}}"
+            }
+          }
+        },
+        "messages": {
+          "errorTitle": "Error rendering incidents tab"
+        }
+      },
+      "alerting": {
+        "label": "Alerting",
+        "loading": "Loading alerting data...",
+        "summary": {
+          "latest": "Latest alerts: {{count}}",
+          "updated": "Last updated {{time}}"
+        },
+        "warning": {
+          "title": "Alerting service"
+        },
+        "empty": {
+          "title": "No alerts received yet",
+          "description": "The external alerting pipeline is wired up. Once guardrail events are ingested by the alerting service they will show up here automatically."
+        },
+        "card": {
+          "fallbackTitle": "Guardrail event",
+          "fallbackMessage": "Alert received from guardrail pipeline.",
+          "conversation": "Conversation: {{id}}"
+        }
+      }
+    },
+    "messages": {
+      "loading": "Loading security dashboard...",
+      "loadingTab": "Loading {{tab}} data...",
+      "errorPrefix": "⚠️",
+      "retry": "Retry"
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "security": "Security"
+  },
+  "navbar": {
+    "notifications": "Notifications",
+    "preferences": "Notification Preferences"
+  },
+  "user": {
+    "role": "User",
+    "tokenExpiresIn": "Token expires in:",
+    "sessionExpired": "Expired",
+    "sessionExpiring": "Your session is expiring soon",
+    "signOut": "Sign Out",
+    "secureSessionActive": "Secure Session Active"
+  },
+  "login": {
+    "initializing": "Initializing...",
+    "subtitle": "Healthcare AI Security Dashboard",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "buttonSignIn": "Sign In",
+    "buttonAuthenticating": "Authenticating...",
+    "errorDefault": "Login failed",
+    "errorRequiredFields": "Please enter both username and password",
+    "errorLocked": "Account temporarily locked. Try again in {{seconds}} seconds.",
+    "errorLockedUntil": "Too many failed attempts. Account locked for 5 minutes. Try again at {{time}}.",
+    "errorWarning": "{{message}} Warning: {{remaining}} attempts remaining before account lockout.",
+    "errorFailed": "{{message}}",
+    "errorUnexpected": "An unexpected error occurred. Please try again.",
+    "attemptsStatus": "Failed attempts: {{count}}/5",
+    "lockoutWarning": "Account will be locked after {{remaining}} more failed attempts",
+    "lockoutStatus": "Account Locked • Unlocks in {{minutes}}:{{seconds}}",
+    "securityHeading": "Secure Healthcare System",
+    "securityDetails": "HIPAA compliant • End-to-end encryption • Audit logging",
+    "featureAuthenticationTitle": "Secure Authentication",
+    "featureAuthenticationDescription": "JWT authentication with secure session management",
+    "featureMonitoringTitle": "Real-time Monitoring",
+    "featureMonitoringDescription": "Live guardrail violation tracking and alerts",
+    "featureHealthcareTitle": "Healthcare Ready",
+    "featureHealthcareDescription": "HIPAA compliance and audit trail support"
+  },
+  "notifications": {
+    "unreadBadge": "{{count}}"
+  },
+  "dashboard": {
+    "header": {
+      "title": "Conversation Monitoring",
+      "subtitle": "Real-time monitoring system for therapeutic conversations",
+      "systemOnline": "System Online"
+    },
+    "metrics": {
+      "activeConversations": "Active Conversations",
+      "criticalAlerts": "Critical Alerts",
+      "totalConversations": "Conversations Today",
+      "averageDuration": "Average Duration",
+      "durationValue": "{{minutes}} min",
+      "noData": "N/A"
+    }
+  },
+  "conversationStatus": {
+    "overall": {
+      "danger": "Highest risk level detected",
+      "warning": "Attention required situations detected",
+      "active": "Operations normal",
+      "inactive": "No active conversations",
+      "summary": {
+        "monitored": "{{count}} conversations monitored",
+        "danger": "{{count}} at risk",
+        "warning": "{{count}} requiring attention"
+      }
+    },
+    "cards": {
+      "total": "Total",
+      "active": "Active",
+      "warning": "Attention",
+      "danger": "Risk",
+      "completed": "Completed"
+    }
+  },
+  "conversationList": {
+    "title": "Conversation Monitoring",
+    "stats": {
+      "total_one": "{{count}} conversation",
+      "total_other": "{{count}} conversations",
+      "active_one": "{{count}} active",
+      "active_other": "{{count}} active"
+    },
+    "filters": {
+      "toggle": "Filters",
+      "searchLabel": "Search Patient (ID)",
+      "searchPlaceholder": "Enter patient ID...",
+      "statusLabel": "Status",
+      "status": {
+        "placeholder": "All",
+        "options": {
+          "all": "All",
+          "inProgress": "In progress",
+          "completed": "Completed",
+          "stopped": "Stopped",
+          "new": "New",
+          "cancelled": "Cancelled"
+        }
+      },
+      "situationLabel": "Situation",
+      "situation": {
+        "placeholder": "All",
+        "options": {
+          "all": "All",
+          "regular": "Regular",
+          "warning": "Self-harm indicators",
+          "danger": "Dangerous actions"
+        }
+      },
+      "dateCreatedFrom": "Created from",
+      "dateCreatedTo": "Created to",
+      "dateUpdatedFrom": "Updated from",
+      "dateUpdatedTo": "Updated to",
+      "datePlaceholder": "dd/mm/yyyy",
+      "reset": "Reset filters"
+    },
+    "empty": {
+      "title": "No results found",
+      "filtered": "No conversations match the selected filters. Try adjusting your criteria.",
+      "unfiltered": "The system is waiting for new conversations."
+    },
+    "table": {
+      "patient": "Patient",
+      "status": "Status",
+      "situation": "Situation",
+      "createdAt": "Created",
+      "updatedAt": "Last update"
+    },
+    "statusLabels": {
+      "new": "New",
+      "inProgress": "In progress",
+      "stopped": "Stopped",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "situationLabels": {
+      "regular": "Regular",
+      "warning": "Self-harm indicators",
+      "danger": "Dangerous actions"
+    },
+    "patientLabel": "Patient {{id}}",
+    "patientAge_one": "{{count}} year old",
+    "patientAge_other": "{{count}} years old",
+    "patientMeta": "{{age}}, {{gender}}",
+    "gender": {
+      "male": "Male",
+      "female": "Female",
+      "unknown": "Unknown"
+    },
+    "notAvailable": "N/A",
+    "date": {
+      "invalid": "Invalid date"
+    },
+    "pagination": {
+      "showing": "Showing {{start}}-{{end}} of {{total}} conversations",
+      "prev": "Previous page",
+      "next": "Next page",
+      "goto": "Go to page {{page}}"
+    }
+  },
+  "timeAgo": {
+    "updated": "Updated {{time}}",
+    "secondsAgo": "{{count}}s ago",
+    "minutesAgo": "{{count}}m ago",
+    "justNow": "just now"
+  },
+  "language": {
+    "english": "English",
+    "italian": "Italian",
+    "switchToEnglish": "Switch to English",
+    "switchToItalian": "Switch to Italian"
+  },
+  "common": {
+    "loading": "Loading..."
+  }
+}
+

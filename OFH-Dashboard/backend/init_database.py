@@ -44,7 +44,7 @@ def create_initial_admin_user():
 
             admin = User(
                 username="admin",
-                email="admin@ofh-dashboard.local",
+                email="nina.guardrail.alerts@gmail.com",
                 password_hash=hashed_password.decode("utf-8"),
                 role="admin",
                 is_active=True,
@@ -58,7 +58,14 @@ def create_initial_admin_user():
             logger.info(f"   Password: {password}")
             logger.warning("⚠️  Please change the admin password in production!")
         else:
-            logger.info("Admin user already exists")
+            if admin.email != "nina.guardrail.alerts@gmail.com":
+                logger.info("Updating admin user email...")
+                admin.email = "nina.guardrail.alerts@gmail.com"
+                session.add(admin)
+                session.commit()
+                logger.info("✅ Admin email updated successfully")
+            else:
+                logger.info("Admin user already exists")
     except Exception as e:
         session.rollback()
         logger.error(f"Error creating admin user: {e}")

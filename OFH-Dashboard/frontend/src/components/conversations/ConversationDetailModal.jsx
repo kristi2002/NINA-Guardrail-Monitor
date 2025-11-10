@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { mapEventTypeToDisplay, getEventTypeLabel, getEventTypeIcon } from '../../utils/eventTypeMapper'
 import ConversationReportModal from './ConversationReportModal'
@@ -53,6 +54,7 @@ const ACTION_SEVERITY = {
 }
 
 function ConversationDetailModal({ conversation, isOpen, onClose, onConversationUpdated }) {
+  const { t, i18n } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [fetchingDetails, setFetchingDetails] = useState(false)
   const [events, setEvents] = useState([])
@@ -105,14 +107,6 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
       fetchConversationDetails()
     }
   }, [conversation?.id, isOpen])
-
-  if (!isOpen || !conversation) {
-    return null
-  }
-
-  // Use fullConversation if available, fallback to conversation from props
-  const displayConversation = fullConversation || conversation
-  const currentStatus = displayConversation?.status?.toUpperCase() || 'UNKNOWN'
 
   // Helper function to check if action is available based on conversation state
   const isActionAvailable = (actionType) => {
@@ -193,11 +187,12 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   }
 
   const formatDateTime = (dateString) => {
+    const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-US'
     // Handle null, undefined, or invalid date strings
     if (!dateString) {
       return {
-        date: 'N/A',
-        time: 'N/A'
+        date: notAvailableText,
+        time: notAvailableText
       }
     }
 
@@ -206,18 +201,18 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     // Check if date is valid
     if (isNaN(date.getTime())) {
       return {
-        date: 'Data non valida',
-        time: 'N/A'
+        date: invalidDateText,
+        time: notAvailableText
       }
     }
 
     return {
-      date: date.toLocaleDateString('it-IT', { 
+      date: date.toLocaleDateString(locale, { 
         day: 'numeric', 
         month: 'long', 
         year: 'numeric' 
       }),
-      time: date.toLocaleTimeString('it-IT', { 
+      time: date.toLocaleTimeString(locale, { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
@@ -226,7 +221,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
 
   const formatEventDetails = (details) => {
     if (!details) {
-      return 'Nessun dettaglio disponibile'
+      return noEventDetailsText
     }
 
     // If it's a string, try to parse it as JSON
@@ -247,7 +242,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
       )
 
       if (Object.keys(filtered).length === 0) {
-        return 'Nessun dettaglio disponibile'
+        return noEventDetailsText
       }
 
       // Format as a user-friendly list instead of raw JSON
@@ -290,45 +285,74 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     return JSON.stringify(detailsObj, null, 2)
   }
 
-  const getSituationConfig = (situation, level) => {
-    const configs = {
-      'Regolare': { 
-        label: 'Tutto regolare', 
-        class: 'situation-regular', 
+  const situationConfigs = useMemo(
+    () => ({
+      regular: {
+        label: t('conversationDetail.situation.regular.title'),
+        class: 'situation-regular',
         icon: '👍',
-        description: 'Niente da segnalare',
+        description: t('conversationDetail.situation.regular.description'),
         color: '#51cf66'
       },
-      'Segni di autolesionismo': { 
-        label: 'Attenzione', 
-        class: 'situation-warning', 
+      warning: {
+        label: t('conversationDetail.situation.warning.title'),
+        class: 'situation-warning',
         icon: '⚠️',
-        description: 'Durante la conversazione sono stati utilizzati termini che possono far credere a dei possibili gesti di autolesionismo con rischio moderato.',
+        description: t('conversationDetail.situation.warning.description'),
         color: '#ffa726'
       },
-      'Gesti pericolosi': { 
-        label: 'Allarme', 
-        class: 'situation-danger', 
+      danger: {
+        label: t('conversationDetail.situation.danger.title'),
+        class: 'situation-danger',
         icon: '🚨',
-        description: 'Livello massimo di pericolosità rilevato. Sono stati utilizzati termini di lesioni gravi autoinflitte',
+        description: t('conversationDetail.situation.danger.description'),
         color: '#f44336'
       }
-    }
-    
-    // If situation text matches a known config, use it
-    if (situation && configs[situation]) {
-      return configs[situation]
-    }
-    
-    // Otherwise, use risk level to determine situation
-    const normalizedLevel = (level || 'low').toLowerCase()
-    if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
-      return configs['Gesti pericolosi']
-    } else if (normalizedLevel === 'medium') {
-      return configs['Segni di autolesionismo']
+    }),
+    [t]
+  )
+
+  if (!isOpen || !conversation) {
+    return null
+  }
+
+  // Use fullConversation if available, fallback to conversation from props
+  const displayConversation = fullConversation || conversation
+  const currentStatus = displayConversation?.status?.toUpperCase() || 'UNKNOWN'
+
+  const getSituationConfig = (situation, level) => {
+    const normalizedSituation = (situation || '').toLowerCase()
+    let key = 'regular'
+
+    if (
+      normalizedSituation.includes('gesti') ||
+      normalizedSituation.includes('danger') ||
+      normalizedSituation.includes('severe')
+    ) {
+      key = 'danger'
+    } else if (
+      normalizedSituation.includes('autoles') ||
+      normalizedSituation.includes('self') ||
+      normalizedSituation.includes('warning') ||
+      normalizedSituation.includes('moderate')
+    ) {
+      key = 'warning'
+    } else if (
+      normalizedSituation.includes('regolar') ||
+      normalizedSituation.includes('regular') ||
+      normalizedSituation.includes('low')
+    ) {
+      key = 'regular'
     } else {
-      return configs['Regolare']
+      const normalizedLevel = (level || 'low').toLowerCase()
+      if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
+        key = 'danger'
+      } else if (normalizedLevel === 'medium') {
+        key = 'warning'
+      }
     }
+
+    return situationConfigs[key] || situationConfigs.regular
   }
 
   const getEventTypeConfig = (eventType, severity) => {
@@ -336,9 +360,9 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     const displayType = mapEventTypeToDisplay(eventType, severity)
     
     const configs = {
-      'INFO': { label: 'Info', class: 'event-info', icon: 'ℹ️' },
-      'WARNING': { label: 'Attenzione', class: 'event-warning', icon: '⚠️' },
-      'ALERT': { label: 'Allarme', class: 'event-alert', icon: '🚨' }
+      INFO: { label: t('conversationDetail.events.info'), class: 'event-info', icon: 'ℹ️' },
+      WARNING: { label: t('conversationDetail.events.warning'), class: 'event-warning', icon: '⚠️' },
+      ALERT: { label: t('conversationDetail.events.alert'), class: 'event-alert', icon: '🚨' }
     }
     
     const config = configs[displayType] || configs['INFO']
@@ -356,6 +380,51 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     
     return config
   }
+
+  const processingText = t('conversationDetail.common.processing')
+  const sectionTitles = {
+    lifecycle: t('conversationDetail.sections.lifecycle'),
+    escalation: t('conversationDetail.sections.escalation'),
+    system: t('conversationDetail.sections.systemControl'),
+    report: t('conversationDetail.sections.report'),
+    events: t('conversationDetail.sections.events'),
+    alternative: t('conversationDetail.sections.alternative')
+  }
+  const actionLabels = {
+    stopReport: t('conversationDetail.actions.stopReport.label'),
+    complete: t('conversationDetail.actions.complete.label'),
+    cancel: t('conversationDetail.actions.cancel.label'),
+    resume: t('conversationDetail.actions.resume.label'),
+    emergencyStop: t('conversationDetail.actions.emergencyStop.label'),
+    escalate: t('conversationDetail.actions.escalate.label'),
+    manualIntervention: t('conversationDetail.actions.manualIntervention.label'),
+    acknowledge: t('conversationDetail.actions.acknowledge.label'),
+    resolve: t('conversationDetail.actions.resolve.label'),
+    overrideGuardrail: t('conversationDetail.actions.overrideGuardrail.label'),
+    systemOverride: t('conversationDetail.actions.systemOverride.label'),
+    unreliableAlarm: t('conversationDetail.actions.unreliableAlarm.label')
+  }
+  const actionTooltips = {
+    stopReport: t('conversationDetail.actions.stopReport.tooltip'),
+    resume: t('conversationDetail.actions.resume.tooltip'),
+    emergencyStop: t('conversationDetail.actions.emergencyStop.tooltip'),
+    escalate: t('conversationDetail.actions.escalate.tooltip'),
+    manualIntervention: t('conversationDetail.actions.manualIntervention.tooltip'),
+    overrideGuardrail: t('conversationDetail.actions.overrideGuardrail.tooltip'),
+    systemOverride: t('conversationDetail.actions.systemOverride.tooltip')
+  }
+  const reportGenerating = t('conversationDetail.report.generating')
+  const reportPdf = t('conversationDetail.report.pdf')
+  const eventTableHeaders = {
+    event: t('conversationDetail.events.table.event'),
+    description: t('conversationDetail.events.table.description'),
+    details: t('conversationDetail.events.table.details'),
+    none: t('conversationDetail.events.table.empty'),
+    noDescription: t('conversationDetail.events.noDescription')
+  }
+  const noEventDetailsText = t('conversationDetail.events.noDetails')
+  const notAvailableText = t('conversationDetail.common.notAvailable')
+  const invalidDateText = t('conversationDetail.common.invalidDate')
 
   const handleStopAndReport = async () => {
     if (!isActionAvailable('stop')) {
@@ -1012,13 +1081,39 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
     displayConversation.session_start
   )
   const situationConfig = getSituationConfig(displayConversation.situation, displayConversation.situationLevel)
+  const patientIdentifier = displayConversation.patientId || displayConversation.patient_id || displayConversation.id
+  const patientName = displayConversation.patientInfo?.name 
+    ? displayConversation.patientInfo.name 
+    : t('conversationList.patientLabel', { id: patientIdentifier })
+  const patientAgeRaw = displayConversation.patientInfo?.age
+  const patientAgeLabel = patientAgeRaw && patientAgeRaw !== 0
+    ? t('conversationDetail.patient.ageValue', { count: patientAgeRaw })
+    : t('conversationDetail.patient.notAvailable')
+  const patientGenderRaw = displayConversation.patientInfo?.gender
+  const patientGenderLabel = patientGenderRaw && patientGenderRaw !== 'U' && patientGenderRaw !== null
+    ? (patientGenderRaw === 'M'
+        ? t('conversationList.gender.male')
+        : patientGenderRaw === 'F'
+          ? t('conversationList.gender.female')
+          : patientGenderRaw)
+    : t('conversationDetail.patient.notAvailable')
+  const patientConditionLabel = displayConversation.patientInfo?.pathology && displayConversation.patientInfo.pathology !== 'Unknown' && displayConversation.patientInfo.pathology !== null
+    ? displayConversation.patientInfo.pathology
+    : t('conversationDetail.patient.notAvailable')
+  const durationMinutes = displayConversation.duration || displayConversation.session_duration_minutes || 0
+  const sessionHeading = t('conversationDetail.session.heading', { date: createdDate.date })
+  const sessionSummary = t('conversationDetail.session.summary', {
+    time: createdDate.time,
+    status: displayConversation.status,
+    duration: durationMinutes
+  })
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="conversation-detail-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="modal-header">
-          <h2>Dettaglio conversazione</h2>
+          <h2>{t('conversationDetail.title')}</h2>
           <button className="modal-close" onClick={onClose}>
             ✕
           </button>
@@ -1032,34 +1127,24 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
               <span className="patient-badge">1</span>
             </div>
             <div className="patient-details">
-              <h3>
-                {displayConversation.patientInfo?.name 
-                  ? displayConversation.patientInfo.name 
-                  : `Paziente ${displayConversation.patientId || displayConversation.patient_id || displayConversation.id}`}
-              </h3>
+              <h3>{patientName}</h3>
               <div className="patient-meta">
-                <span>Età: {
-                  (displayConversation.patientInfo?.age !== null && displayConversation.patientInfo?.age !== undefined && displayConversation.patientInfo.age !== 0) 
-                    ? `${displayConversation.patientInfo.age} anni` 
-                    : 'N/A anni'
-                }</span>
-                <span>Sesso: {
-                  (displayConversation.patientInfo?.gender && displayConversation.patientInfo.gender !== 'U' && displayConversation.patientInfo.gender !== null) 
-                    ? displayConversation.patientInfo.gender 
-                    : 'N/A'
-                }</span>
-                <span>Patologia: {
-                  (displayConversation.patientInfo?.pathology && displayConversation.patientInfo.pathology !== 'Unknown' && displayConversation.patientInfo.pathology !== null) 
-                    ? displayConversation.patientInfo.pathology 
-                    : 'N/A'
-                }</span>
+                <span>{`${t('conversationDetail.patient.age')}: ${patientAgeLabel}`}</span>
+                <span>{`${t('conversationDetail.patient.gender')}: ${patientGenderLabel}`}</span>
+                <span>{`${t('conversationDetail.patient.condition')}: ${patientConditionLabel}`}</span>
               </div>
             </div>
           </div>
           
           <div className="conversation-info">
-            <h4>Conversazione del {createdDate.date}</h4>
-            <p>Inizio ore {createdDate.time} - Stato: <span className="status-text" style={{ color: getStatusColor(displayConversation.status) }}>{displayConversation.status}</span> (Durata {displayConversation.duration || displayConversation.session_duration_minutes || 0} min)</p>
+            <h4>{sessionHeading}</h4>
+            <p>
+              {t('conversationDetail.session.summary', { time: createdDate.time })}{' '}
+              <span className="status-text" style={{ color: getStatusColor(displayConversation.status) }}>
+                {displayConversation.status}
+              </span>
+              {t('conversationDetail.session.duration', { duration: durationMinutes })}
+            </p>
           </div>
         </div>
 
@@ -1081,7 +1166,10 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
               onClick={() => setShowActionHistory(!showActionHistory)}
               className="btn-history-toggle"
             >
-              {showActionHistory ? '▼' : '▶'} Cronologia Azioni ({recentActions.length})
+              {t('conversationDetail.history.toggle', {
+                icon: showActionHistory ? '▼' : '▶',
+                count: recentActions.length
+              })}
             </button>
           </div>
         )}
@@ -1089,7 +1177,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         {/* Action History Display */}
         {showActionHistory && recentActions.length > 0 && (
           <div className="action-history" style={{ padding: '0 2rem 1.5rem 2rem', marginBottom: '1rem', borderBottom: '1px solid #f1f3f4' }}>
-            <h4>Azioni Recenti</h4>
+            <h4>{t('conversationDetail.history.title')}</h4>
             <div className="action-history-list">
               {recentActions.slice(0, 10).map((action, idx) => {
                 const actionTime = formatDateTime(action.timestamp)
@@ -1099,8 +1187,12 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                       {actionTime.date} {actionTime.time}
                     </div>
                     <div className="action-history-content">
-                      <strong>{action.type || 'Azione'}</strong> - {action.description || 'Nessuna descrizione'}
-                      {action.operator && <span className="action-history-operator"> (Operatore: {action.operator})</span>}
+                      <strong>{action.type || t('conversationDetail.history.defaultAction')}</strong> - {action.description || t('conversationDetail.history.noDescription')}
+                      {action.operator && (
+                        <span className="action-history-operator">
+                          {t('conversationDetail.history.operator', { name: action.operator })}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )
@@ -1114,22 +1206,25 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           {/* Lifecycle Actions */}
           <div className="action-button-group">
             <div className="action-group-header">
-              <span className="action-group-title">Ciclo di Vita</span>
+              <span className="action-group-title">{sectionTitles.lifecycle}</span>
             </div>
         <div className="action-buttons">
           <button 
             className="btn-stop-report"
             onClick={handleStopAndReport}
                 disabled={loading || !isActionAvailable('stop')}
-                title="Ferma la conversazione normalmente (per interruzioni standard)"
+                title={actionTooltips.stopReport}
           >
             {loading ? (
               <>
                 <span className="loading-spinner"></span>
-                Elaborazione...
+                {processingText}
               </>
             ) : (
-              '🛑 Ferma e Segnala'
+              <>
+                <span className="btn-icon">🛑</span>
+                {actionLabels.stopReport}
+              </>
             )}
           </button>
           
@@ -1141,12 +1236,12 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
             {loading ? (
               <>
                 <span className="loading-spinner"></span>
-                Elaborazione...
+                {processingText}
               </>
             ) : (
               <>
                 <span className="btn-icon">✅</span>
-                Completa conversazione
+                {actionLabels.complete}
               </>
             )}
           </button>
@@ -1159,12 +1254,12 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 {loading ? (
                   <>
                     <span className="loading-spinner"></span>
-                    Elaborazione...
+                    {processingText}
                   </>
                 ) : (
                   <>
                     <span className="btn-icon">❌</span>
-                    Annulla conversazione
+                    {actionLabels.cancel}
                   </>
                 )}
           </button>
@@ -1173,17 +1268,17 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 className="btn-resume"
                 onClick={handleResumeConversation}
                 disabled={loading || !isActionAvailable('resume')}
-                title="Riprendi una conversazione pausata"
+                title={actionTooltips.resume}
               >
                 {loading ? (
                   <>
                     <span className="loading-spinner"></span>
-                    Elaborazione...
+                    {processingText}
                   </>
                 ) : (
                   <>
                     <span className="btn-icon">▶️</span>
-                    Riprendi Conversazione
+                    {actionLabels.resume}
                   </>
                 )}
               </button>
@@ -1192,17 +1287,17 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 className="btn-emergency-stop"
                 onClick={handleEmergencyStop}
                 disabled={loading || !isActionAvailable('emergency_stop')}
-                title="Fermata di emergenza immediata"
+                title={actionTooltips.emergencyStop}
               >
                 {loading ? (
                   <>
                     <span className="loading-spinner"></span>
-                    Elaborazione...
+                    {processingText}
                   </>
                 ) : (
                   <>
                     <span className="btn-icon">🚨</span>
-                    Fermata Emergenza
+                    {actionLabels.emergencyStop}
                   </>
                 )}
               </button>
@@ -1212,24 +1307,24 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           {/* Escalation & Attention Actions */}
           <div className="action-button-group">
             <div className="action-group-header">
-              <span className="action-group-title">Escalation & Attenzione</span>
+              <span className="action-group-title">{sectionTitles.escalation}</span>
             </div>
             <div className="action-buttons">
           <button 
             className="btn-escalate"
             onClick={handleEscalate}
                 disabled={loading || !isActionAvailable('escalate')}
-                title="Escala formalmente al supervisore (cambia status a ESCALATED)"
+                title={actionTooltips.escalate}
           >
             {loading ? (
               <>
                 <span className="loading-spinner"></span>
-                Elaborazione...
+                {processingText}
               </>
             ) : (
               <>
                 <span className="btn-icon">⬆️</span>
-                    Escala al Supervisore
+                    {actionLabels.escalate}
                   </>
                 )}
               </button>
@@ -1238,17 +1333,17 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 className="btn-manual-intervention"
                 onClick={handleManualIntervention}
                 disabled={loading || !isActionAvailable('manual_intervention')}
-                title="Richiedi intervento manuale urgente (priorità URGENT, senza cambiare status)"
+                title={actionTooltips.manualIntervention}
               >
                 {loading ? (
                   <>
                     <span className="loading-spinner"></span>
-                    Elaborazione...
+                    {processingText}
                   </>
                 ) : (
                   <>
                     <span className="btn-icon">👋</span>
-                    Intervento Manuale Urgente
+                    {actionLabels.manualIntervention}
               </>
             )}
           </button>
@@ -1261,12 +1356,12 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
             {loading ? (
               <>
                 <span className="loading-spinner"></span>
-                Elaborazione...
+                {processingText}
               </>
             ) : (
               <>
                 <span className="btn-icon">✓</span>
-                Riconosci
+                {actionLabels.acknowledge}
               </>
             )}
           </button>
@@ -1279,12 +1374,12 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
             {loading ? (
               <>
                 <span className="loading-spinner"></span>
-                Elaborazione...
+                {processingText}
               </>
             ) : (
               <>
                 <span className="btn-icon">✅</span>
-                Risolvi
+                {actionLabels.resolve}
               </>
             )}
           </button>
@@ -1294,24 +1389,24 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
           {/* System Control Actions */}
           <div className="action-button-group">
             <div className="action-group-header">
-              <span className="action-group-title">Controllo Sistema</span>
+              <span className="action-group-title">{sectionTitles.system}</span>
             </div>
             <div className="action-buttons">
           <button 
                 className="btn-override-guardrail"
                 onClick={handleOverrideGuardrail}
             disabled={loading}
-                title="Sovrascrivi una decisione specifica del guardrail (per falsi positivi)"
+                title={actionTooltips.overrideGuardrail}
           >
             {loading ? (
               <>
                 <span className="loading-spinner"></span>
-                Elaborazione...
+                {processingText}
               </>
             ) : (
               <>
                     <span className="btn-icon">🔄</span>
-                    Sovrascrivi Guardrail
+                    {actionLabels.overrideGuardrail}
               </>
             )}
           </button>
@@ -1320,17 +1415,17 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 className="btn-system-override"
                 onClick={handleSystemOverride}
                 disabled={loading}
-                title="Bypass completo a livello di sistema (riduce rischio a LOW)"
+                title={actionTooltips.systemOverride}
               >
                 {loading ? (
                   <>
                     <span className="loading-spinner"></span>
-                    Elaborazione...
+                    {processingText}
                   </>
                 ) : (
                   <>
                     <span className="btn-icon">⚙️</span>
-                    Override Sistema Completo
+                    {actionLabels.systemOverride}
                   </>
                 )}
               </button>
@@ -1341,7 +1436,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 disabled={loading}
               >
                 <span className="btn-icon">👤</span>
-                Allarme non attendibile
+                {actionLabels.unreliableAlarm}
               </button>
             </div>
           </div>
@@ -1349,7 +1444,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
 
         {/* Conversation Report */}
         <div className="conversation-report">
-          <h4>Visualizzazione report conversazione</h4>
+          <h4>{sectionTitles.report}</h4>
           <div className="report-icons">
             <div className="report-icon">
               <span className="icon">👤</span>
@@ -1364,7 +1459,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 {generatingReport ? '⏳' : '📄'}
               </span>
               <span className="pdf-text">
-                {generatingReport ? 'Generazione...' : 'PDF'}
+                {generatingReport ? reportGenerating : reportPdf}
               </span>
             </div>
           </div>
@@ -1372,14 +1467,14 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
 
         {/* Event Log */}
         <div className="event-log">
-          <h4>Eventi conversazione</h4>
+          <h4>{sectionTitles.events}</h4>
           <div className="event-table-container">
             <table className="event-table">
               <thead>
                 <tr>
-                  <th>Evento</th>
-                  <th>Descrizione</th>
-                  <th>Dettagli</th>
+                  <th>{eventTableHeaders.event}</th>
+                  <th>{eventTableHeaders.description}</th>
+                  <th>{eventTableHeaders.details}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1401,7 +1496,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                           </div>
                         </td>
                         <td className="event-description">
-                          {event.description || event.message_content || event.message || 'No description available'}
+                          {event.description || event.message_content || event.message || eventTableHeaders.noDescription}
                         </td>
                         <td className="event-details">
                           {formatEventDetails(event.details || event.context)}
@@ -1412,7 +1507,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
                 ) : (
                   <tr>
                     <td colSpan="3" className="no-events">
-                      Nessun evento registrato
+                      {eventTableHeaders.none}
                     </td>
                   </tr>
                 )}
@@ -1424,7 +1519,7 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
         {/* Status Indicators */}
         <div className="status-indicators">
           <div className="status-alternative">
-            <span className="alternative-label">Alternative</span>
+            <span className="alternative-label">{sectionTitles.alternative}</span>
           </div>
           
           <div className={`status-box ${situationConfig.class}`}>

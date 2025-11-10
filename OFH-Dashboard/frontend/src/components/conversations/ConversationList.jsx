@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import axios from 'axios'
 import ConversationDetailModal from './ConversationDetailModal'
 import { CustomSelect } from '../ui'
 import flatpickr from 'flatpickr'
 import 'flatpickr/dist/flatpickr.min.css'
 import { Italian } from 'flatpickr/dist/l10n/it'
+import { useTranslation } from 'react-i18next'
 import './ConversationList.css'
 
 function ConversationList({ conversations = [], onConversationsRefresh }) {
@@ -28,54 +29,70 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState('') // Last Update From
   const [filterUpdatedTo, setFilterUpdatedTo] = useState('') // Last Update To
 
-  const getStatusConfig = (status) => {
-    const configs = {
-      'NEW': { label: 'Nuova', class: 'status-new', icon: '🆕' },
-      'IN_PROGRESS': { label: 'In corso', class: 'status-in-progress', icon: '⚙️' },
-      'STOPPED': { label: 'Fermata', class: 'status-stopped', icon: '⏹️' },
-      'CANCELLED': { label: 'Annullata', class: 'status-cancelled', icon: '❌' },
-      'COMPLETED': { label: 'Terminata', class: 'status-completed', icon: '✅' }
+  const { t, i18n } = useTranslation()
+
+  const statusConfigs = useMemo(() => ({
+    NEW: { label: t('conversationList.statusLabels.new'), class: 'status-new', icon: '🆕' },
+    IN_PROGRESS: { label: t('conversationList.statusLabels.inProgress'), class: 'status-in-progress', icon: '⚙️' },
+    STOPPED: { label: t('conversationList.statusLabels.stopped'), class: 'status-stopped', icon: '⏹️' },
+    CANCELLED: { label: t('conversationList.statusLabels.cancelled'), class: 'status-cancelled', icon: '❌' },
+    COMPLETED: { label: t('conversationList.statusLabels.completed'), class: 'status-completed', icon: '✅' }
+  }), [t])
+
+  const getStatusConfig = (status) => statusConfigs[status] || statusConfigs.NEW
+
+  const situationConfigs = useMemo(() => ({
+    regular: {
+      label: t('conversationList.situationLabels.regular'),
+      class: 'situation-regular',
+      icon: '👍',
+      color: '#51cf66'
+    },
+    warning: {
+      label: t('conversationList.situationLabels.warning'),
+      class: 'situation-warning',
+      icon: '⚠️',
+      color: '#ffa726'
+    },
+    danger: {
+      label: t('conversationList.situationLabels.danger'),
+      class: 'situation-danger',
+      icon: '🚨',
+      color: '#f44336'
     }
-    return configs[status] || configs['NEW']
-  }
+  }), [t])
 
   const getSituationConfig = (situation, level) => {
-    const configs = {
-      'Regolare': { 
-        label: 'Regolare', 
-        class: 'situation-regular', 
-        icon: '👍',
-        color: '#51cf66'
-      },
-      'Segni di autolesionismo': { 
-        label: 'Segni di autolesionismo', 
-        class: 'situation-warning', 
-        icon: '⚠️',
-        color: '#ffa726'
-      },
-      'Gesti pericolosi': { 
-        label: 'Gesti pericolosi', 
-        class: 'situation-danger', 
-        icon: '🚨',
-        color: '#f44336'
-      }
+    const normalizedSituation = (situation || '').toString().toLowerCase()
+
+    if (normalizedSituation.includes('pericol') || normalizedSituation.includes('danger')) {
+      return situationConfigs.danger
     }
-    
-    // If situation text matches a known config, use it
-    if (situation && configs[situation]) {
-      return configs[situation]
+
+    if (normalizedSituation.includes('autolesion') || normalizedSituation.includes('warning')) {
+      return situationConfigs.warning
     }
-    
-    // Otherwise, use risk level to determine situation
+
+    if (normalizedSituation.includes('regolar') || normalizedSituation.includes('regular')) {
+      return situationConfigs.regular
+    }
+
     const normalizedLevel = (level || 'low').toLowerCase()
     if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
-      return configs['Gesti pericolosi']
-    } else if (normalizedLevel === 'medium') {
-      return configs['Segni di autolesionismo']
-    } else {
-      return configs['Regolare']
+      return situationConfigs.danger
     }
+    if (normalizedLevel === 'medium') {
+      return situationConfigs.warning
+    }
+    return situationConfigs.regular
   }
+
+  const genderLabels = useMemo(() => ({
+    M: t('conversationList.gender.male'),
+    F: t('conversationList.gender.female')
+  }), [t])
+
+  const getGenderLabel = (gender) => genderLabels[gender] || t('conversationList.gender.unknown')
 
   // Use conversations from props (from API)
   const allConversations = Array.isArray(conversations) ? conversations : []
@@ -377,37 +394,38 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
     (filterUpdatedFrom !== '' ? 1 : 0) +
     (filterUpdatedTo !== '' ? 1 : 0)
 
-  const formatDateTime = (dateString) => {
-    // Handle null, undefined, or invalid date strings
+  const formatDateTime = useCallback((dateString) => {
+    const locale = i18n.language?.startsWith('it') ? 'it-IT' : 'en-US'
+    const notAvailable = t('conversationList.notAvailable')
+
     if (!dateString) {
       return {
-        date: 'N/A',
-        time: 'N/A'
+        date: notAvailable,
+        time: notAvailable
       }
     }
 
     const date = new Date(dateString)
     
-    // Check if date is valid
     if (isNaN(date.getTime())) {
       return {
-        date: 'Data non valida',
-        time: 'N/A'
+        date: t('conversationList.date.invalid'),
+        time: notAvailable
       }
     }
 
     return {
-      date: date.toLocaleDateString('it-IT', { 
+      date: date.toLocaleDateString(locale, { 
         day: 'numeric', 
         month: 'long', 
         year: 'numeric' 
       }),
-      time: date.toLocaleTimeString('it-IT', { 
+      time: date.toLocaleTimeString(locale, { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
     }
-  }
+  }, [i18n.language, t])
 
   const handleConversationClick = (conversation) => {
     setSelectedConversation(conversation)
@@ -616,12 +634,13 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
       return dateStr
     }
 
+    const dateLocale = i18n.language?.startsWith('it') ? Italian : undefined
+
     const fpOptions = {
       dateFormat: 'd/m/Y',
-      locale: Italian,
+      locale: dateLocale,
       allowInput: true,
-      clickOpens: true,
-      placeholder: 'gg/mm/aaaa',
+      clickOpens: true
     }
 
     const fp1 = dateFromRef.current ? flatpickr(dateFromRef.current, {
@@ -662,16 +681,20 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
       if (fp3) fp3.destroy()
       if (fp4) fp4.destroy()
     }
-  }, [filtersOpen, filterDateFrom, filterDateTo, filterUpdatedFrom, filterUpdatedTo])
+  }, [filtersOpen, filterDateFrom, filterDateTo, filterUpdatedFrom, filterUpdatedTo, i18n.language])
 
   return (
     <div className="conversation-list">
       <div className="conversation-list-header">
-        <h3>Monitoraggio conversazioni</h3>
+        <h3>{t('conversationList.title')}</h3>
         <div className="conversation-stats">
-          <span className="total-conversations">{displayConversations.length || 0} conversazioni</span>
+          <span className="total-conversations">
+            {t('conversationList.stats.total', { count: displayConversations.length || 0 })}
+          </span>
           <span className="active-conversations">
-            {displayConversations.filter(c => c && c.status === 'IN_PROGRESS').length || 0} attive
+            {t('conversationList.stats.active', {
+              count: displayConversations.filter(c => c && c.status === 'IN_PROGRESS').length || 0
+            })}
           </span>
         </div>
       </div>
@@ -683,7 +706,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
           onClick={() => setFiltersOpen(!filtersOpen)}
         >
           <span className="filter-icon">🔍</span>
-          <span>Filtri</span>
+          <span>{t('conversationList.filters.toggle')}</span>
           {activeFiltersCount > 0 && (
             <span className="filter-badge">{activeFiltersCount}</span>
           )}
@@ -692,96 +715,96 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
         
         <div className={`filters-content ${filtersOpen ? 'open' : ''}`}>
             <div className="filters-grid">
-              {/* Paziente - First column */}
+              {/* Patient - First column */}
               <div className="filter-group">
-                <label className="filter-label">Cerca Paziente (ID)</label>
+                <label className="filter-label">{t('conversationList.filters.searchLabel')}</label>
                 <input
                   type="text"
                   className="filter-input"
-                  placeholder="Inserisci ID paziente..."
+                  placeholder={t('conversationList.filters.searchPlaceholder')}
                   value={filterSearch}
                   onChange={(e) => setFilterSearch(e.target.value)}
                 />
               </div>
               
-              {/* Stato - Second column */}
+              {/* Status - Second column */}
               <div className="filter-group">
-                <label className="filter-label">Stato</label>
+                <label className="filter-label">{t('conversationList.filters.statusLabel')}</label>
                 <CustomSelect
                   className="filter-select"
                   value={filterStatus}
                   onChange={setFilterStatus}
-                  placeholder="Tutti"
+                  placeholder={t('conversationList.filters.status.placeholder')}
                   options={[
-                    { value: 'all', label: 'Tutti' },
-                    { value: 'IN_PROGRESS', label: 'In corso', color: '#f57c00' },
-                    { value: 'COMPLETED', label: 'Terminata', color: '#2e7d32' },
-                    { value: 'STOPPED', label: 'Fermata', color: '#d32f2f' },
-                    { value: 'NEW', label: 'Nuova', color: '#2e7d32' },
-                    { value: 'CANCELLED', label: 'Annullata', color: '#616161' }
+                    { value: 'all', label: t('conversationList.filters.status.options.all') },
+                    { value: 'IN_PROGRESS', label: t('conversationList.filters.status.options.inProgress'), color: '#f57c00' },
+                    { value: 'COMPLETED', label: t('conversationList.filters.status.options.completed'), color: '#2e7d32' },
+                    { value: 'STOPPED', label: t('conversationList.filters.status.options.stopped'), color: '#d32f2f' },
+                    { value: 'NEW', label: t('conversationList.filters.status.options.new'), color: '#2e7d32' },
+                    { value: 'CANCELLED', label: t('conversationList.filters.status.options.cancelled'), color: '#616161' }
                   ]}
                 />
               </div>
               
-              {/* Situazione - Third column */}
+              {/* Situation - Third column */}
               <div className="filter-group">
-                <label className="filter-label">Situazione</label>
+                <label className="filter-label">{t('conversationList.filters.situationLabel')}</label>
                 <CustomSelect
                   className="filter-select"
                   value={filterSituation}
                   onChange={setFilterSituation}
-                  placeholder="Tutte"
+                  placeholder={t('conversationList.filters.situation.placeholder')}
                   options={[
-                    { value: 'all', label: 'Tutte' },
-                    { value: 'regular', label: 'Regolare', color: '#4caf50' },
-                    { value: 'warning', label: 'Segni di autolesionismo', color: '#ff9800' },
-                    { value: 'danger', label: 'Gesti pericolosi', color: '#f44336' }
+                    { value: 'all', label: t('conversationList.filters.situation.options.all') },
+                    { value: 'regular', label: t('conversationList.filters.situation.options.regular'), color: '#4caf50' },
+                    { value: 'warning', label: t('conversationList.filters.situation.options.warning'), color: '#ff9800' },
+                    { value: 'danger', label: t('conversationList.filters.situation.options.danger'), color: '#f44336' }
                   ]}
                 />
               </div>
               
-              {/* Data Creazione - Fourth column */}
-              <div className="filter-group" lang="it-IT">
-                <label className="filter-label">Data Creazione Da</label>
+              {/* Creation Date - Fourth column */}
+              <div className="filter-group">
+                <label className="filter-label">{t('conversationList.filters.dateCreatedFrom')}</label>
                 <input
                   type="text"
                   ref={dateFromRef}
                   className="filter-input"
-                  placeholder="gg/mm/aaaa"
+                  placeholder={t('conversationList.filters.datePlaceholder')}
                   data-input
                 />
               </div>
               
-              <div className="filter-group" lang="it-IT">
-                <label className="filter-label">Data Creazione A</label>
+              <div className="filter-group">
+                <label className="filter-label">{t('conversationList.filters.dateCreatedTo')}</label>
                 <input
                   type="text"
                   ref={dateToRef}
                   className="filter-input"
-                  placeholder="gg/mm/aaaa"
+                  placeholder={t('conversationList.filters.datePlaceholder')}
                   data-input
                 />
               </div>
               
-              {/* Ultimo Aggiornamento - Fifth column */}
-              <div className="filter-group" lang="it-IT">
-                <label className="filter-label">Ultimo Aggiornamento Da</label>
+              {/* Last Update - Fifth column */}
+              <div className="filter-group">
+                <label className="filter-label">{t('conversationList.filters.dateUpdatedFrom')}</label>
                 <input
                   type="text"
                   ref={updatedFromRef}
                   className="filter-input"
-                  placeholder="gg/mm/aaaa"
+                  placeholder={t('conversationList.filters.datePlaceholder')}
                   data-input
                 />
               </div>
               
-              <div className="filter-group" lang="it-IT">
-                <label className="filter-label">Ultimo Aggiornamento A</label>
+              <div className="filter-group">
+                <label className="filter-label">{t('conversationList.filters.dateUpdatedTo')}</label>
                 <input
                   type="text"
                   ref={updatedToRef}
                   className="filter-input"
-                  placeholder="gg/mm/aaaa"
+                  placeholder={t('conversationList.filters.datePlaceholder')}
                   data-input
                 />
               </div>
@@ -794,7 +817,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                   disabled={activeFiltersCount === 0}
                 >
                   <span className="reset-icon">↺</span>
-                  Reset filtri
+                  {t('conversationList.filters.reset')}
                 </button>
               </div>
             </div>
@@ -805,26 +828,26 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
         {sortedConversations.length === 0 ? (
           <div className="conversation-list-empty">
             <div className="empty-icon"></div>
-            <div className="empty-text">Nessun risultato trovato</div>
+            <div className="empty-text">{t('conversationList.empty.title')}</div>
             <div className="empty-subtext">
               {activeFiltersCount > 0 
-                ? 'Nessuna conversazione corrisponde ai filtri selezionati. Prova a modificare i criteri di ricerca.'
-                : 'Il sistema è in attesa di nuove conversazioni'}
+                ? t('conversationList.empty.filtered')
+                : t('conversationList.empty.unfiltered')}
             </div>
           </div>
         ) : (
           <table className="conversation-table">
             <thead>
               <tr>
-                <th>Paziente</th>
-                <th>Stato</th>
+                <th>{t('conversationList.table.patient')}</th>
+                <th>{t('conversationList.table.status')}</th>
                 <th>
                   <button
                     type="button"
                     className="table-sort-button"
                     onClick={() => handleSort('situation')}
                   >
-                    Situazione <span className="sort-indicator">{getSortIndicator('situation')}</span>
+                    {t('conversationList.table.situation')} <span className="sort-indicator">{getSortIndicator('situation')}</span>
                   </button>
                 </th>
                 <th>
@@ -833,7 +856,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                     className="table-sort-button"
                     onClick={() => handleSort('createdAt')}
                   >
-                    Data Creazione <span className="sort-indicator">{getSortIndicator('createdAt')}</span>
+                    {t('conversationList.table.createdAt')} <span className="sort-indicator">{getSortIndicator('createdAt')}</span>
                   </button>
                 </th>
                 <th>
@@ -842,7 +865,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                     className="table-sort-button"
                     onClick={() => handleSort('updatedAt')}
                   >
-                    Ultimo aggiornamento <span className="sort-indicator">{getSortIndicator('updatedAt')}</span>
+                    {t('conversationList.table.updatedAt')} <span className="sort-indicator">{getSortIndicator('updatedAt')}</span>
                   </button>
                 </th>
               </tr>
@@ -866,6 +889,21 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                 conversation.lastUpdated || 
                 conversation.session_end
               )
+              const patientIdentifier = conversation.patientId ?? conversation.id
+              const patientName = t('conversationList.patientLabel', { id: patientIdentifier })
+              const ageValue = typeof conversation.patientInfo?.age === 'number'
+                ? conversation.patientInfo?.age
+                : null
+              const ageLabel = ageValue !== null
+                ? t('conversationList.patientAge', { count: ageValue })
+                : t('conversationList.notAvailable')
+              const genderLabel = conversation.patientInfo?.gender && conversation.patientInfo.gender !== 'U' && conversation.patientInfo.gender !== null
+                ? getGenderLabel(conversation.patientInfo.gender)
+                : t('conversationList.gender.unknown')
+              const patientMeta = t('conversationList.patientMeta', {
+                age: ageLabel,
+                gender: genderLabel
+              })
 
               return (
                 <tr 
@@ -880,11 +918,9 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                         {conversation.id === 1 && <span className="patient-badge">1</span>}
                       </div>
                       <div className="patient-details">
-                        <div className="patient-name">
-                          {conversation.patientId ? `Paziente ${conversation.patientId}` : `Paziente ${conversation.id}`}
-                        </div>
+                        <div className="patient-name">{patientName}</div>
                         <div className="patient-meta">
-                          {conversation.patientInfo?.age || 'N/A'} anni, {(conversation.patientInfo?.gender && conversation.patientInfo.gender !== 'U' && conversation.patientInfo.gender !== null) ? conversation.patientInfo.gender : 'N/A'}
+                          {patientMeta}
                         </div>
                       </div>
                     </div>
@@ -933,7 +969,11 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
           <div className="conversation-pagination">
             <div className="pagination-info">
               <span>
-                Mostrando {startIndex + 1}-{Math.min(endIndex, sortedConversations.length)} di {sortedConversations.length} conversazioni
+                {t('conversationList.pagination.showing', {
+                  start: startIndex + 1,
+                  end: Math.min(endIndex, sortedConversations.length),
+                  total: sortedConversations.length
+                })}
               </span>
             </div>
             <div className="pagination-controls">
@@ -941,7 +981,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                 className="pagination-btn"
                 onClick={goToPreviousPage}
                 disabled={currentPage === 1}
-                aria-label="Pagina precedente"
+                aria-label={t('conversationList.pagination.prev')}
               >
                 ‹
               </button>
@@ -959,7 +999,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                         key={page}
                         className={`pagination-number ${currentPage === page ? 'active' : ''}`}
                         onClick={() => goToPage(page)}
-                        aria-label={`Vai alla pagina ${page}`}
+                        aria-label={t('conversationList.pagination.goto', { page })}
                       >
                         {page}
                       </button>
@@ -975,7 +1015,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                 className="pagination-btn"
                 onClick={goToNextPage}
                 disabled={currentPage === totalPages}
-                aria-label="Pagina successiva"
+                aria-label={t('conversationList.pagination.next')}
               >
                 ›
               </button>
