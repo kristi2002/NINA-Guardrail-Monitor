@@ -8,9 +8,9 @@ import os
 import re
 import uuid
 import logging
-import json               # <-- ADD THIS
-import openai             # <-- ADD THIS
-from typing import Dict, Any, Optional, List  # <-- ADD List
+import json               
+import openai          
+from typing import Dict, Any, Optional, List 
 from datetime import datetime
 
 try:
@@ -36,7 +36,6 @@ class GuardrailValidator:
 
     def __init__(self):
         """Initialize guardrails-ai validators"""
-        # ... (existing settings)
         self.enable_pii_detection = (
             os.getenv("GUARDRAIL_ENABLE_PII_DETECTION", "True").lower() == "true"
         )
@@ -68,7 +67,7 @@ class GuardrailValidator:
                     self.enable_llm_context_check = False
         # --- END NEW LLM CHECK SETTINGS ---
 
-        # ... (existing compliance_patterns)
+        # ---Compliance_patterns---
         self.compliance_patterns = [
             (
                 r"\b(take|prescribe|dosage|diagnosis|treatment)\b",
@@ -87,7 +86,6 @@ class GuardrailValidator:
         logger.info("✅ Feedback learner connected to validator")
 
     def _initialize_guard(self):
-        # ... (This function is mostly unchanged)
         if not GUARDRAILS_AVAILABLE:
             logger.error("Guardrails-AI is not available. Cannot initialize guards.")
             return
@@ -96,7 +94,7 @@ class GuardrailValidator:
             self.guard = Guard(name="conversational-guard")
             validators_added = []
 
-            # ... (existing ToxicLanguage setup)
+            # Configure ToxicLanguage validator with adaptive thresholding
             if self.enable_toxicity_check:
                 try:
                     # Get adaptive threshold if feedback learner is available
@@ -119,7 +117,7 @@ class GuardrailValidator:
                 except Exception as e:
                     logger.warning(f"Failed to add ToxicLanguage validator: {e}")
 
-            # ... (existing DetectPII setup)
+            # Configure DetectPII validator for common sensitive entities
             if self.enable_pii_detection:
                 try:
                     self.guard = self.guard.use(
@@ -185,7 +183,7 @@ class GuardrailValidator:
         logger.info(f"Validating message for conversation {conversation_id}")
 
         if not self.guard:
-            # ... (existing guard not initialized check - UNCHANGED)
+            # Guard instance missing, return system error to caller
             logger.error("Guard not initialized. Cannot validate.")
             results["valid"] = False
             results["violations"].append(
@@ -216,7 +214,7 @@ class GuardrailValidator:
                 **kwargs,
             )
 
-            # ... (existing validation_failed logic - UNCHANGED)
+            # Interpret Guardrails validation outcome to determine pass or fail
             validation_failed = False
             error_msg = "Validation failed"
             validated_output = None
@@ -269,7 +267,7 @@ class GuardrailValidator:
                             f"Compliance violation detected: {violation_type} in conversation {conversation_id}"
                         )
                         results["valid"] = False
-                        # ... (rest of existing regex block - UNCHANGED)
+                        # Build compliance violation payload and publish to Kafka
                         match_text = match.group(0)
                         violation = {
                             "type": violation_type,
@@ -436,7 +434,7 @@ class GuardrailValidator:
             # --- END OF ALL VALIDATIONS ---
 
         except Exception as e:
-            # ... (existing critical system error block - UNCHANGED)
+            # Catch any unexpected validator failures and mark as system error
             logger.error(f"CRITICAL system error during validation: {e}", exc_info=True)
             results["valid"] = False
             results["violations"].append(

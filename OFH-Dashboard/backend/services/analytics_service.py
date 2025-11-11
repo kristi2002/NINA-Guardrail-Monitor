@@ -29,6 +29,8 @@ class AnalyticsService(BaseService):
         # We will query GuardrailEvent directly
         from models.guardrail_event import GuardrailEvent
         self.GuardrailEvent = GuardrailEvent
+        from models.notifications.notification import Notification
+        self.Notification = Notification
         self.guardrail_breaker = CircuitBreaker(
             name="guardrail_strategy_http",
             failure_threshold=int(config.get('CB_GUARDRAIL_FAILURE_THRESHOLD', 3)),
@@ -405,29 +407,33 @@ class AnalyticsService(BaseService):
         try:
             hours = self._parse_time_range_to_hours(time_range)
             
-            # Get alert statistics which serve as notifications from GuardrailEvent
-            alert_stats = self._get_guardrail_event_statistics(hours)
             session = self.get_session()
             # Use timezone-aware datetime to match database timestamps
             cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+            notifications = []
             try:
-                recent_alerts = session.query(self.GuardrailEvent).filter(
-                    self.GuardrailEvent.created_at >= cutoff_time
-                ).order_by(self.GuardrailEvent.created_at.desc()).limit(100).all()
+                notifications = session.query(self.Notification).filter(
+                    self.Notification.created_at >= cutoff_time
+                ).order_by(self.Notification.created_at.desc()).limit(200).all()
             except Exception as e:
-                self.logger.warning(f"Error loading recent alerts for notifications: {e}")
-                recent_alerts = []
+                self.logger.warning(f"Error loading notifications: {e}")
+                notifications = []
             
-            # Calculate notification metrics based on alerts
-            total_notifications = alert_stats.get('total_alerts', 0)
+            total_notifications = len(notifications)
+            by_type = defaultdict(int)
+            by_status = defaultdict(int)
+            breakdown_map = defaultdict(lambda: {'count': 0, 'latest_status': 'N/A'})
             
-            # Group by type (using alert types as notification types)
-            by_type = {}
-            by_status = alert_stats.get('status_distribution', {})
+            for notif in notifications:
+                notif_type = getattr(notif.notification_type, 'value', None) or getattr(notif, 'notification_type', None) or 'Unknown'
+                status = getattr(notif.status, 'value', None) or getattr(notif, 'status', None) or 'unknown'
+                by_type[notif_type] += 1
+                by_status[status.upper()] += 1
+                breakdown = breakdown_map[notif_type]
+                breakdown['count'] += 1
+                breakdown['latest_status'] = status.upper()
             
-            # Track notification trends (daily breakdown)
             trends = []
-            # Use timezone-aware datetime to match database timestamps
             current_date = datetime.now(timezone.utc)
             for i in range(min(7, hours // 24)):
                 day_start = (current_date - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -443,37 +449,46 @@ class AnalyticsService(BaseService):
                         return dt.replace(tzinfo=timezone.utc)
                     return dt
                 
-                day_alerts = len([a for a in recent_alerts 
-                                 if a.created_at and normalize_datetime(day_start) <= normalize_datetime(a.created_at) < normalize_datetime(day_end)])
+                day_alerts = len([
+                    n for n in notifications
+                    if n.created_at and normalize_datetime(day_start) <= normalize_datetime(n.created_at) < normalize_datetime(day_end)
+                ])
                 trends.insert(0, {
                     'date': day_start.strftime('%Y-%m-%d'),
                     'count': day_alerts
                 })
             
-            # --- FIX: Stato corretto ---
-            sent_count = by_status.get('RESOLVED', 0) + by_status.get('ACKNOWLEDGED', 0)
-            pending_count = by_status.get('PENDING', 0)
-            # --- FINE FIX ---
+            if total_notifications == 0:
+                alert_stats = self._get_guardrail_event_statistics(hours)
+                total_notifications = alert_stats.get('total_alerts', 0)
+                by_type = defaultdict(int, {'alert': total_notifications})
+                by_status = defaultdict(int, alert_stats.get('status_distribution', {}))
+                sent_count = by_status.get('RESOLVED', 0) + by_status.get('ACKNOWLEDGED', 0)
+                pending_count = by_status.get('PENDING', 0)
+                breakdown_records = [{
+                    'type': 'Alert',
+                    'count': total_notifications,
+                    'status': 'RESOLVED' if total_notifications else 'N/A'
+                }]
+            else:
+                sent_count = by_status.get('ACKNOWLEDGED', 0) + by_status.get('READ', 0) + by_status.get('DELIVERED', 0)
+                pending_count = by_status.get('PENDING', 0)
+                breakdown_records = [
+                    {
+                        'type': notif_type,
+                        'count': data['count'],
+                        'status': data['latest_status']
+                    }
+                    for notif_type, data in breakdown_map.items()
+                ]
             
             analytics = {
                 'time_range': time_range,
                 'generated_at': datetime.now(timezone.utc).isoformat(),
                 'total_notifications': total_notifications,
-                'by_type': {
-                    'alert': total_notifications  # All notifications are alerts
-                },
-                'by_status': {
-                    'sent': sent_count,
-                    'failed': 0,  # Corretto
-                    'pending': pending_count
-                },
-                'notification_breakdown': [
-                    {
-                        'method': 'Alert',
-                        'delivered': sent_count,
-                        'rate': (sent_count / total_notifications * 100) if total_notifications > 0 else 0
-                    }
-                ],
+                'by_type': dict(by_type),
+                'by_status': dict(by_status),
+                'notification_breakdown': breakdown_records,
                 'trends': trends
             }
             

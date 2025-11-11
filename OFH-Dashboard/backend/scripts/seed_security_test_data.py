@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from core.database import get_session_context
-from models import User, ConversationSession, GuardrailEvent
+from models import User, ConversationSession, GuardrailEvent, OperatorAction
 
 USER_PREFIX = "security_seed_user_"
 CONV_PREFIX = "security_seed_conv_"
@@ -45,6 +45,10 @@ def tz_now() -> datetime:
 
 def wipe_existing(session) -> None:
     """Remove previous security seed data so the script is idempotent."""
+    session.query(OperatorAction).filter(
+        OperatorAction.conversation_id.like(f"{CONV_PREFIX}%")
+    ).delete(synchronize_session=False)
+
     session.query(GuardrailEvent).filter(
         GuardrailEvent.event_id.like(f"{EVENT_PREFIX}%")
     ).delete(synchronize_session=False)
@@ -295,6 +299,94 @@ def build_guardrail_events(now: datetime) -> List[Dict[str, Any]]:
             "false_positive": True,
         },
     ]
+
+    # Additional threat categories to feed distribution chart
+    threat_clusters = [
+        {
+            "type": "malware_detection",
+            "severity": "HIGH",
+            "status": "RESOLVED",
+            "count": 4,
+            "base_minutes": 8 * 60,
+            "ack_minutes": 20,
+            "resolve_minutes": 45,
+            "action": "quarantined",
+            "notes": "Malware payload quarantined and endpoint isolated.",
+            "priority": "HIGH",
+            "confidence": 0.92,
+        },
+        {
+            "type": "phishing_attempt",
+            "severity": "MEDIUM",
+            "status": "ACKNOWLEDGED",
+            "count": 3,
+            "base_minutes": 6 * 60,
+            "ack_minutes": 18,
+            "resolve_minutes": None,
+            "action": "blocked_sender",
+            "notes": "Sender blocked and recipients notified.",
+            "priority": "NORMAL",
+            "confidence": 0.78,
+        },
+        {
+            "type": "brute_force_attempt",
+            "severity": "MEDIUM",
+            "status": "ESCALATED",
+            "count": 2,
+            "base_minutes": 3 * 60,
+            "ack_minutes": 12,
+            "resolve_minutes": None,
+            "action": "ip_blacklisted",
+            "notes": "Repeated login failures detected from same subnet.",
+            "priority": "HIGH",
+            "confidence": 0.84,
+        },
+        {
+            "type": "data_exfiltration",
+            "severity": "HIGH",
+            "status": "RESOLVED",
+            "count": 2,
+            "base_minutes": 15 * 60,
+            "ack_minutes": 25,
+            "resolve_minutes": 60,
+            "action": "session_terminated",
+            "notes": "Outbound transfer halted, credentials rotated.",
+            "priority": "CRITICAL",
+            "confidence": 0.9,
+        },
+        {
+            "type": "insider_threat",
+            "severity": "HIGH",
+            "status": "ACKNOWLEDGED",
+            "count": 1,
+            "base_minutes": 9 * 60,
+            "ack_minutes": 30,
+            "resolve_minutes": None,
+            "action": "investigation_opened",
+            "notes": "Unusual access pattern flagged for review.",
+            "priority": "HIGH",
+            "confidence": 0.87,
+        },
+    ]
+
+    for cluster in threat_clusters:
+        for index in range(cluster["count"]):
+            samples.append(
+                {
+                    "suffix": f"{cluster['type']}_{index + 1}",
+                    "conversation": f"{CONV_PREFIX}{(index % 3) + 1:03d}",
+                    "severity": cluster["severity"],
+                    "event_type": cluster["type"],
+                    "status": cluster["status"],
+                    "minutes_since": cluster["base_minutes"] + (index * 35),
+                    "ack_minutes": cluster["ack_minutes"],
+                    "resolve_minutes": cluster["resolve_minutes"],
+                    "action_taken": cluster["action"],
+                    "action_notes": cluster["notes"],
+                    "priority": cluster["priority"],
+                    "confidence": cluster["confidence"],
+                }
+            )
 
     for entry in samples:
         created_at = base_time - timedelta(minutes=entry["minutes_since"])

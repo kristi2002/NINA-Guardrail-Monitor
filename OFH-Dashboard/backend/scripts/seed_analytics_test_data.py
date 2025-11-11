@@ -36,11 +36,20 @@ from models import (
     User,
     ConversationSession,
     GuardrailEvent,
+    Notification,
+    OperatorAction,
+)
+from models.notifications.notification import (
+    NotificationStatus,
+    NotificationPriority,
+    NotificationType,
+    NotificationChannel,
 )
 
 USER_PREFIX = "analytics_seed_user_"
 CONV_PREFIX = "analytics_seed_conv_"
 EVENT_PREFIX = "analytics_seed_event_"
+NOTIF_GROUP_ID = "analytics_seed_group"
 
 
 def tz_now() -> datetime:
@@ -49,6 +58,12 @@ def tz_now() -> datetime:
 
 def wipe_existing(session) -> None:
     """Remove previous seed data so the script is idempotent."""
+    session.query(Notification).filter(
+        Notification.group_id == NOTIF_GROUP_ID
+    ).delete(synchronize_session=False)
+    session.query(OperatorAction).filter(
+        OperatorAction.conversation_id.like(f"{CONV_PREFIX}%")
+    ).delete(synchronize_session=False)
     session.query(GuardrailEvent).filter(
         GuardrailEvent.event_id.like(f"{EVENT_PREFIX}%")
     ).delete(synchronize_session=False)
@@ -370,6 +385,121 @@ def build_guardrail_events(now: datetime) -> List[Dict[str, Any]]:
     return base_events
 
 
+def build_notifications(now: datetime, user_ids: Dict[str, int]) -> List[Dict[str, Any]]:
+    """Create notification records for analytics dashboard."""
+    default_user = user_ids.get(f"{USER_PREFIX}analyst") or next(iter(user_ids.values()))
+
+    def _entry(
+        template_id: str,
+        title: str,
+        message: str,
+        notif_type: NotificationType,
+        status: NotificationStatus,
+        priority: NotificationPriority = NotificationPriority.NORMAL,
+        owner: int | None = None,
+        created_offset_hours: int = 0,
+        severity: str = "medium",
+    ) -> Dict[str, Any]:
+        created_at = now - timedelta(hours=created_offset_hours)
+        return {
+            "user_id": owner or default_user,
+            "template_id": template_id,
+            "title": title,
+            "message": message,
+            "notification_type": notif_type,
+            "priority": priority,
+            "status": status,
+            "channel": NotificationChannel.IN_APP,
+            "is_read": status in {NotificationStatus.READ, NotificationStatus.ACKNOWLEDGED},
+            "is_acknowledged": status == NotificationStatus.ACKNOWLEDGED,
+            "created_at": created_at,
+            "updated_at": created_at + timedelta(minutes=20),
+            "group_id": NOTIF_GROUP_ID,
+            "notification_metadata": {
+                "generated_by": "analytics_seed",
+                "category": notif_type.value,
+                "severity": severity,
+            },
+        }
+
+    notifications: List[Dict[str, Any]] = [
+        _entry(
+            f"{EVENT_PREFIX}policy_alert",
+            "Policy Alert",
+            "Policy violation detected",
+            NotificationType.ALERT,
+            NotificationStatus.ACKNOWLEDGED,
+            priority=NotificationPriority.HIGH,
+        ),
+        _entry(
+            f"{EVENT_PREFIX}escalation_notice",
+            "Escalation Notice",
+            "Conversation escalated to supervisor",
+            NotificationType.ESCALATION,
+            NotificationStatus.ACKNOWLEDGED,
+            priority=NotificationPriority.HIGH,
+            created_offset_hours=3,
+        ),
+        _entry(
+            f"{EVENT_PREFIX}system_health",
+            "System Health",
+            "Kafka consumer heartbeat delay",
+            NotificationType.SYSTEM,
+            NotificationStatus.PENDING,
+            priority=NotificationPriority.URGENT,
+            severity="high",
+            created_offset_hours=6,
+        ),
+        _entry(
+            f"{EVENT_PREFIX}compliance_report",
+            "Compliance Report",
+            "Daily compliance summary ready",
+            NotificationType.PERFORMANCE,
+            NotificationStatus.DELIVERED,
+            priority=NotificationPriority.NORMAL,
+            created_offset_hours=9,
+        ),
+        _entry(
+            f"{EVENT_PREFIX}ai_model_update",
+            "AI Model Update",
+            "Guardrail model retrained successfully",
+            NotificationType.MAINTENANCE,
+            NotificationStatus.READ,
+            priority=NotificationPriority.NORMAL,
+            created_offset_hours=12,
+        ),
+        _entry(
+            f"{EVENT_PREFIX}quiet_period",
+            "Quiet Period Reminder",
+            "No alerts triggered in the last hour",
+            NotificationType.SYSTEM,
+            NotificationStatus.ACKNOWLEDGED,
+            priority=NotificationPriority.LOW,
+            created_offset_hours=15,
+        ),
+    ]
+
+    # Additional grouped alerts to enrich distribution counts
+    analyst_id = user_ids.get(f"{USER_PREFIX}analyst", default_user)
+    viewer_id = user_ids.get(f"{USER_PREFIX}viewer", default_user)
+    for offset in range(4):
+        notifications.append(
+            _entry(
+                f"{EVENT_PREFIX}policy_alert_repeat",
+                f"Policy Alert #{offset + 1}",
+                "Repeated sensitive phrase detected requiring review.",
+                NotificationType.ALERT,
+                NotificationStatus.PENDING if offset % 2 == 0 else NotificationStatus.ACKNOWLEDGED,
+                priority=NotificationPriority.HIGH,
+                owner=analyst_id if offset % 2 == 0 else viewer_id,
+                created_offset_hours=24 + offset * 2,
+                severity="high",
+            )
+        )
+
+    return notifications
+
+
 def seed():
     now = tz_now()
     users = build_users(now)
@@ -387,6 +517,15 @@ def seed():
             if "locked_until" in user_data:
                 user.locked_until = user_data["locked_until"]
             session.add(user)
+
+        session.flush()
+
+        user_rows = session.query(User).filter(
+            User.username.like(f"{USER_PREFIX}%")
+        ).all()
+        user_ids = {user.username: user.id for user in user_rows}
+
+        notifications = build_notifications(now, user_ids)
 
         # Seed conversation sessions
         for conv_data in conversations:
@@ -411,9 +550,21 @@ def seed():
 
         session.flush()
 
+        # Seed notifications
+        for notif in notifications:
+            created_at = notif.pop("created_at")
+            updated_at = notif.pop("updated_at")
+            notification = Notification(**notif)
+            notification.created_at = created_at
+            notification.updated_at = updated_at
+            session.add(notification)
+
+        session.commit()
+
         print(f"✅ Seeded {len(users)} analytics users.")
         print(f"✅ Seeded {len(conversations)} analytics conversation sessions.")
         print(f"✅ Seeded {len(events)} guardrail events for analytics testing.")
+        print(f"✅ Seeded {len(notifications)} notifications.")
         print("Analytics data ready. Refresh the dashboard to load new metrics.")
 
 

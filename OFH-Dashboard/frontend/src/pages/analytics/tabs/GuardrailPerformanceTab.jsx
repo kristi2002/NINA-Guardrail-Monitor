@@ -238,23 +238,34 @@ export default function GuardrailPerformanceTab({ data, loading, renderMetricCar
         <div className="chart-container">
           <h3>Feedback Distribution</h3>
           {chartsLoaded && overview.total_feedback > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer minWidth={420} width="100%" height={360}>
               <LazyPieChart>
                 <Pie
                   data={[
                     { name: 'False Alarms', value: overview.false_alarms || 0 },
                     { name: 'True Positives', value: overview.true_positives || 0 }
                   ]}
-                  cx="50%"
+                  cx="45%"
                   cy="50%"
-                  outerRadius={100}
+                  innerRadius={55}
+                  outerRadius={110}
                   dataKey="value"
-                  label={({name, value, percent}) => `${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={false}
                 >
                   <Cell fill="#f97316" />
                   <Cell fill="#4caf50" />
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value, name) => [`${value}`, name]} />
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  formatter={(value, entry) => {
+                    const total = (overview.false_alarms || 0) + (overview.true_positives || 0)
+                    const percent = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : '0.0'
+                    return `${value}: ${entry.payload.value} (${percent}%)`
+                  }}
+                />
               </LazyPieChart>
             </ResponsiveContainer>
           ) : chartsLoaded ? (

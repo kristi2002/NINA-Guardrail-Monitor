@@ -1,0 +1,144 @@
+{
+  "false_alarms": [
+    {
+      "conversation_id": "conv-demo-1",
+      "original_event_id": "evt-001",
+      "feedback": "Dose tip was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:27:12.540611"
+    },
+    {
+      "conversation_id": "conv-demo-3",
+      "original_event_id": "evt-003",
+      "feedback": "Compliance alert flagged the wrong phrase",
+      "triggered_rules": [
+        "medical_advice"
+      ],
+      "validator_type": "compliance",
+      "timestamp": "2025-11-11T01:27:12.540611"
+    },
+    {
+      "conversation_id": "conv-pii-high-1",
+      "original_event_id": "evt-pii-001",
+      "feedback": "PII alert 1 was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    },
+    {
+      "conversation_id": "conv-pii-high-2",
+      "original_event_id": "evt-pii-002",
+      "feedback": "PII alert 2 was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    },
+    {
+      "conversation_id": "conv-pii-high-3",
+      "original_event_id": "evt-pii-003",
+      "feedback": "PII alert 3 was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    },
+    {
+      "conversation_id": "conv-pii-high-4",
+      "original_event_id": "evt-pii-004",
+      "feedback": "PII alert 4 was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    },
+    {
+      "conversation_id": "conv-pii-high-5",
+      "original_event_id": "evt-pii-005",
+      "feedback": "PII alert 5 was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    },
+    {
+      "conversation_id": "conv-pii-high-6",
+      "original_event_id": "evt-pii-006",
+      "feedback": "PII alert 6 was a false alarm",
+      "triggered_rules": [
+        "DetectPII"
+      ],
+      "validator_type": "pii",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    },
+    {
+      "conversation_id": "conv-compliance-1",
+      "original_event_id": "evt-compliance-001",
+      "feedback": "Compliance alert flagged the wrong phrase",
+      "triggered_rules": [
+        "medical_advice"
+      ],
+      "validator_type": "compliance",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    }
+  ],
+  "true_positives": [
+    {
+      "conversation_id": "conv-demo-2",
+      "event_id": "evt-002",
+      "triggered_rules": [
+        "ToxicLanguage"
+      ],
+      "validator_type": "toxicity",
+      "timestamp": "2025-11-11T01:27:12.540611"
+    },
+    {
+      "conversation_id": "conv-demo-2",
+      "event_id": "evt-002",
+      "triggered_rules": [
+        "ToxicLanguage"
+      ],
+      "validator_type": "toxicity",
+      "timestamp": "2025-11-11T01:34:21.649327"
+    }
+  ],
+  "rule_statistics": {
+    "DetectPII": {
+      "total_detections": 7,
+      "false_alarms": 7,
+      "true_positives": 0,
+      "false_alarm_rate": 1.0,
+      "last_updated": "2025-11-11T01:34:21.649327"
+    },
+    "ToxicLanguage": {
+      "total_detections": 2,
+      "false_alarms": 0,
+      "true_positives": 2,
+      "false_alarm_rate": 0.0,
+      "last_updated": "2025-11-11T01:34:21.649327"
+    },
+    "medical_advice": {
+      "total_detections": 2,
+      "false_alarms": 2,
+      "true_positives": 0,
+      "false_alarm_rate": 1.0,
+      "last_updated": "2025-11-11T01:34:21.649327"
+    }
+  },
+  "threshold_adjustments": {
+    "pii": 1.5,
+    "toxicity": 1.0,
+    "compliance": 1.2000000000000002,
+    "llm_context": 1.0
+  },
+  "last_updated": "2025-11-11T01:34:21.650328"
+}
