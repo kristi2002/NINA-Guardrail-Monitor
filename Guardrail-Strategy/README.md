@@ -178,7 +178,9 @@ Check service health and configuration.
     "status": "connected",
     "producer": "connected",
     "consumer": "running",
-    "control_topic": "guardrail_control"
+    "operator_actions_consumer": "running",
+    "control_topic": "guardrail_control",
+    "operator_actions_topic": "operator_actions"
   },
   "validator": {
     "pii_enabled": true,
@@ -192,6 +194,14 @@ Check service health and configuration.
     "false_alarms": 3,
     "consumer_running": true,
     "topic": "guardrail_control"
+  },
+  "operator_actions": {
+    "total_actions": 1,
+    "actions_by_type": {
+      "system_override": 1
+    },
+    "consumer_running": true,
+    "topic": "operator_actions"
   }
 }
 ```
@@ -207,8 +217,10 @@ Guardrail-Strategy/
 │   │   └── __init__.py
 │   └── infrastructure/        # Infrastructure services
 │       └── kafka/             # Kafka infrastructure
-│           ├── kafka_producer.py   # Kafka producer for events
-│           ├── kafka_handler.py     # on_fail handler for validators
+│           ├── kafka_producer.py        # Kafka producer for events
+│           ├── kafka_consumer.py        # Feedback consumer (guardrail_control)
+│           ├── operator_actions_consumer.py # Minimal consumer that logs operator actions
+│           ├── kafka_handler.py         # on_fail handler for validators
 │           └── __init__.py
 ├── scripts/                   # Test and utility scripts
 │   └── test_validation.py
@@ -246,6 +258,15 @@ Kafka consumer for receiving control feedback:
 - Integrates with feedback learner for adaptive learning
 - Runs in background thread
 - Resilient connection handling (graceful degradation)
+
+### services/infrastructure/kafka/operator_actions_consumer.py
+
+Minimal Kafka consumer for operator evidence logging:
+- Subscribes to `operator_actions` topic
+- Logs each admin action for audit/evidence trail
+- Exposes per-action statistics on `/health`
+- Auto-reconnects and runs in its own background thread
+- Performs no automated intervention (logging only)
 
 ### services/learning/feedback_learner.py
 

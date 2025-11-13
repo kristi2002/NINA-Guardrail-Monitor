@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv 
 from services.validation import GuardrailValidator
-from services.infrastructure.kafka import GuardrailKafkaProducer, GuardrailKafkaConsumer
+from services.infrastructure.kafka import GuardrailKafkaProducer, GuardrailKafkaConsumer, OperatorActionsConsumer
 
 # Load environment variables
 load_dotenv()
@@ -99,14 +99,30 @@ except Exception as e:
     if feedback_learner:
         logger.info("ℹ️ Feedback learner is still available for analytics and persisted data")
 
+# Initialize Kafka consumer for operator_actions (just logs events for evidence tracking)
+operator_actions_consumer = None
+try:
+    operator_actions_consumer = OperatorActionsConsumer()
+    # Start consumer in background (will handle connection failures gracefully)
+    operator_consumer_started = operator_actions_consumer.start()
+    if not operator_consumer_started:
+        logger.warning("⚠️ Operator actions consumer not started (Kafka may be unavailable). Service will continue without operator actions logging.")
+    else:
+        logger.info("✅ Operator actions consumer started - operator actions will be logged for evidence tracking")
+except Exception as e:
+    logger.warning(f"⚠️ Failed to initialize operator actions consumer: {e}. Service will continue without operator actions logging.", exc_info=True)
+    operator_actions_consumer = None
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     kafka_producer_status = 'connected' if kafka_producer.producer else 'disconnected'
     kafka_consumer_status = 'running' if (kafka_consumer and kafka_consumer.is_running()) else 'stopped'
-    kafka_status = 'connected' if (kafka_producer.producer or (kafka_consumer and kafka_consumer.is_running())) else 'disconnected'
+    operator_actions_consumer_status = 'running' if (operator_actions_consumer and operator_actions_consumer.is_running()) else 'stopped'
+    kafka_status = 'connected' if (kafka_producer.producer or (kafka_consumer and kafka_consumer.is_running()) or (operator_actions_consumer and operator_actions_consumer.is_running())) else 'disconnected'
     
     feedback_stats = kafka_consumer.get_feedback_stats() if kafka_consumer else {}
+    operator_actions_stats = operator_actions_consumer.get_statistics() if operator_actions_consumer else {}
     
     # Get adaptive learning stats
     adaptive_learning = {'enabled': False}
@@ -126,8 +142,11 @@ def health_check():
             'status': kafka_status,
             'producer': kafka_producer_status,
             'consumer': kafka_consumer_status,
-            'control_topic': os.getenv('KAFKA_TOPIC_CONTROL', 'guardrail_control')
+            'operator_actions_consumer': operator_actions_consumer_status,
+            'control_topic': os.getenv('KAFKA_TOPIC_CONTROL', 'guardrail_control'),
+            'operator_actions_topic': os.getenv('KAFKA_TOPIC_OPERATOR', 'operator_actions')
         },
+        'operator_actions': operator_actions_stats,
         'validator': {
             'pii_enabled': validator.enable_pii_detection,
             'toxicity_enabled': validator.enable_toxicity_check,
@@ -406,7 +425,8 @@ if __name__ == '__main__':
     logger.info(f"Starting {SERVICE_NAME} on port {PORT}")
     logger.info(f"Kafka bootstrap servers: {kafka_producer.bootstrap_servers}")
     logger.info(f"Kafka producer: {'✅ Connected' if kafka_producer.producer else '⚠️ Disconnected'}")
-    logger.info(f"Kafka consumer: {'✅ Running' if (kafka_consumer and kafka_consumer.is_running()) else '⚠️ Stopped'}")
+    logger.info(f"Kafka consumer (guardrail_control): {'✅ Running' if (kafka_consumer and kafka_consumer.is_running()) else '⚠️ Stopped'}")
+    logger.info(f"Kafka consumer (operator_actions): {'✅ Running' if (operator_actions_consumer and operator_actions_consumer.is_running()) else '⚠️ Stopped'}")
     logger.info(f"Validator settings - PII: {validator.enable_pii_detection}, "
                 f"Toxicity: {validator.enable_toxicity_check}, "
                 f"Compliance: {validator.enable_compliance_check}, "
@@ -419,8 +439,12 @@ if __name__ == '__main__':
         kafka_producer.close()
         if kafka_consumer:
             kafka_consumer.stop()
+        if operator_actions_consumer:
+            operator_actions_consumer.stop()
     except Exception as e:
         logger.error(f"Failed to start service: {e}", exc_info=True)
         kafka_producer.close()
         if kafka_consumer:
             kafka_consumer.stop()
+        if operator_actions_consumer:
+            operator_actions_consumer.stop()

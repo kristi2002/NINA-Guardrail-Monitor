@@ -239,12 +239,12 @@ VITE_WS_URL=ws://localhost:5000
 
 4. **Admin** can respond:
    - Acknowledge, escalate, resolve, or override the event
-   - Dashboard publishes commands to the AI agent (`operator_actions` topic)
+   - Dashboard publishes commands to `operator_actions` topic (for AI Agent and Guardrail-Strategy)
    - Dashboard mirrors operator feedback to `guardrail_control` for guardrail learning
 
-5. **Guardrail-Strategy** consumes feedback:
-   - Updates adaptive thresholds via `FeedbackLearner`
-   - Logs operator corrections for telemetry
+5. **Guardrail-Strategy** consumes:
+   - **From `guardrail_control`**: Updates adaptive thresholds via `FeedbackLearner`
+   - **From `operator_actions`**: Logs operator actions for evidence tracking
 
 6. *(Optional)* **Agent pushes transcript updates**:
    - Use `POST /api/transcripts` (or publish to `conversation_transcripts`)

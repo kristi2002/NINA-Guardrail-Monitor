@@ -146,6 +146,9 @@ class KafkaIntegrationService:
                     )
 
             # Check if this is an operator action
+            # NOTE: This code is no longer called since Dashboard doesn't consume operator_actions
+            # (Actions are saved directly in API routes, and Guardrail-Strategy consumes for logging)
+            # Keeping this code for potential future use or if called from other sources
             elif event_type == "operator_action":
                 # Format operator action as notification
                 notification_data = {
@@ -384,38 +387,19 @@ class KafkaIntegrationService:
             }
 
             # Send via producer with custom message
+            # Note: Operator actions go to operator_actions topic only
+            # guardrail_control topic is for feedback/control commands (false_alarm, etc.), not operator actions
             success = self.producer.send_operator_action(
                 conversation_id, action_type, custom_message=operator_action
             )
 
-            control_payload = {
-                "conversation_id": conversation_id,
-                "action_type": action_type,
-                "message": message,
-                "reason": reason,
-                "operator_id": operator_id or "dashboard_operator",
-                "priority": priority,
-                "target_event_id": target_event_id,
-                "action_metadata": operator_action.get("action_metadata"),
-            }
-
-            control_sent = self.producer.send_control_command(
-                conversation_id,
-                action_type,
-                control_payload=control_payload,
-            )
-
-            if success and control_sent:
-                # Note: Socket.IO emission will be handled by the consumer callback
-                # after the event is successfully processed and saved to database
+            if success:
+                # Note: Operator actions are consumed by Guardrail-Strategy for evidence logging
+                # Dashboard saves actions directly in API routes (no consumer needed)
+                # WebSocket notifications can be added to API routes if needed for real-time updates
                 self.logger.info(
                     f"Operator action sent: {action_type} for conversation {conversation_id} "
                     f"with full metadata"
-                )
-                return True
-            elif success and not control_sent:
-                self.logger.warning(
-                    f"Operator action sent for {conversation_id} but control command was not published."
                 )
                 return True
 

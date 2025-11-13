@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Enhanced Kafka Consumer for NINA Guardrail Monitor
-Consumes from static Kafka topics: guardrail_events, operator_actions, guardrail_control
+Consumes from static Kafka topics: guardrail_events, guardrail_control
+Note: operator_actions is consumed by Guardrail-Strategy service, not Dashboard
 """
 
 import json
@@ -21,7 +22,6 @@ from config import (
     get_kafka_bootstrap_servers,
     get_kafka_group_id,
     get_kafka_topic_guardrail,
-    get_kafka_topic_operator,
     get_kafka_topic_control,
     get_kafka_topic_guardrail_pattern,
 )
@@ -63,9 +63,10 @@ class NINAKafkaConsumerV2:
         self.failed_messages = {}
 
         # Define our static topics
+        # Note: operator_actions is consumed by Guardrail-Strategy, not Dashboard
+        # Dashboard publishes to operator_actions but doesn't consume (actions saved directly in API routes)
         self.topics = {
             "guardrail_events": get_kafka_topic_guardrail(),
-            "operator_actions": get_kafka_topic_operator(),
             "guardrail_control": get_kafka_topic_control(),
             "dead_letter_queue": "dead_letter_queue",
         }
@@ -251,9 +252,9 @@ class NINAKafkaConsumerV2:
 
                 # Define the list of topics to subscribe to
                 # Only subscribe to topics that exist (guardrail_control may not exist)
+                # Note: operator_actions is consumed by Guardrail-Strategy, not Dashboard
                 topics_to_subscribe = [
                     self.topics["guardrail_events"],
-                    self.topics["operator_actions"],
                     # Note: guardrail_control is optional - only subscribe if topic exists
                 ]
                 if self.topics["guardrail_control"]:
@@ -710,73 +711,6 @@ class NINAKafkaConsumerV2:
             event_type_name="guardrail event",
         )
 
-    def _process_operator_action_core(self, event, conversation_id):
-        """
-        Core processing logic for operator actions (happy path only).
-        This method contains only the business logic, without retry/DLQ handling.
-        """
-        action_type = event.get("action_type")
-        operator_id = event.get("operator_id")
-        message = event.get("message")
-
-        self.logger.info(
-            f"Operator action: {action_type} by {operator_id} for conversation {conversation_id}"
-        )
-        self.logger.debug(f"Operator action message: {message}")
-
-        # Save operator action to database
-        self.db_service.create_operator_action(
-            conversation_id=conversation_id,
-            action_type=action_type,
-            operator_id=operator_id,
-            message=message,
-            details=event,
-        )
-
-        # Handle specific actions (logging only, DB update is in db_service)
-        if action_type == "stop_conversation":
-            self.logger.info(f"Conversation {conversation_id} stopped by operator")
-        elif action_type == "false_alarm":
-            self.logger.info(f"False alarm reported for conversation {conversation_id}")
-        elif action_type == "escalation":
-            self.logger.info(f"Conversation {conversation_id} escalated to supervisor")
-
-        # Call the callback to notify the frontend after successful processing
-        if self.on_event_callback or self.socketio:
-            try:
-                payload = {
-                    "type": "operator_action",
-                    "conversation_id": conversation_id,
-                    "event": event,
-                }
-                if self.on_event_callback:
-                    self.on_event_callback("operator_action", conversation_id, event)
-                if self.socketio:
-                    self.socketio.emit("operator_action", payload)
-            except Exception as e:
-                self.logger.error(
-                    f"Failed to notify listeners for operator_action: {e}",
-                    exc_info=True,
-                )
-
-        return True
-
-    def process_operator_action(
-        self, event, conversation_id, message_key=None, topic_name=None
-    ):
-        """
-        Process an operator action event with retry logic.
-        Uses centralized retry/DLQ handler for cleaner code.
-        """
-        return self._handle_processing_with_retry(
-            processing_func=self._process_operator_action_core,
-            event=event,
-            conversation_id=conversation_id,
-            message_key=message_key,
-            topic_name=topic_name,
-            event_type_name="operator action",
-        )
-
     def process_guardrail_control(self, event):
         """Process guardrail control events (false alarm feedback, etc.)"""
         # Validate but don't block - schema validation is informational
@@ -933,16 +867,6 @@ class NINAKafkaConsumerV2:
                                     ):
                                         continue
 
-                                elif topic_name == self.topics["operator_actions"]:
-                                    success = self.process_operator_action(
-                                        event, conversation_id, message_key, topic_name
-                                    )
-
-                                    if not success and self._should_retry_message(
-                                        message_key, topic_name
-                                    ):
-                                        continue
-
                                 elif topic_name == self.topics.get("guardrail_control"):
                                     # Guardrail control is optional - handle gracefully if topic doesn't exist
                                     try:
@@ -1034,7 +958,8 @@ def main():
 
     print("=" * 60)
     print("🎧 NINA Guardrail Monitor - Enhanced Kafka Consumer V2")
-    print("🎯 Topics: guardrail_events, operator_actions, guardrail_control")
+    print("🎯 Topics: guardrail_events, guardrail_control")
+    print("ℹ️  Note: operator_actions is consumed by Guardrail-Strategy service, not Dashboard")
     print("=" * 60)
 
     # Initialize enhanced consumer

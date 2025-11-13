@@ -37,7 +37,7 @@ The system uses four static Kafka topics:
 | Topic Name | Producer | Consumer | Description |
 |------------|----------|----------|-------------|
 | `guardrail_events` | Guardrail Strategy Service | OFH Dashboard | Guardrail violations and monitoring events |
-| `operator_actions` | OFH Dashboard | AI Agent | Commands from dashboard admins |
+| `operator_actions` | OFH Dashboard | Guardrail-Strategy (logs), AI Agent (future) | Commands from dashboard admins |
 | `guardrail_control` | OFH Dashboard | Guardrail Strategy Service | Operator feedback and control commands |
 | `dead_letter_queue` | All | System | Failed messages for manual review |
 | *(optional)* `conversation_transcripts` | AI Agent | OFH Dashboard | Structured transcript messages (if using Kafka instead of REST) |
