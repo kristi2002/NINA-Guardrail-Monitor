@@ -108,12 +108,12 @@ class OperatorActionsConsumer:
         """Ensure consumer is connected, try to reconnect if needed"""
         if self.consumer is not None:
             return True
-        
-        # Try to reconnect if we haven't exceeded max attempts
-        if self._connection_attempts < self._max_connection_attempts:
-            return self._try_connect()
-        
-        return False
+
+        if not self.running:
+            return False
+
+        # Always attempt to reconnect with built-in retry delay
+        return self._try_connect()
     
     def _process_operator_action(self, action: Dict[str, Any]) -> bool:
         """
@@ -221,14 +221,13 @@ class OperatorActionsConsumer:
         
         logger.info("🚀 Starting Kafka consumer for operator actions...")
         
-        # Try to connect first
-        if not self._try_connect(initial=True):
+        initial_connected = self._try_connect(initial=True)
+        if not initial_connected:
             logger.warning(
-                "⚠️ Could not connect to Kafka for operator actions. Consumer will not start. "
-                "Service will continue without operator actions consumption."
+                "⚠️ Could not connect to Kafka for operator actions at startup. "
+                "Will continue retrying in the background."
             )
-            return False
-        
+
         self.running = True
         self.thread = threading.Thread(
             target=self._consume_messages,
@@ -238,7 +237,7 @@ class OperatorActionsConsumer:
         self.thread.start()
         
         logger.info("✅ Operator actions consumer started in background thread")
-        return True
+        return initial_connected
     
     def stop(self):
         """Stop the consumer"""

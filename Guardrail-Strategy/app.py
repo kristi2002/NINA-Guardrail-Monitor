@@ -106,9 +106,9 @@ try:
     # Start consumer in background (will handle connection failures gracefully)
     operator_consumer_started = operator_actions_consumer.start()
     if not operator_consumer_started:
-        logger.warning("⚠️ Operator actions consumer not started (Kafka may be unavailable). Service will continue without operator actions logging.")
+        logger.warning("⚠️ Operator actions consumer could not connect to Kafka yet; will keep retrying in the background.")
     else:
-        logger.info("✅ Operator actions consumer started - operator actions will be logged for evidence tracking")
+        logger.info("✅ Operator actions consumer connected - operator actions will be logged for evidence tracking")
 except Exception as e:
     logger.warning(f"⚠️ Failed to initialize operator actions consumer: {e}. Service will continue without operator actions logging.", exc_info=True)
     operator_actions_consumer = None
