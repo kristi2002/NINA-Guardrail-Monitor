@@ -74,6 +74,11 @@ class GuardrailValidator:
                 "medical_advice",
                 "medium",
             ),
+            (
+                r"\b(lawsuit|sue|suing|legal action|file a lawsuit|take legal action|lawyer|attorney|litigation|legal advice|legal counsel)\b",
+                "legal_advice",
+                "high",
+            ),
         ]
 
         self.guard = None
@@ -345,8 +350,9 @@ class GuardrailValidator:
 
                 Policies to check:
                 1.  **Medical Advice:** Does the new message constitute giving or seeking a specific medical diagnosis, prescription, or treatment plan (e.g., "based on my symptoms, should I take X?" or "you should take X for your Y").
-                2.  **Persistent Evasion:** Is the user repeatedly trying to bypass a stated refusal? (e.g., bot said "I can't give medical advice" and user is re-phrasing to get it anyway).
-                3.  **Contextual Toxicity:** Is the message becoming toxic, harassing, or inappropriate *given the flow* of the conversation?
+                2.  **Legal Advice:** Does the new message constitute giving or seeking legal advice, suggesting legal action, or recommending filing lawsuits? (e.g., "you should file a lawsuit", "sue them", "take legal action", "you need a lawyer", or suggesting specific legal strategies).
+                3.  **Persistent Evasion:** Is the user repeatedly trying to bypass a stated refusal? (e.g., bot said "I can't give medical advice" and user is re-phrasing to get it anyway).
+                4.  **Contextual Toxicity:** Is the message becoming toxic, harassing, or inappropriate *given the flow* of the conversation?
 
                 Analyze the *last* message based on the history.
                 
