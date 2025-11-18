@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 from kafka import KafkaConsumer
-from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable
+from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable, NotCoordinatorError, CoordinatorNotAvailableError
 from shared.guardrail_schemas import GuardrailControlFeedback
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,10 @@ class GuardrailKafkaConsumer:
                 'api_version_auto_timeout_ms': 10000,
                 'session_timeout_ms': 10000,  # Default session timeout
                 'request_timeout_ms': 30000,  # Must be > session_timeout_ms (30s > 10s)
+                # Better handling of coordinator errors
+                'retry_backoff_ms': 100,  # Retry quickly for transient errors
+                'reconnect_backoff_ms': 50,  # Reconnect quickly
+                'reconnect_backoff_max_ms': 1000,  # But cap at 1 second
             }
             
             self.consumer = KafkaConsumer(self.control_topic, **consumer_config)
@@ -244,6 +248,15 @@ class GuardrailKafkaConsumer:
         """Consume messages from Kafka in a loop"""
         logger.info(f"🔄 Starting to consume messages from {self.control_topic}")
         
+        # Suppress excessive logging from kafka library for coordinator errors
+        kafka_logger = logging.getLogger('kafka.coordinator')
+        kafka_logger.setLevel(logging.ERROR)  # Only show ERROR level, suppress WARNING
+        kafka_conn_logger = logging.getLogger('kafka.conn')
+        kafka_conn_logger.setLevel(logging.ERROR)  # Only show ERROR level for connection issues
+        
+        coordinator_error_count = 0
+        last_coordinator_error_time = 0
+        
         while self.running:
             try:
                 # Ensure connection
@@ -256,6 +269,9 @@ class GuardrailKafkaConsumer:
                 # Poll for messages with timeout
                 message_pack = self.consumer.poll(timeout_ms=5000)
                 
+                # Reset coordinator error count on successful poll
+                coordinator_error_count = 0
+                
                 if message_pack:
                     for topic_partition, messages in message_pack.items():
                         for message in messages:
@@ -266,11 +282,89 @@ class GuardrailKafkaConsumer:
                             except Exception as e:
                                 logger.error(f"Error processing message: {e}", exc_info=True)
                 
-            except (KafkaError, KafkaConnectionError, NoBrokersAvailable) as e:
-                logger.warning(f"⚠️ Kafka consumer error: {e}")
-                self.consumer = None  # Mark as disconnected
+            except (ConnectionResetError, ConnectionAbortedError, OSError) as e:
+                # Handle connection reset/aborted errors gracefully
+                logger.warning(
+                    f"⚠️ Kafka connection reset/aborted: {e}. Attempting to reconnect..."
+                )
+                # Close the current consumer
+                try:
+                    if self.consumer:
+                        self.consumer.close()
+                except Exception as close_error:
+                    logger.debug(f"Error closing consumer: {close_error}")
+                self.consumer = None
+                
+                # Attempt to reconnect
                 if self.running:
-                    time.sleep(5)  # Wait before retrying
+                    if self._try_connect():
+                        logger.info("✅ Successfully reconnected to Kafka after connection reset")
+                    else:
+                        logger.warning(
+                            "⚠️ Reconnection failed. Will retry on next poll cycle."
+                        )
+                        time.sleep(5)  # Wait before next attempt
+            except (NotCoordinatorError, CoordinatorNotAvailableError) as e:
+                # Handle coordinator errors - these are often transient
+                coordinator_error_count += 1
+                current_time = time.time()
+                
+                # Only log coordinator errors every 10 seconds to reduce noise
+                if current_time - last_coordinator_error_time > 10:
+                    logger.warning(
+                        f"⚠️ Kafka coordinator error (count: {coordinator_error_count}): {e}. "
+                        f"This is often transient. Consumer will attempt to recover..."
+                    )
+                    last_coordinator_error_time = current_time
+                
+                # If we have too many coordinator errors, recreate the consumer
+                if coordinator_error_count > 20:
+                    logger.error(
+                        f"⚠️ Too many coordinator errors ({coordinator_error_count}). "
+                        f"Recreating consumer to recover..."
+                    )
+                    try:
+                        if self.consumer:
+                            self.consumer.close()
+                    except Exception as close_error:
+                        logger.debug(f"Error closing consumer: {close_error}")
+                    self.consumer = None
+                    coordinator_error_count = 0
+                    
+                    # Wait a bit before reconnecting
+                    time.sleep(2)
+                    
+                    # Attempt to reconnect
+                    if self.running and self._try_connect():
+                        logger.info("✅ Successfully recreated consumer after coordinator errors")
+                    else:
+                        logger.warning(
+                            "⚠️ Failed to recreate consumer. Will retry on next cycle."
+                        )
+                        time.sleep(5)
+                else:
+                    # Just wait a bit and continue - coordinator errors are often transient
+                    time.sleep(0.5)
+            except (KafkaError, KafkaConnectionError, KafkaTimeoutError, NoBrokersAvailable) as e:
+                logger.warning(f"⚠️ Kafka consumer error: {e}. Attempting to reconnect...")
+                # Close the current consumer
+                try:
+                    if self.consumer:
+                        self.consumer.close()
+                except Exception as close_error:
+                    logger.debug(f"Error closing consumer: {close_error}")
+                self.consumer = None  # Mark as disconnected
+                coordinator_error_count = 0  # Reset on full reconnect
+                
+                # Attempt to reconnect
+                if self.running:
+                    if self._try_connect():
+                        logger.info("✅ Successfully reconnected to Kafka")
+                    else:
+                        logger.warning(
+                            "⚠️ Reconnection failed. Will retry on next poll cycle."
+                        )
+                        time.sleep(5)  # Wait before retrying
             except Exception as e:
                 logger.error(f"Unexpected error in consumer loop: {e}", exc_info=True)
                 if self.running:

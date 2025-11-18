@@ -8,8 +8,8 @@ The system consists of three main components working together:
 
 ```
 ┌─────────────────┐         ┌──────────────────────┐         ┌──────────────────┐
-│   AI Agent     │────────▶│  Guardrail-Strategy │────────▶│   OFH Dashboard  │
-│  (External)    │  HTTP   │    (Port 5001)       │  Kafka  │   (Port 5000)    │
+│   AI Agent     │────────▶│  Guardrail-Strategy │────────▶ │   OFH Dashboard  │
+│  (External)    │  HTTP   │    (Port 5001)       │  Kafka   │   (Port 5000)    │
 │                │  POST    │                      │         │                  │
 │                │          │  • Validates messages│         │  • Monitors      │
 │                │          │  • Detects PII       │         │  • Visualizes    │
@@ -72,16 +72,49 @@ cd "NINA Guardrail-Monitor"
 
 ### 2. Start Kafka
 
-Make sure Kafka is running on `localhost:9092`. If you don't have Kafka installed:
+**Important**: Kafka is running in WSL 2 (Ubuntu). Follow these steps:
+
+#### WSL 2 Setup (First Time)
+
+1. **Get your WSL 2 IP address**:
+   ```bash
+   # In Ubuntu terminal
+   hostname -I
+   ```
+   Note: WSL 2 changes its IP address every time you restart your computer.
+
+2. **Update configuration files**:
+   - Update `.env` files with the current WSL 2 IP (e.g., `192.168.216.165:9092`)
+   - Update `config/server.properties` in Kafka installation with the WSL 2 IP
+
+#### Daily Startup Routine
+
+**In Ubuntu Terminal**:
 
 ```bash
-# Using Docker (easiest)
-docker run -d -p 9092:9092 apache/kafka:latest
+# 1. Navigate to Kafka directory
+cd kafka_2.13-3.6.1
 
-# Or install Kafka locally and start:
-# bin/zookeeper-server-start.sh config/zookeeper.properties
-# bin/kafka-server-start.sh config/server.properties
+# 2. Check/update IP if needed (if IP changed after restart)
+hostname -I
+# Update .env and server.properties if IP changed
+
+# 3. Start Zookeeper
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+# 4. In a new terminal, start Kafka
+cd kafka_2.13-3.6.1
+bin/kafka-server-start.sh config/server.properties
 ```
+
+**Then in PowerShell** (Windows):
+
+```bash
+# Start Python application
+python app.py
+```
+
+> **Note**: If your WSL 2 IP changes after restarting your computer, you'll need to update your `.env` file and `server.properties` file with the new IP address.
 
 ### 3. Setup Guardrail-Strategy Service
 
@@ -457,25 +490,41 @@ The dashboard provides:
 
 ### Kafka Connection Issues
 
+**Important**: Kafka runs in WSL 2 (Ubuntu). See [KAFKA_SETUP.md](KAFKA_SETUP.md) for complete setup instructions.
+
 If the Kafka consumer isn't connecting:
 
-1. Verify Kafka is running:
+1. **Verify WSL 2 IP address**:
    ```bash
-   # Check if Kafka is accessible
-   telnet localhost 9092
+   # In Ubuntu terminal
+   hostname -I
+   ```
+   Update `.env` files if IP changed after restart.
+
+2. **Verify Kafka is running in WSL 2**:
+   ```bash
+   # In Ubuntu terminal
+   cd kafka_2.13-3.6.1
+   bin/kafka-topics.sh --list --bootstrap-server localhost:9092
    ```
 
-2. Check environment variables:
+3. **Check environment variables**:
    ```bash
-   # Should match your Kafka server
-   KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+   # Should match your WSL 2 IP (not localhost)
+   KAFKA_BOOTSTRAP_SERVERS=192.168.216.165:9092
    ```
+   Replace with your actual WSL 2 IP address.
 
-3. Check logs:
+4. **Check logs**:
    - Guardrail-Strategy: Look for Kafka producer errors
    - OFH Dashboard backend: Look for consumer connection errors
 
-See `OFH-Dashboard/backend/KAFKA_CONNECTION_ISSUES.md` for detailed troubleshooting.
+5. **Common issues**:
+   - IP address changed after restart → Update `.env` and `server.properties`
+   - Kafka not started → Start Zookeeper first, then Kafka in Ubuntu
+   - Wrong IP in config → Verify with `hostname -I` in Ubuntu
+
+See [KAFKA_SETUP.md](KAFKA_SETUP.md) for detailed troubleshooting and setup instructions.
 
 ### Database Issues
 

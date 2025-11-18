@@ -179,7 +179,7 @@ OFH-Dashboard/
 - **Node.js** (v16 or higher) ✅ Installed: v22.12.0
 - **Python** (v3.8 or higher) ✅ Installed: v3.12.6
 - **PostgreSQL** (v12 or higher) for production
-- **Kafka** (optional, for real-time streaming)
+- **Kafka** (running in WSL 2 Ubuntu, for real-time streaming)
 
 ### Installation & Setup
 
@@ -229,7 +229,28 @@ npm run dev
 
 The frontend will start on `http://localhost:3001`
 
-#### 3. Environment Configuration
+#### 3. Start Kafka (WSL 2)
+
+**Important**: Kafka runs in WSL 2 (Ubuntu). See [KAFKA_SETUP.md](KAFKA_SETUP.md) for detailed instructions.
+
+**Quick Start**:
+```bash
+# In Ubuntu terminal
+cd kafka_2.13-3.6.1
+
+# Check IP (update .env if changed)
+hostname -I
+
+# Start Zookeeper (Terminal 1)
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+# Start Kafka (Terminal 2)
+bin/kafka-server-start.sh config/server.properties
+```
+
+> **Note**: WSL 2 IP changes on restart. Update `.env` and `server.properties` if IP changes.
+
+#### 4. Environment Configuration
 
 The application uses environment variables for configuration. Copy the example file to create your `.env` file:
 

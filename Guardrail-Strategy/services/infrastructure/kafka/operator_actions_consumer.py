@@ -201,11 +201,47 @@ class OperatorActionsConsumer:
                             except Exception as e:
                                 logger.error(f"Error processing operator action message: {e}", exc_info=True)
                 
-            except (KafkaError, KafkaConnectionError, NoBrokersAvailable) as e:
-                logger.warning(f"⚠️ Operator actions consumer error: {e}")
-                self.consumer = None  # Mark as disconnected
+            except (ConnectionResetError, ConnectionAbortedError, OSError) as e:
+                # Handle connection reset/aborted errors gracefully
+                logger.warning(
+                    f"⚠️ Kafka connection reset/aborted for operator actions: {e}. Attempting to reconnect..."
+                )
+                # Close the current consumer
+                try:
+                    if self.consumer:
+                        self.consumer.close()
+                except Exception as close_error:
+                    logger.debug(f"Error closing operator actions consumer: {close_error}")
+                self.consumer = None
+                
+                # Attempt to reconnect
                 if self.running:
-                    time.sleep(5)  # Wait before retrying
+                    if self._try_connect():
+                        logger.info("✅ Successfully reconnected to Kafka after connection reset (operator actions)")
+                    else:
+                        logger.warning(
+                            "⚠️ Reconnection failed. Will retry on next poll cycle."
+                        )
+                        time.sleep(5)  # Wait before next attempt
+            except (KafkaError, KafkaConnectionError, KafkaTimeoutError, NoBrokersAvailable) as e:
+                logger.warning(f"⚠️ Operator actions consumer error: {e}. Attempting to reconnect...")
+                # Close the current consumer
+                try:
+                    if self.consumer:
+                        self.consumer.close()
+                except Exception as close_error:
+                    logger.debug(f"Error closing operator actions consumer: {close_error}")
+                self.consumer = None  # Mark as disconnected
+                
+                # Attempt to reconnect
+                if self.running:
+                    if self._try_connect():
+                        logger.info("✅ Successfully reconnected to Kafka (operator actions)")
+                    else:
+                        logger.warning(
+                            "⚠️ Reconnection failed. Will retry on next poll cycle."
+                        )
+                        time.sleep(5)  # Wait before retrying
             except Exception as e:
                 logger.error(f"Unexpected error in operator actions consumer loop: {e}", exc_info=True)
                 if self.running:

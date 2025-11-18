@@ -13,7 +13,7 @@ import time
 import jsonschema 
 from datetime import datetime
 from kafka import KafkaConsumer, KafkaProducer
-from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable
+from kafka.errors import KafkaError, KafkaTimeoutError, KafkaConnectionError, NoBrokersAvailable, NotCoordinatorError, CoordinatorNotAvailableError
 from services.database_service import EnhancedDatabaseService
 from collections import defaultdict
 from services.error_alerting_service import ErrorAlertingService
@@ -74,10 +74,21 @@ class NINAKafkaConsumerV2:
 
         # Track active conversations
         self.active_conversations = set()
+        
+        # Track broker unavailability for exponential backoff
+        self._broker_unavailable_count = 0
+        self._last_broker_check = 0
 
         # Setup logging
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
+        
+        # Suppress excessive logging from kafka library for coordinator errors
+        # These are often transient and handled by our retry logic
+        kafka_logger = logging.getLogger('kafka.coordinator')
+        kafka_logger.setLevel(logging.ERROR)  # Only show ERROR level, suppress WARNING
+        kafka_conn_logger = logging.getLogger('kafka.conn')
+        kafka_conn_logger.setLevel(logging.ERROR)  # Only show ERROR level for connection issues
 
         # Initialize alerting service
         self.alerting_service = ErrorAlertingService()
@@ -276,6 +287,12 @@ class NINAKafkaConsumerV2:
                     max_poll_interval_ms=300000,  # 5 minutes
                     fetch_min_bytes=1,
                     fetch_max_wait_ms=500,
+                    # Better handling of coordinator errors
+                    retry_backoff_ms=100,  # Retry quickly for transient errors
+                    reconnect_backoff_ms=50,  # Reconnect quickly
+                    reconnect_backoff_max_ms=1000,  # But cap at 1 second
+                    request_timeout_ms=30500,  # Slightly longer than session timeout
+                    # Let library auto-detect API version for better compatibility
                 )
 
                 self.logger.info("Kafka consumer created, initializing DLQ producer...")
@@ -783,6 +800,8 @@ class NINAKafkaConsumerV2:
         self.logger.info("=" * 60)
         self.running = True
         poll_count = 0
+        coordinator_error_count = 0
+        last_coordinator_error_time = 0
 
         try:
             while self.running:
@@ -790,6 +809,9 @@ class NINAKafkaConsumerV2:
                     # Poll for messages with timeout
                     message_batch = self.consumer.poll(timeout_ms=1000)
                     poll_count += 1
+                    
+                    # Reset coordinator error count on successful poll
+                    coordinator_error_count = 0
 
                     # Log every 10 seconds (every 10 polls) to show it's alive
                     if poll_count % 10 == 0:
@@ -879,6 +901,122 @@ class NINAKafkaConsumerV2:
                                 else:
                                     self.logger.warning(f"Unknown topic: {topic_name}")
 
+                except (ConnectionResetError, ConnectionAbortedError, OSError) as e:
+                    # Handle connection reset/aborted errors gracefully
+                    if self.running:
+                        self.logger.warning(
+                            f"⚠️ Kafka connection reset/aborted: {e}. Attempting to reconnect..."
+                        )
+                        # Close the current consumer
+                        try:
+                            if self.consumer:
+                                self.consumer.close()
+                        except Exception as close_error:
+                            self.logger.debug(f"Error closing consumer: {close_error}")
+                        self.consumer = None
+                        
+                        # Attempt to reconnect
+                        if self.connect(retry_count=1, retry_delay=2):
+                            self.logger.info("✅ Successfully reconnected to Kafka after connection reset")
+                        else:
+                            self.logger.warning(
+                                "⚠️ Reconnection failed. Will retry on next poll cycle."
+                            )
+                            time.sleep(5)  # Wait before next attempt
+                    continue
+                except (NotCoordinatorError, CoordinatorNotAvailableError) as e:
+                    # Handle coordinator errors - these are often transient
+                    coordinator_error_count += 1
+                    current_time = time.time()
+                    
+                    # Only log coordinator errors every 10 seconds to reduce noise
+                    if current_time - last_coordinator_error_time > 10:
+                        self.logger.warning(
+                            f"⚠️ Kafka coordinator error (count: {coordinator_error_count}): {e}. "
+                            f"This is often transient. Consumer will attempt to recover..."
+                        )
+                        last_coordinator_error_time = current_time
+                    
+                    # If we have too many coordinator errors, recreate the consumer
+                    if coordinator_error_count > 20:
+                        self.logger.error(
+                            f"⚠️ Too many coordinator errors ({coordinator_error_count}). "
+                            f"Recreating consumer to recover..."
+                        )
+                        try:
+                            if self.consumer:
+                                self.consumer.close()
+                        except Exception as close_error:
+                            self.logger.debug(f"Error closing consumer: {close_error}")
+                        self.consumer = None
+                        coordinator_error_count = 0
+                        
+                        # Wait a bit before reconnecting
+                        time.sleep(2)
+                        
+                        # Attempt to reconnect
+                        if self.connect(retry_count=1, retry_delay=2):
+                            self.logger.info("✅ Successfully recreated consumer after coordinator errors")
+                        else:
+                            self.logger.warning(
+                                "⚠️ Failed to recreate consumer. Will retry on next cycle."
+                            )
+                            time.sleep(5)
+                    else:
+                        # Just wait a bit and continue - coordinator errors are often transient
+                        time.sleep(0.5)
+                    continue
+                except (KafkaError, KafkaConnectionError, KafkaTimeoutError, NoBrokersAvailable) as e:
+                    # Handle Kafka-specific errors
+                    if self.running:
+                        # Check if broker is completely unavailable (NoBrokersAvailable)
+                        is_broker_down = isinstance(e, NoBrokersAvailable)
+                        
+                        if is_broker_down:
+                            self._broker_unavailable_count += 1
+                            # Exponential backoff: 5s, 10s, 20s, 40s, max 60s
+                            backoff_seconds = min(5 * (2 ** min(self._broker_unavailable_count - 1, 3)), 60)
+                            
+                            # Only log every 30 seconds to reduce noise when broker is down
+                            current_time = time.time()
+                            if current_time - self._last_broker_check > 30:
+                                self.logger.warning(
+                                    f"⚠️ Kafka broker is unavailable (attempt {self._broker_unavailable_count}). "
+                                    f"Broker may be shutting down or restarting. "
+                                    f"Waiting {backoff_seconds}s before retry..."
+                                )
+                                self._last_broker_check = current_time
+                        else:
+                            # Reset counter for other errors (might be transient)
+                            self._broker_unavailable_count = 0
+                            self.logger.warning(
+                                f"⚠️ Kafka error: {e}. Attempting to reconnect..."
+                            )
+                        
+                        try:
+                            if self.consumer:
+                                self.consumer.close()
+                        except Exception as close_error:
+                            self.logger.debug(f"Error closing consumer: {close_error}")
+                        self.consumer = None
+                        coordinator_error_count = 0  # Reset on full reconnect
+                        
+                        # Attempt to reconnect with appropriate delay
+                        if is_broker_down:
+                            time.sleep(backoff_seconds)
+                        else:
+                            time.sleep(2)
+                        
+                        if self.connect(retry_count=1, retry_delay=2):
+                            self.logger.info("✅ Successfully reconnected to Kafka")
+                            self._broker_unavailable_count = 0  # Reset on successful connection
+                        else:
+                            if not is_broker_down:
+                                self.logger.warning(
+                                    "⚠️ Reconnection failed. Will retry on next poll cycle."
+                                )
+                                time.sleep(5)  # Wait before next attempt
+                    continue
                 except Exception as e:
                     if self.running:  # Only log errors if we're supposed to be running
                         self.logger.error(
