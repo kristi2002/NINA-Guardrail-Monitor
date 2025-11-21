@@ -39,6 +39,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress noisy Kafka warnings (these are harmless but very verbose)
+kafka_cluster_logger = logging.getLogger('kafka.cluster')
+kafka_cluster_logger.setLevel(logging.ERROR)  # Suppress "No broker metadata" warnings
+
 # Initialize services
 validator = GuardrailValidator()
 

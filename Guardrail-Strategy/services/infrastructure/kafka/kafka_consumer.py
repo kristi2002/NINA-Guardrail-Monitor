@@ -75,6 +75,7 @@ class GuardrailKafkaConsumer:
                 'api_version_auto_timeout_ms': 10000,
                 'session_timeout_ms': 10000,  # Default session timeout
                 'request_timeout_ms': 30000,  # Must be > session_timeout_ms (30s > 10s)
+                'metadata_max_age_ms': 300000,  # Refresh metadata every 5 minutes (default is very frequent)
                 # Better handling of coordinator errors
                 'retry_backoff_ms': 100,  # Retry quickly for transient errors
                 'reconnect_backoff_ms': 50,  # Reconnect quickly
@@ -253,6 +254,8 @@ class GuardrailKafkaConsumer:
         kafka_logger.setLevel(logging.ERROR)  # Only show ERROR level, suppress WARNING
         kafka_conn_logger = logging.getLogger('kafka.conn')
         kafka_conn_logger.setLevel(logging.ERROR)  # Only show ERROR level for connection issues
+        kafka_cluster_logger = logging.getLogger('kafka.cluster')
+        kafka_cluster_logger.setLevel(logging.ERROR)  # Suppress "No broker metadata" warnings
         
         coordinator_error_count = 0
         last_coordinator_error_time = 0

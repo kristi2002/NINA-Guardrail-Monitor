@@ -49,7 +49,7 @@ class GuardrailKafkaProducer:
                 'retries': 2,
                 'retry_backoff_ms': 500,
                 'request_timeout_ms': 5000,  # Reduced from 30000 for faster failure
-                'metadata_max_age_ms': 30000,
+                'metadata_max_age_ms': 300000,  # Refresh metadata every 5 minutes (reduces noisy warnings)
                 'delivery_timeout_ms': 30000,  # Reduced timeout
                 'acks': 1,  # Changed from 'all' to 1 for faster acknowledgment
                 'enable_idempotence': False,  # Disable for faster connection

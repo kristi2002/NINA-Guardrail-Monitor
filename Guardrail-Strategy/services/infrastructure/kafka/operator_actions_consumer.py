@@ -81,6 +81,7 @@ class OperatorActionsConsumer:
                 'api_version_auto_timeout_ms': int(os.getenv('KAFKA_CONSUMER_API_TIMEOUT_MS', '10000')),
                 'session_timeout_ms': int(os.getenv('KAFKA_CONSUMER_SESSION_TIMEOUT_MS', '10000')),
                 'request_timeout_ms': int(os.getenv('KAFKA_CONSUMER_REQUEST_TIMEOUT_MS', '30000')),
+                'metadata_max_age_ms': 300000,  # Refresh metadata every 5 minutes (reduces noisy warnings)
             }
             
             self.consumer = KafkaConsumer(self.operator_actions_topic, **consumer_config)
