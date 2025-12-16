@@ -10,7 +10,15 @@ from pathlib import Path
 from dotenv import load_dotenv  # <-- IMPORT THIS
 
 # Ensure the repository root is on the Python path so shared packages are importable
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# In Docker, app.py is at /app/app.py, so we need to handle both cases
+try:
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    # Verify it's a valid path (not going beyond root)
+    if not REPO_ROOT.exists() or str(REPO_ROOT) == '/':
+        REPO_ROOT = Path(__file__).resolve().parent  # Fallback to /app
+except (IndexError, ValueError):
+    REPO_ROOT = Path(__file__).resolve().parent  # Fallback to /app
+
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 

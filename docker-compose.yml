@@ -1,0 +1,208 @@
+services:
+  # Zookeeper (Required for Kafka)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: nina-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - nina-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: nina-kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Support both Docker internal and localhost access
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - nina-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: nina-postgres
+    environment:
+      POSTGRES_USER: nina_user
+      POSTGRES_PASSWORD: nina_pass
+      POSTGRES_DB: nina_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nina_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nina-network
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: nina-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nina-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Guardrail-Strategy Service
+  guardrail-strategy:
+    build:
+      context: .
+      dockerfile: ./Guardrail-Strategy/Dockerfile
+    container_name: nina-guardrail-strategy
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: ${FLASK_ENV:-development}
+      FLASK_DEBUG: ${FLASK_DEBUG:-True}
+      PORT: 5001
+      SERVICE_NAME: guardrail-service
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Kafka configuration - use Docker service name for internal communication
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      KAFKA_OUTPUT_TOPIC: guardrail_events
+      KAFKA_TOPIC_CONTROL: guardrail_control
+      KAFKA_TOPIC_OPERATOR: operator_actions
+      KAFKA_GROUP_ID: guardrail-strategy-service
+      KAFKA_GROUP_ID_OPERATOR_ACTIONS: guardrail-strategy-operator-actions
+      # Guardrails configuration
+      GUARDRAIL_ENABLE_PII_DETECTION: ${GUARDRAIL_ENABLE_PII_DETECTION:-True}
+      GUARDRAIL_ENABLE_TOXICITY_CHECK: ${GUARDRAIL_ENABLE_TOXICITY_CHECK:-True}
+      GUARDRAIL_ENABLE_COMPLIANCE_CHECK: ${GUARDRAIL_ENABLE_COMPLIANCE_CHECK:-True}
+      GUARDRAIL_ENABLE_LLM_CONTEXT_CHECK: ${GUARDRAIL_ENABLE_LLM_CONTEXT_CHECK:-True}
+      # Optional: OpenAI configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_TEMPERATURE: ${OPENAI_TEMPERATURE:-0.2}
+      # Feedback learner
+      GUARDRAIL_FEEDBACK_FILE: guardrail_feedback.json
+      GUARDRAIL_MIN_FEEDBACK: 5
+      GUARDRAIL_ADJUSTMENT_FACTOR: 0.1
+      GUARDRAIL_MAX_ADJUSTMENT: 0.5
+    volumes:
+      - ./Guardrail-Strategy/logs:/app/logs
+      - ./Guardrail-Strategy/guardrail_feedback.json:/app/guardrail_feedback.json
+    ports:
+      - "5001:5001"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - nina-network
+    restart: unless-stopped
+
+  # OFH Dashboard Backend
+  ofh-dashboard-backend:
+    build:
+      context: .
+      dockerfile: ./OFH-Dashboard/backend/Dockerfile
+    container_name: nina-ofh-dashboard-backend
+    environment:
+      DATABASE_URL: postgresql://nina_user:nina_pass@postgres:5432/nina_db
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production-min-32-characters-long}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-jwt-secret-in-production}
+      # Kafka configuration - use Docker service name for internal communication
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+      KAFKA_GROUP_ID: nina-dashboard-v2
+      KAFKA_CLIENT_ID: nina-dashboard-client
+      KAFKA_TOPIC_GUARDRAIL: guardrail_events
+      KAFKA_TOPIC_OPERATOR: operator_actions
+      KAFKA_TOPIC_CONTROL: guardrail_control
+      REDIS_URL: redis://redis:6379/0
+      # Guardrail Strategy service URL - use Docker service name
+      GUARDRAIL_SERVICE_URL: http://guardrail-strategy:5001
+      # Alerting service database - use Docker service name for PostgreSQL
+      ALERTING_DATABASE_URL: postgresql://nina_user:nina_pass@postgres:5432/nina_db
+      ALERTING_KAFKA_BOOTSTRAP: kafka:9093
+      API_HOST: 0.0.0.0
+      API_PORT: 5000
+      FLASK_DEBUG: ${FLASK_DEBUG:-False}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # Additional configuration
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./OFH-Dashboard/backend/logs:/app/logs
+      - ./OFH-Dashboard/backend/instance:/app/instance
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - nina-network
+    restart: unless-stopped
+
+  # OFH Dashboard Frontend
+  ofh-dashboard-frontend:
+    build:
+      context: ./OFH-Dashboard/frontend
+      dockerfile: Dockerfile
+    container_name: nina-ofh-dashboard-frontend
+    environment:
+      # Frontend will connect to backend via Docker network
+      VITE_API_URL: http://localhost:5000
+      VITE_WS_URL: ws://localhost:5000
+    volumes:
+      - ./OFH-Dashboard/frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "3001:80"
+    depends_on:
+      - ofh-dashboard-backend
+    networks:
+      - nina-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  nina-network:
+    driver: bridge
+

@@ -4,8 +4,8 @@ echo.
 
 REM Check if venv exists
 if not exist "venv" (
-    echo Creating virtual environment with Python 3.11.9...
-    py -3.11 -m venv venv
+    echo Creating virtual environment with Python 3.12...
+    py -3.12 -m venv venv
     if errorlevel 1 (
         echo ERROR: Failed to create virtual environment
         pause

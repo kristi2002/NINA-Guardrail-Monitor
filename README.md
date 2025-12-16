@@ -55,68 +55,100 @@ The system consists of three main components working together:
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Docker Setup (Recommended) 🐳
 
-- **Python 3.11+** (Python 3.14 recommended for Guardrail-Strategy)
-- **Node.js 18+** (for frontend)
-- **Kafka** (local or remote)
-- **PostgreSQL** (optional, SQLite works for development)
-- **Windows** (PowerShell) or **Linux/Mac**
+The easiest way to get started is using Docker Compose, which sets up all services automatically.
 
-### 1. Clone the Repository
+#### Prerequisites
+
+- **Docker Desktop** (Windows/Mac) or **Docker Engine + Docker Compose** (Linux)
+
+#### Setup Steps
+
+1. **Clone the Repository**
 
 ```bash
 git clone <repository-url>
 cd "NINA Guardrail-Monitor"
 ```
 
-### 2. Start Kafka
+2. **Initialize and Start All Services**
 
-**Important**: Kafka is running in WSL 2 (Ubuntu). Follow these steps:
-
-#### WSL 2 Setup (First Time)
-
-1. **Get your WSL 2 IP address**:
-   ```bash
-   # In Ubuntu terminal
-   hostname -I
-   ```
-   Note: WSL 2 changes its IP address every time you restart your computer.
-
-2. **Update configuration files**:
-   - Update `.env` files with the current WSL 2 IP (e.g., `192.168.216.165:9092`)
-   - Update `config/server.properties` in Kafka installation with the WSL 2 IP
-
-#### Daily Startup Routine
-
-**In Ubuntu Terminal**:
-
-```bash
-# 1. Navigate to Kafka directory
-cd kafka_2.13-3.6.1
-
-# 2. Check/update IP if needed (if IP changed after restart)
-hostname -I
-# Update .env and server.properties if IP changed
-
-# 3. Start Zookeeper
-bin/zookeeper-server-start.sh config/zookeeper.properties
-
-# 4. In a new terminal, start Kafka
-cd kafka_2.13-3.6.1
-bin/kafka-server-start.sh config/server.properties
+**Windows (PowerShell):**
+```powershell
+.\docker-init.ps1
 ```
 
-**Then in PowerShell** (Windows):
-
+**Linux/Mac (Bash):**
 ```bash
-# Start Python application
-python app.py
+chmod +x docker-init.sh
+./docker-init.sh
 ```
 
-> **Note**: If your WSL 2 IP changes after restarting your computer, you'll need to update your `.env` file and `server.properties` file with the new IP address.
+**Or manually:**
+```bash
+docker compose build
+docker compose up -d
+```
 
-### 3. Setup Guardrail-Strategy Service
+3. **Access the Services**
+
+Once all services are running:
+
+- **Guardrail-Strategy API**: http://localhost:5001
+- **OFH Dashboard API**: http://localhost:5000
+- **OFH Dashboard UI**: http://localhost:3001
+- **Kafka**: localhost:9092
+- **PostgreSQL**: localhost:5432
+- **Redis**: localhost:6379
+
+**View logs:**
+```bash
+docker compose logs -f
+```
+
+**Stop services:**
+```bash
+docker compose down
+```
+
+📖 **For detailed Docker setup instructions, see [DOCKER_SETUP.md](DOCKER_SETUP.md)**
+
+---
+
+### Option 2: Manual Setup (Development)
+
+If you prefer to run services manually for development:
+
+#### Prerequisites
+
+- **Python 3.11+** (Python 3.12 recommended for Guardrail-Strategy)
+- **Node.js 18+** (for frontend)
+- **Kafka** (local or remote)
+- **PostgreSQL** (optional, SQLite works for development)
+- **Windows** (PowerShell) or **Linux/Mac**
+
+#### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd "NINA Guardrail-Monitor"
+```
+
+#### 2. Start Kafka
+
+**Option A: Using Docker (Easiest)**
+
+```bash
+# Start only Kafka and Zookeeper
+docker compose up -d zookeeper kafka
+```
+
+**Option B: Manual Setup**
+
+For manual Kafka setup, you'll need to install and configure Kafka, Zookeeper, PostgreSQL, and Redis separately. See the Docker setup for reference configuration.
+
+#### 3. Setup Guardrail-Strategy Service
 
 ```powershell
 cd Guardrail-Strategy
@@ -125,7 +157,7 @@ cd Guardrail-Strategy
 .\setup.bat
 
 # Or manually:
-py -3.14 -m venv venv
+py -3.12 -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
@@ -134,15 +166,14 @@ copy env.example .env
 # Edit .env with your Kafka and OpenAI settings
 
 # Start the service
-.\run.bat
-# Or: python app.py
+python app.py
 ```
 
 The service will start on **http://localhost:5001**
 
-### 4. Setup OFH Dashboard
+#### 4. Setup OFH Dashboard
 
-#### Backend Setup
+**Backend Setup:**
 
 ```powershell
 cd OFH-Dashboard\backend
@@ -162,13 +193,12 @@ copy env.example .env
 python init_database.py
 
 # Start the backend
-.\run.bat
-# Or: python app.py
+python app.py
 ```
 
 The backend will start on **http://localhost:5000**
 
-#### Frontend Setup
+**Frontend Setup:**
 
 ```powershell
 cd OFH-Dashboard\frontend
@@ -186,11 +216,24 @@ The frontend will start on **http://localhost:3000**
 
 ### Environment Variables
 
+> **Note for Docker users**: When using Docker, services communicate using Docker service names (e.g., `kafka:9093`). From your host machine, use `localhost:9092` for Kafka. The Docker Compose setup handles networking automatically.
+
 #### Guardrail-Strategy (`Guardrail-Strategy/.env`)
 
+**For Docker:**
+```bash
+# Kafka Configuration (use Docker service name)
+KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+```
+
+**For Manual Setup:**
 ```bash
 # Kafka Configuration
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+```
+
+**Common Settings:**
+```bash
 KAFKA_OUTPUT_TOPIC=guardrail_events
 KAFKA_CONTROL_TOPIC=guardrail_control
 # Optional: wildcard family if you partition conversations per topic
@@ -211,6 +254,19 @@ LOG_LEVEL=INFO
 
 #### OFH Dashboard Backend (`OFH-Dashboard/backend/.env`)
 
+**For Docker:**
+```bash
+# Database (use Docker service name)
+DATABASE_URL=postgresql://nina_user:nina_pass@postgres:5432/nina_db
+
+# Kafka (use Docker service name)
+KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+
+# Redis (use Docker service name)
+REDIS_URL=redis://redis:6379/0
+```
+
+**For Manual Setup:**
 ```bash
 # Database
 DATABASE_URL=sqlite:///nina_dashboard.db
@@ -218,6 +274,13 @@ DATABASE_URL=sqlite:///nina_dashboard.db
 
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+```
+
+**Common Settings:**
+```bash
 KAFKA_GROUP_ID=ofh-dashboard-consumer
 KAFKA_TOPIC_GUARDRAIL=guardrail_events
 KAFKA_TOPIC_OPERATOR=operator_actions
@@ -233,9 +296,6 @@ FLASK_DEBUG=True
 # Security
 JWT_SECRET_KEY=your-jwt-secret-here
 JWT_EXPIRATION_HOURS=24
-
-# Redis (optional, for rate limiting)
-REDIS_URL=redis://localhost:6379/0
 ```
 
 #### OFH Dashboard Frontend (`OFH-Dashboard/frontend/.env`)
@@ -490,41 +550,38 @@ The dashboard provides:
 
 ### Kafka Connection Issues
 
-**Important**: Kafka runs in WSL 2 (Ubuntu). See [KAFKA_SETUP.md](KAFKA_SETUP.md) for complete setup instructions.
+**For Docker Setup:**
+
+If using Docker, Kafka runs in a container. Check service status:
+
+```powershell
+docker compose ps kafka
+docker compose logs kafka
+```
+
+**For Manual Setup:**
 
 If the Kafka consumer isn't connecting:
 
-1. **Verify WSL 2 IP address**:
+1. **Verify Kafka is running**:
    ```bash
-   # In Ubuntu terminal
-   hostname -I
-   ```
-   Update `.env` files if IP changed after restart.
-
-2. **Verify Kafka is running in WSL 2**:
-   ```bash
-   # In Ubuntu terminal
-   cd kafka_2.13-3.6.1
+   # Check Kafka status
    bin/kafka-topics.sh --list --bootstrap-server localhost:9092
    ```
 
-3. **Check environment variables**:
-   ```bash
-   # Should match your WSL 2 IP (not localhost)
-   KAFKA_BOOTSTRAP_SERVERS=192.168.216.165:9092
-   ```
-   Replace with your actual WSL 2 IP address.
+2. **Check environment variables**:
+   - Ensure `KAFKA_BOOTSTRAP_SERVERS` is correctly configured
+   - For Docker: Use service name `kafka:9093`
+   - For local: Use `localhost:9092`
 
-4. **Check logs**:
+3. **Check logs**:
    - Guardrail-Strategy: Look for Kafka producer errors
    - OFH Dashboard backend: Look for consumer connection errors
 
-5. **Common issues**:
-   - IP address changed after restart → Update `.env` and `server.properties`
-   - Kafka not started → Start Zookeeper first, then Kafka in Ubuntu
-   - Wrong IP in config → Verify with `hostname -I` in Ubuntu
-
-See [KAFKA_SETUP.md](KAFKA_SETUP.md) for detailed troubleshooting and setup instructions.
+4. **Common issues**:
+   - Kafka not started → Start Zookeeper first, then Kafka
+   - Wrong bootstrap server → Verify connection string
+   - Network issues → Check firewall and port accessibility
 
 ### Database Issues
 
@@ -624,12 +681,26 @@ Key considerations:
 
 ### Docker Deployment
 
-Docker Compose configuration is available:
+Docker Compose configuration is available at the root level:
 
 ```bash
-cd OFH-Dashboard
-docker-compose up -d
+# From project root
+docker compose up -d
 ```
+
+Or use the initialization script:
+
+**Windows:**
+```powershell
+.\docker-init.ps1
+```
+
+**Linux/Mac:**
+```bash
+./docker-init.sh
+```
+
+📖 **See [DOCKER_SETUP.md](DOCKER_SETUP.md) for complete Docker setup guide**
 
 
 ## 🎯 Key Features

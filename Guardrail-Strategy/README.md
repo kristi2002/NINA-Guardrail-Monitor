@@ -34,20 +34,14 @@ Guardrail Strategy Service
 
 **Option B: Manual setup**
 ```powershell
-# Create virtual environment with Python 3.14
-py -3.14 -m venv venv
+# Create virtual environment with Python 3.12
+py -3.12 -m venv venv
 
 # Activate virtual environment
 .\venv\Scripts\Activate.ps1
 
 # Install dependencies
 pip install -r requirements.txt
-```
-
-**Option C: Migrate existing venv to Python 3.14**
-If you have an existing virtual environment created with an older Python version:
-```powershell
-.\migrate-to-python314.bat
 ```
 
 ### 2. Configure Environment
