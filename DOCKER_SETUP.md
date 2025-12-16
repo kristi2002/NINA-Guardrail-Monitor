@@ -75,9 +75,42 @@ The Docker Compose setup includes:
 
 The services use environment variables for configuration. You can:
 
-1. **Use default values** - Services will start with sensible defaults
-2. **Create a `.env` file** - Place it in the root directory
+1. **Use default values** - Services will start with sensible defaults (⚠️ **NOT for production**)
+2. **Create a `.env` file** - Place it in the project root directory (recommended)
 3. **Override in docker-compose.yml** - Edit the environment section
+
+#### Using .env File (Recommended)
+
+Create a `.env` file in the project root with your configuration:
+
+```bash
+# Copy the example (if available) or create manually
+cp .env.example .env  # If .env.example exists
+# Or create .env manually
+```
+
+Example `.env` file:
+```env
+# Database
+POSTGRES_USER=nina_user
+POSTGRES_PASSWORD=your-secure-password-here
+POSTGRES_DB=nina_db
+
+# Application Secrets (CHANGE IN PRODUCTION!)
+SECRET_KEY=your-32-character-secret-key-here
+JWT_SECRET_KEY=your-jwt-secret-key-here
+ADMIN_PASSWORD=your-secure-admin-password
+
+# Application
+FLASK_DEBUG=False
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+```
+
+**Note**: 
+- Docker Compose automatically loads `.env` file from the project root (if it exists)
+- The `.env` file is **optional** - services will use defaults if it doesn't exist
+- Variables in `.env` will override defaults in `docker-compose.yml`
+- The `env_file` directive in docker-compose.yml makes this automatic - no need to manually export variables
 
 ### Key Environment Variables
 
@@ -308,10 +341,15 @@ For production deployment:
    - `JWT_SECRET_KEY` (min 32 characters)
    - `ADMIN_PASSWORD` (strong password)
 
-2. **Configure CORS** properly:
+2. **Configure CORS** properly (⚠️ **SECURITY**: Never use `*` in production):
    ```env
+   # Development
+   CORS_ORIGINS=http://localhost:3001,http://localhost:3000
+   
+   # Production - specify exact origins
    CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
    ```
+   The application defaults to `http://localhost:3001,http://localhost:3000` and will warn if wildcard is detected in production mode.
 
 3. **Use external Kafka cluster** (if needed):
    ```env
@@ -342,6 +380,58 @@ For production deployment:
 - **Logs**: Application logs are mounted to host directories for easy access
 - **Networking**: All services communicate via Docker network `nina-network`
 
+## 💾 Database Backups
+
+### Creating a Backup
+
+**Using Docker:**
+```bash
+# Backup database
+docker compose exec ofh-dashboard-backend python scripts/backup_database.py backup --docker nina-postgres --compress
+
+# Or from host
+python OFH-Dashboard/backend/scripts/backup_database.py backup --docker nina-postgres --compress
+```
+
+**Manual Backup:**
+```bash
+# Backup
+python OFH-Dashboard/backend/scripts/backup_database.py backup --dir backups --compress
+
+# Restore
+python OFH-Dashboard/backend/scripts/backup_database.py restore --file backups/nina_db_backup_20231216_120000.sql.gz
+```
+
+### Automated Backups
+
+Add to crontab for daily backups:
+```bash
+# Daily backup at 2 AM
+0 2 * * * cd /path/to/project && python OFH-Dashboard/backend/scripts/backup_database.py backup --compress --dir /backups
+```
+
+## 🔒 Production Deployment
+
+### Enable Production WSGI Server
+
+Set environment variable to use Gunicorn:
+
+```env
+USE_GUNICORN=true
+GUNICORN_WORKERS=4
+```
+
+Or in docker-compose.yml:
+```yaml
+environment:
+  USE_GUNICORN: "true"
+  GUNICORN_WORKERS: "4"
+```
+
+### HTTPS/TLS Setup
+
+See **[docs/HTTPS_TLS_SETUP.md](../docs/HTTPS_TLS_SETUP.md)** for complete HTTPS configuration guide.
+
 ## 🆘 Getting Help
 
 If you encounter issues:
@@ -350,8 +440,9 @@ If you encounter issues:
 2. Verify service health: `docker compose ps`
 3. Review this guide's troubleshooting section
 4. Check the main README.md for additional information
+5. See [PROJECT_IMPROVEMENTS.md](../PROJECT_IMPROVEMENTS.md) for known issues and improvements
 
 ---
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 

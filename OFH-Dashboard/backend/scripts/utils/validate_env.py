@@ -58,12 +58,17 @@ def validate_env_file(env_path='.env'):
         info.append(f"JWT_SECRET_KEY length: {len(jwt_secret)} characters")
     
     # CORS_ORIGINS
-    cors_origins = env_vars.get('CORS_ORIGINS', '*')
-    if cors_origins == '*':
-        warnings.append("CORS_ORIGINS is set to '*' - not recommended for production")
-        print("⚠️  CORS_ORIGINS: Set to '*' (should be specific origins in production)")
+    cors_origins = env_vars.get('CORS_ORIGINS', 'http://localhost:3001,http://localhost:3000')
+    if cors_origins == '*' or '*' in cors_origins:
+        issues.append("CORS_ORIGINS contains wildcard '*' - SECURITY RISK in production!")
+        print("❌ CORS_ORIGINS: Contains wildcard '*' (SECURITY RISK - use specific origins)")
+    elif not cors_origins or cors_origins.strip() == '':
+        issues.append("CORS_ORIGINS is empty - must specify allowed origins")
+        print("❌ CORS_ORIGINS: Empty (must specify allowed origins)")
     else:
-        print("✅ CORS_ORIGINS: Configured")
+        origins_list = [o.strip() for o in cors_origins.split(',')]
+        print(f"✅ CORS_ORIGINS: Configured with {len(origins_list)} origin(s)")
+        info.append(f"CORS origins: {', '.join(origins_list)}")
     
     # APP_DEBUG
     app_debug = env_vars.get('APP_DEBUG', 'True')

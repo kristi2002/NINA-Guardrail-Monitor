@@ -45,27 +45,43 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: nina-postgres
     environment:
-      POSTGRES_USER: nina_user
-      POSTGRES_PASSWORD: nina_pass
-      POSTGRES_DB: nina_db
+      POSTGRES_USER: ${POSTGRES_USER:-nina_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nina_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-nina_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nina_user"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nina_user}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - nina-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # Redis
   redis:
@@ -83,6 +99,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
   # Guardrail-Strategy Service
   guardrail-strategy:
@@ -90,6 +114,8 @@ services:
       context: .
       dockerfile: ./Guardrail-Strategy/Dockerfile
     container_name: nina-guardrail-strategy
+    env_file:
+      - .env  # Load environment variables from .env file (optional)
     environment:
       FLASK_APP: app.py
       FLASK_ENV: ${FLASK_ENV:-development}
@@ -97,6 +123,8 @@ services:
       PORT: 5001
       SERVICE_NAME: guardrail-service
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Production: Set USE_GUNICORN=true to use Gunicorn WSGI server
+      USE_GUNICORN: ${USE_GUNICORN:-false}
       # Kafka configuration - use Docker service name for internal communication
       KAFKA_BOOTSTRAP_SERVERS: kafka:9093
       KAFKA_OUTPUT_TOPIC: guardrail_events
@@ -129,6 +157,14 @@ services:
     networks:
       - nina-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # OFH Dashboard Backend
   ofh-dashboard-backend:
@@ -136,8 +172,11 @@ services:
       context: .
       dockerfile: ./OFH-Dashboard/backend/Dockerfile
     container_name: nina-ofh-dashboard-backend
+    env_file:
+      - .env  # Load environment variables from .env file (optional)
     environment:
-      DATABASE_URL: postgresql://nina_user:nina_pass@postgres:5432/nina_db
+      # Database URL - uses environment variables with defaults
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nina_user}:${POSTGRES_PASSWORD:-nina_pass}@postgres:5432/${POSTGRES_DB:-nina_db}
       SECRET_KEY: ${SECRET_KEY:-change-this-in-production-min-32-characters-long}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-jwt-secret-in-production}
       # Kafka configuration - use Docker service name for internal communication
@@ -156,9 +195,15 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 5000
       FLASK_DEBUG: ${FLASK_DEBUG:-False}
+      # Production: Set USE_GUNICORN=true to use Gunicorn WSGI server
+      USE_GUNICORN: ${USE_GUNICORN:-false}
+      # Security: Use environment variables for production
+      # Create .env file with: ADMIN_PASSWORD=your-secure-password
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       # Additional configuration
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # CORS: Default to localhost for development, MUST be set to specific origins in production
+      # For production: CORS_ORIGINS=http://localhost:3001,https://yourdomain.com
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - ./OFH-Dashboard/backend/logs:/app/logs
@@ -175,6 +220,14 @@ services:
     networks:
       - nina-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # OFH Dashboard Frontend
   ofh-dashboard-frontend:
@@ -195,6 +248,14 @@ services:
     networks:
       - nina-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
 volumes:
   postgres_data:

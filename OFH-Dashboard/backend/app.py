@@ -45,12 +45,20 @@ from api.middleware.timeout_middleware import register_timeout_middleware
 from api.middleware.versioning_middleware import register_versioning_middleware
 from core.database import init_database, get_database_manager
 from core.logging_config import get_logger  # Import centralized logging
+from core.secret_validation import validate_and_ensure_secrets
 from models import create_all_tables
 from services.infrastructure.kafka.kafka_integration_service import KafkaIntegrationService
 
+# Get logger early for secret validation
+logger = get_logger(__name__)
+
+# Validate secrets before initializing Flask app
+FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1']
+validate_and_ensure_secrets(flask_debug=FLASK_DEBUG)
+
 # Initialize Flask app
 app = Flask(__name__)
-# The SECRET_KEY will now be loaded from your .env file
+# The SECRET_KEY will now be loaded from your .env file (or auto-generated in dev)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-fallback-secret-key')
 
 # Database configuration
@@ -81,13 +89,27 @@ limiter = Limiter(
 # NOTE: Using 'threading' mode - eventlet is NOT needed (linter warnings in flask_socketio are safe to ignore)
 
 # Initialize CORS with environment-based configuration
-CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
-CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
+# Logger already initialized above
+# Parse CORS origins from environment variable
+CORS_ORIGINS_RAW = os.getenv('CORS_ORIGINS', 'http://localhost:3001,http://localhost:3000')
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_RAW.split(',') if origin.strip()]
+
+# Security warning: Check for wildcard in production
+# FLASK_DEBUG already checked above
+if not FLASK_DEBUG and ('*' in CORS_ORIGINS_RAW or any('*' in origin for origin in CORS_ORIGINS)):
+    logger.warning(
+        "⚠️  SECURITY WARNING: CORS_ORIGINS contains wildcard '*' in production mode! "
+        "This is a security risk. Please set CORS_ORIGINS to specific origins."
+    )
+elif FLASK_DEBUG and '*' in CORS_ORIGINS_RAW:
+    logger.info("ℹ️  CORS wildcard enabled for development (FLASK_DEBUG=True)")
+
+CORS(app, origins=CORS_ORIGINS if '*' not in CORS_ORIGINS_RAW else '*', supports_credentials=True)
 
 # Use same CORS origins for SocketIO
 socketio = SocketIO(
     app, 
-    cors_allowed_origins=CORS_ORIGINS if '*' not in CORS_ORIGINS else '*',
+    cors_allowed_origins=CORS_ORIGINS if '*' not in CORS_ORIGINS_RAW else '*',
     logger=True,
     engineio_logger=False,  # Disable verbose engineio logging
     # async_mode='threading',  # Explicitly use threading mode (no eventlet required)
@@ -96,9 +118,7 @@ socketio = SocketIO(
     max_http_buffer_size=1e6  # Max HTTP buffer size for upgrades
 )
 
-# Get logger from centralized logging configuration
-# (logging_config sets up all handlers on import)
-logger = get_logger(__name__)
+# Logger already initialized above for CORS validation
 
 # Initialize Swagger/OpenAPI documentation
 try:
@@ -232,7 +252,7 @@ if __name__ == '__main__':
     # Get host and port from environment variables
     API_HOST = os.getenv('API_HOST', '0.0.0.0')
     API_PORT = int(os.getenv('API_PORT', 5000))
-    FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() in ['true', '1']
+    # FLASK_DEBUG already defined above during secret validation
 
     print(f"[MODULE] Modular Route Structure")
     print(f"[API] API: http://{API_HOST}:{API_PORT}")

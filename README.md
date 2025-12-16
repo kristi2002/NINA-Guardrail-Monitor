@@ -53,6 +53,12 @@ The system consists of three main components working together:
    - Message queue for async communication
    - Topics: `guardrail_events`, `operator_actions`, `guardrail_control`, `dead_letter_queue`, *(optional)* `conversation_transcripts`
 
+## 📚 Documentation
+
+- **[DOCKER_SETUP.md](DOCKER_SETUP.md)** - Complete Docker setup guide
+- **[docs/HTTPS_TLS_SETUP.md](docs/HTTPS_TLS_SETUP.md)** - HTTPS/TLS configuration for production
+- **[PROJECT_IMPROVEMENTS.md](PROJECT_IMPROVEMENTS.md)** - List of improvements and recommendations
+
 ## 🚀 Quick Start
 
 ### Option 1: Docker Setup (Recommended) 🐳
@@ -672,12 +678,31 @@ Key considerations:
 
 - Use PostgreSQL instead of SQLite
 - Set `FLASK_ENV=production`
-- Configure proper CORS origins
+- **Configure proper CORS origins** (see CORS Configuration below)
 - Set secure `SECRET_KEY` and `JWT_SECRET_KEY`
 - Enable HTTPS
 - Configure proper Kafka cluster
 - Set up monitoring and logging
 - Database backups
+
+#### CORS Configuration
+
+**⚠️ SECURITY WARNING**: Never use wildcard (`*`) for CORS in production!
+
+**Development:**
+```env
+CORS_ORIGINS=http://localhost:3001,http://localhost:3000
+```
+
+**Production:**
+```env
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+```
+
+The application will:
+- ✅ Default to `http://localhost:3001,http://localhost:3000` for development
+- ⚠️  Warn if wildcard is used in production mode
+- ✅ Validate CORS configuration on startup
 
 ### Docker Deployment
 

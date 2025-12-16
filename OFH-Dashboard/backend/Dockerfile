@@ -28,10 +28,12 @@ EXPOSE 5000
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
 
-# Health check
+# Health check - verify HTTP status code and exit with proper code
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/api/health')"
+    CMD python -c "import requests, sys; r = requests.get('http://localhost:5000/api/health', timeout=5); sys.exit(0 if r.status_code == 200 else 1)" || exit 1
 
 # Run the application
-CMD ["python", "app.py"]
+# Use Gunicorn for production, Flask dev server for development
+# Set USE_GUNICORN=true in environment to use Gunicorn
+CMD ["sh", "-c", "if [ \"$USE_GUNICORN\" = \"true\" ]; then gunicorn -c gunicorn_config.py 'app:app'; else python app.py; fi"]
 

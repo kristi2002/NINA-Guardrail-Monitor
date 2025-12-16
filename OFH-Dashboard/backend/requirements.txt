@@ -21,4 +21,6 @@ psutil==5.9.8
 Flask-Compress==1.14
 flasgger==0.9.7.1
 python-snappy==0.7.3
+gunicorn==21.2.0
+eventlet==0.33.3
 
