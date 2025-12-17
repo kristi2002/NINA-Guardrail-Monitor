@@ -114,8 +114,8 @@ services:
       context: .
       dockerfile: ./Guardrail-Strategy/Dockerfile
     container_name: nina-guardrail-strategy
-    env_file:
-      - .env  # Load environment variables from .env file (optional)
+    # env_file:
+    #   - .env  # Load environment variables from .env file (optional - uncomment if .env exists)
     environment:
       FLASK_APP: app.py
       FLASK_ENV: ${FLASK_ENV:-development}
@@ -172,8 +172,8 @@ services:
       context: .
       dockerfile: ./OFH-Dashboard/backend/Dockerfile
     container_name: nina-ofh-dashboard-backend
-    env_file:
-      - .env  # Load environment variables from .env file (optional)
+    # env_file:
+    #   - .env  # Load environment variables from .env file (optional - uncomment if .env exists)
     environment:
       # Database URL - uses environment variables with defaults
       DATABASE_URL: postgresql://${POSTGRES_USER:-nina_user}:${POSTGRES_PASSWORD:-nina_pass}@postgres:5432/${POSTGRES_DB:-nina_db}
