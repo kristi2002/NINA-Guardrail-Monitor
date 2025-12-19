@@ -22,6 +22,8 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   
   // Filter states
   const [filterSearch, setFilterSearch] = useState('') // Patient ID - first
+  const [filterPatientName, setFilterPatientName] = useState('') // Patient Name
+  const [filterPatientLastName, setFilterPatientLastName] = useState('') // Patient Last Name
   const [filterStatus, setFilterStatus] = useState('all') // Status - second
   const [filterSituation, setFilterSituation] = useState('all') // Situation - third
   const [filterDateFrom, setFilterDateFrom] = useState('') // Creation Date From
@@ -63,6 +65,16 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   }), [t])
 
   const getSituationConfig = (situation, level) => {
+    // First check risk_level (most authoritative) - it takes priority over situation text
+    const normalizedLevel = (level || 'low').toLowerCase()
+    if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
+      return situationConfigs.danger
+    }
+    if (normalizedLevel === 'medium') {
+      return situationConfigs.warning
+    }
+
+    // Then check situation text as fallback
     const normalizedSituation = (situation || '').toString().toLowerCase()
 
     if (normalizedSituation.includes('pericol') || normalizedSituation.includes('danger')) {
@@ -77,13 +89,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
       return situationConfigs.regular
     }
 
-    const normalizedLevel = (level || 'low').toLowerCase()
-    if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
-      return situationConfigs.danger
-    }
-    if (normalizedLevel === 'medium') {
-      return situationConfigs.warning
-    }
+    // Default to regular if nothing matches
     return situationConfigs.regular
   }
 
@@ -110,6 +116,36 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
         const searchTerm = filterSearch.toLowerCase()
         const patientId = (conversation.patientId || conversation.id || '').toString().toLowerCase()
         if (!patientId.includes(searchTerm)) {
+          return false
+        }
+      }
+      
+      // Patient name filter
+      if (filterPatientName && filterPatientName.trim() !== '') {
+        const nameSearchTerm = filterPatientName.toLowerCase().trim()
+        const patientName = (conversation.patientInfo?.name || '').toString().toLowerCase()
+        if (!patientName) {
+          return false
+        }
+        // Split the full name into parts and check if any part matches
+        const nameParts = patientName.split(/\s+/)
+        const matchesName = nameParts.some(part => part.includes(nameSearchTerm))
+        if (!matchesName) {
+          return false
+        }
+      }
+      
+      // Patient last name filter
+      if (filterPatientLastName && filterPatientLastName.trim() !== '') {
+        const lastNameSearchTerm = filterPatientLastName.toLowerCase().trim()
+        const patientName = (conversation.patientInfo?.name || '').toString().toLowerCase()
+        if (!patientName) {
+          return false
+        }
+        // Split the full name into parts and check if any part matches (typically last part is last name)
+        const nameParts = patientName.split(/\s+/)
+        const matchesLastName = nameParts.some(part => part.includes(lastNameSearchTerm))
+        if (!matchesLastName) {
           return false
         }
       }
@@ -329,6 +365,8 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   // Reset filters
   const resetFilters = () => {
     setFilterSearch('')
+    setFilterPatientName('')
+    setFilterPatientLastName('')
     setFilterStatus('all')
     setFilterSituation('all')
     setFilterDateFrom('')
@@ -354,7 +392,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [filterSearch, filterStatus, filterSituation, filterDateFrom, filterDateTo, filterUpdatedFrom, filterUpdatedTo])
+  }, [filterSearch, filterPatientName, filterPatientLastName, filterStatus, filterSituation, filterDateFrom, filterDateTo, filterUpdatedFrom, filterUpdatedTo])
   
   // Calculate pagination
   const totalPages = Math.ceil(sortedConversations.length / itemsPerPage)
@@ -387,6 +425,8 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
   // Count active filters
   const activeFiltersCount = 
     (filterSearch.trim() !== '' ? 1 : 0) +
+    (filterPatientName.trim() !== '' ? 1 : 0) +
+    (filterPatientLastName.trim() !== '' ? 1 : 0) +
     (filterStatus !== 'all' ? 1 : 0) +
     (filterSituation !== 'all' ? 1 : 0) +
     (filterDateFrom !== '' ? 1 : 0) +
@@ -715,7 +755,7 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
         
         <div className={`filters-content ${filtersOpen ? 'open' : ''}`}>
             <div className="filters-grid">
-              {/* Patient - First column */}
+              {/* Patient ID - First column */}
               <div className="filter-group">
                 <label className="filter-label">{t('conversationList.filters.searchLabel')}</label>
                 <input
@@ -724,6 +764,30 @@ function ConversationList({ conversations = [], onConversationsRefresh }) {
                   placeholder={t('conversationList.filters.searchPlaceholder')}
                   value={filterSearch}
                   onChange={(e) => setFilterSearch(e.target.value)}
+                />
+              </div>
+              
+              {/* Patient Name - New column */}
+              <div className="filter-group" key="patient-name-filter">
+                <label className="filter-label">{t('conversationList.filters.patientNameLabel')}</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder={t('conversationList.filters.patientNamePlaceholder')}
+                  value={filterPatientName}
+                  onChange={(e) => setFilterPatientName(e.target.value)}
+                />
+              </div>
+              
+              {/* Patient Last Name - New column */}
+              <div className="filter-group" key="patient-lastname-filter">
+                <label className="filter-label">{t('conversationList.filters.patientLastNameLabel')}</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder={t('conversationList.filters.patientLastNamePlaceholder')}
+                  value={filterPatientLastName}
+                  onChange={(e) => setFilterPatientLastName(e.target.value)}
                 />
               </div>
               

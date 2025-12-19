@@ -206,6 +206,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
+      # Mount scripts directory for easy development and running seed scripts
+      - ./OFH-Dashboard/backend/scripts:/app/scripts:ro
       - ./OFH-Dashboard/backend/logs:/app/logs
       - ./OFH-Dashboard/backend/instance:/app/instance
     ports:

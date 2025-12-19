@@ -71,9 +71,15 @@ class NotificationService {
             // Suppress common connection reset errors
             const isConnectionReset = error.message.includes('ECONNRESET') || 
                                      error.message.includes('ECONNREFUSED') ||
-                                     error.message.includes('connection closed')
+                                     error.message.includes('connection closed') ||
+                                     error.message.includes('timeout')
+            
+            // Only log if it's not a common connection issue
             if (!isConnectionReset) {
               console.warn('🔔 Socket.IO connection error:', error.message || error)
+            } else if (this.reconnectAttempts === 0) {
+              // Log first connection attempt failure for debugging
+              console.warn('🔔 Socket.IO: Backend may not be running. Attempting to connect to:', this.baseURL)
             }
           }
           // Don't reject on initial connect - let it retry in background
@@ -115,13 +121,22 @@ class NotificationService {
   handleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('🔔 Max reconnection attempts reached')
+      console.warn('🔔 WebSocket connection failed. Real-time notifications will not work.')
+      console.warn('🔔 Troubleshooting:')
+      console.warn('   1. Ensure backend is running on port 5000')
+      console.warn('   2. Check backend logs for Socket.IO initialization')
+      console.warn('   3. Verify CORS_ORIGINS includes:', window.location.origin)
+      console.warn('   4. Check browser console for network errors')
       return
     }
 
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
     
-    console.log(`🔔 Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`)
+    // Only log reconnection attempts in development
+    if (import.meta.env.DEV && this.reconnectAttempts <= 2) {
+      console.log(`🔔 Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    }
     
     setTimeout(() => {
       this.connect().catch(() => {

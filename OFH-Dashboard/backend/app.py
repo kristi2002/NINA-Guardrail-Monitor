@@ -75,10 +75,18 @@ db.init_app(app)
 Compress(app)
 
 # Initialize rate limiter
+# More lenient limits in development to avoid 429 errors during testing
+if FLASK_DEBUG:
+    # Development: Allow more requests for testing
+    default_limits = ["1000 per day", "200 per hour", "30 per minute"]
+else:
+    # Production: Stricter limits for security
+    default_limits = ["200 per day", "50 per hour"]
+
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=default_limits,
     storage_uri=os.getenv('REDIS_URL', 'memory://'),  # Use Redis in production
     strategy="fixed-window"
 )

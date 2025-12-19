@@ -321,34 +321,37 @@ function ConversationDetailModal({ conversation, isOpen, onClose, onConversation
   const currentStatus = displayConversation?.status?.toUpperCase() || 'UNKNOWN'
 
   const getSituationConfig = (situation, level) => {
-    const normalizedSituation = (situation || '').toLowerCase()
+    // First check risk_level (most authoritative) - it takes priority over situation text
+    const normalizedLevel = (level || 'low').toLowerCase()
     let key = 'regular'
-
-    if (
-      normalizedSituation.includes('gesti') ||
-      normalizedSituation.includes('danger') ||
-      normalizedSituation.includes('severe')
-    ) {
+    
+    if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
       key = 'danger'
-    } else if (
-      normalizedSituation.includes('autoles') ||
-      normalizedSituation.includes('self') ||
-      normalizedSituation.includes('warning') ||
-      normalizedSituation.includes('moderate')
-    ) {
+    } else if (normalizedLevel === 'medium') {
       key = 'warning'
-    } else if (
-      normalizedSituation.includes('regolar') ||
-      normalizedSituation.includes('regular') ||
-      normalizedSituation.includes('low')
-    ) {
-      key = 'regular'
     } else {
-      const normalizedLevel = (level || 'low').toLowerCase()
-      if (normalizedLevel === 'high' || normalizedLevel === 'critical') {
+      // Only check situation text if level is not HIGH/CRITICAL/MEDIUM
+      const normalizedSituation = (situation || '').toLowerCase()
+
+      if (
+        normalizedSituation.includes('gesti') ||
+        normalizedSituation.includes('danger') ||
+        normalizedSituation.includes('severe')
+      ) {
         key = 'danger'
-      } else if (normalizedLevel === 'medium') {
+      } else if (
+        normalizedSituation.includes('autoles') ||
+        normalizedSituation.includes('self') ||
+        normalizedSituation.includes('warning') ||
+        normalizedSituation.includes('moderate')
+      ) {
         key = 'warning'
+      } else if (
+        normalizedSituation.includes('regolar') ||
+        normalizedSituation.includes('regular') ||
+        normalizedSituation.includes('low')
+      ) {
+        key = 'regular'
       }
     }
 

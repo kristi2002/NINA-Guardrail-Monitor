@@ -920,6 +920,10 @@
       "toggle": "Filters",
       "searchLabel": "Search Patient (ID)",
       "searchPlaceholder": "Enter patient ID...",
+      "patientNameLabel": "Patient Name",
+      "patientNamePlaceholder": "Enter name...",
+      "patientLastNameLabel": "Patient Last Name",
+      "patientLastNamePlaceholder": "Enter last name...",
       "statusLabel": "Status",
       "status": {
         "placeholder": "All",

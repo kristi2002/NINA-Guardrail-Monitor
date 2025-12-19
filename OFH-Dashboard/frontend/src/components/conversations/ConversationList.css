@@ -387,7 +387,7 @@
 
 .filters-section:has(.filters-toggle[aria-expanded="true"]) .filters-content,
 .filters-content.open {
-  max-height: 800px;
+  max-height: 1000px;
   opacity: 1;
   padding: 1.25rem;
   margin-top: 0.75rem;
