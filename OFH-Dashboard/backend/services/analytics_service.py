@@ -1052,17 +1052,24 @@ class AnalyticsService(BaseService):
             import requests
             guardrail_service_url = os.getenv('GUARDRAIL_SERVICE_URL', 'http://localhost:5001')
             
+            # Count evasion attempts from database
+            evasion_count = self._count_evasion_attempts(time_range)
+            
             try:
                 self.guardrail_breaker.before_call()
             except CircuitBreakerOpenError as cb_error:
                 logger.warning(
                     "Guardrail Strategy circuit breaker open: %s", cb_error
                 )
+                # Return basic data with evasion count even if service is unavailable
                 return self.format_response(
                     success=True,
                     data={
                         'available': False,
-                        'message': 'Guardrail Strategy service temporarily disabled due to repeated failures'
+                        'message': 'Guardrail Strategy service temporarily disabled due to repeated failures',
+                        'overview': {
+                            'evasion_attempts': evasion_count
+                        }
                     },
                     message="Guardrail performance analytics temporarily unavailable"
                 )
@@ -1079,9 +1086,15 @@ class AnalyticsService(BaseService):
                     guardrail_data = response.json()
                     if guardrail_data.get('success'):
                         self.guardrail_breaker.record_success()
+                        # Add evasion count to the response
+                        data = guardrail_data.get('data', {})
+                        if 'overview' in data:
+                            data['overview']['evasion_attempts'] = evasion_count
+                        else:
+                            data['overview'] = {'evasion_attempts': evasion_count}
                         return self.format_response(
                             success=True,
-                            data=guardrail_data.get('data', {}),
+                            data=data,
                             message="Guardrail performance analytics retrieved successfully"
                         )
                     else:
@@ -1099,7 +1112,10 @@ class AnalyticsService(BaseService):
                         success=True,
                         data={
                             'available': False,
-                            'message': 'Adaptive learning not enabled in Guardrail Strategy service'
+                            'message': 'Adaptive learning not enabled in Guardrail Strategy service',
+                            'overview': {
+                                'evasion_attempts': evasion_count
+                            }
                         },
                         message="Guardrail performance analytics not available"
                     )
@@ -1119,7 +1135,10 @@ class AnalyticsService(BaseService):
                     success=True,
                     data={
                         'available': False,
-                        'message': 'Guardrail Strategy service not reachable'
+                        'message': 'Guardrail Strategy service not reachable',
+                        'overview': {
+                            'evasion_attempts': evasion_count
+                        }
                     },
                     message="Guardrail performance analytics not available"
                 )
@@ -1129,7 +1148,10 @@ class AnalyticsService(BaseService):
                 success=True,
                 data={
                     'available': False,
-                    'message': 'Guardrail Strategy service not available'
+                    'message': 'Guardrail Strategy service not available',
+                    'overview': {
+                        'evasion_attempts': evasion_count
+                    }
                 },
                 message="Guardrail performance analytics not available"
             )
@@ -1137,3 +1159,28 @@ class AnalyticsService(BaseService):
         except Exception as e:
             logger.error(f"Error getting guardrail performance analytics: {e}", exc_info=True)
             return self.handle_exception(e, 'get_guardrail_performance_analytics')
+    
+    def _count_evasion_attempts(self, time_range: str = '7d') -> int:
+        """Count evasion/jailbreak attempts from guardrail events in database"""
+        try:
+            hours = self._parse_time_range_to_hours(time_range)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+            
+            # Count events with evasion-related event types
+            evasion_types = ['persistent_evasion', 'jailbreak_attempt', 'security_bypass_attempt']
+            
+            # Use the session from get_session_context or self.get_session()
+            session = self.get_session()
+            if not session:
+                logger.warning("No database session available for counting evasion attempts")
+                return 0
+            
+            evasion_count = session.query(self.GuardrailEvent).filter(
+                self.GuardrailEvent.created_at >= cutoff_time,
+                self.GuardrailEvent.event_type.in_(evasion_types)
+            ).count()
+            
+            return evasion_count
+        except Exception as e:
+            logger.warning(f"Error counting evasion attempts: {e}")
+            return 0

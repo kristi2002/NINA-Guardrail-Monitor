@@ -83,6 +83,16 @@ const ConversationCard = memo(({
     return summary.substring(0, maxLength) + '...';
   }, [conversation?.summary, conversation?.situation]);
 
+  // Check if conversation has evasion/jailbreak attempts
+  const hasEvasionAttempt = useMemo(() => {
+    const events = conversation?.events || conversation?.recent_events || [];
+    const evasionTypes = ['persistent_evasion', 'jailbreak_attempt', 'security_bypass_attempt'];
+    return events.some(event => {
+      const eventType = event?.event_type || event?.type || '';
+      return evasionTypes.some(type => eventType.toLowerCase().includes(type.toLowerCase()));
+    });
+  }, [conversation?.events, conversation?.recent_events]);
+
   // Memoized event handlers
   const handleSelect = useCallback(() => {
     onSelect?.(conversation);
@@ -183,6 +193,15 @@ const ConversationCard = memo(({
           >
             {conversation?.situationLevel || conversation?.risk_level || 'Low'} Risk
           </span>
+          {hasEvasionAttempt && (
+            <span 
+              className="evasion-badge"
+              style={{ color: '#dc2626', backgroundColor: '#fee2e2', border: '1px solid #dc2626' }}
+              title="Security threat detected: Evasion/jailbreak attempt"
+            >
+              🛡️ Security Threat
+            </span>
+          )}
         </div>
 
         <div className="conversation-card-summary">

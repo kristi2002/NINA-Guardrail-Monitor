@@ -226,6 +226,18 @@
         "title": "ℹ️ False Alarm Reported",
         "message": "False alarm resolved for conversation {{conversationId}}. {{originalMessage}}"
       },
+      "persistent_evasion": {
+        "title": "🛡️ Persistent Evasion Attempt",
+        "message": "User repeatedly attempting to bypass guardrail restrictions in conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "jailbreak_attempt": {
+        "title": "🔓 Jailbreak Attempt Detected",
+        "message": "Security threat detected: Attempt to bypass system restrictions in conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "security_bypass_attempt": {
+        "title": "🚫 Security Bypass Attempt",
+        "message": "Attempt to circumvent security measures detected in conversation {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
       "operator_intervention": {
         "title": "👤 Operator Intervention",
         "message": "Manual operator intervention recorded for conversation {{conversationId}}. {{originalMessage}}"

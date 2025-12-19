@@ -32,7 +32,10 @@ export function mapEventTypeToDisplay(eventType, severity) {
     'emergency_protocol',
     'operator_intervention',
     'system_alert',
-    'validation_failed'
+    'validation_failed',
+    'persistent_evasion',
+    'jailbreak_attempt',
+    'security_bypass_attempt'
   ]
   
   // Convert severity to display type if event_type not recognized
@@ -87,7 +90,10 @@ export function getEventTypeLabel(eventType) {
     'operator_intervention': 'Intervento Operatore',
     'system_alert': 'Allarme Sistema',
     'validation_failed': 'Validazione Fallita',
-    'false_alarm_reported': 'Falso Allarme Segnalato'
+    'false_alarm_reported': 'Falso Allarme Segnalato',
+    'persistent_evasion': 'Tentativo di Evasione Persistente',
+    'jailbreak_attempt': 'Tentativo di Jailbreak',
+    'security_bypass_attempt': 'Tentativo di Bypass Sicurezza'
   }
   
   return labels[eventType] || eventType
@@ -113,7 +119,10 @@ export function getEventTypeIcon(eventType) {
     'operator_intervention': '👤',
     'system_alert': '⚠️',
     'validation_failed': '❌',
-    'false_alarm_reported': '✓'
+    'false_alarm_reported': '✓',
+    'persistent_evasion': '🛡️',
+    'jailbreak_attempt': '🔓',
+    'security_bypass_attempt': '🚫'
   }
   
   return icons[eventType] || 'ℹ️'
@@ -139,7 +148,10 @@ export function getEventTypeColor(eventType) {
     'operator_intervention': { color: '#1976d2', bgColor: '#e3f2fd' },
     'system_alert': { color: '#f57c00', bgColor: '#fff3e0' },
     'validation_failed': { color: '#d32f2f', bgColor: '#ffebee' },
-    'false_alarm_reported': { color: '#4caf50', bgColor: '#e8f5e9' }
+    'false_alarm_reported': { color: '#4caf50', bgColor: '#e8f5e9' },
+    'persistent_evasion': { color: '#d32f2f', bgColor: '#ffebee' },
+    'jailbreak_attempt': { color: '#d32f2f', bgColor: '#ffebee' },
+    'security_bypass_attempt': { color: '#d32f2f', bgColor: '#ffebee' }
   }
   
   return colors[eventType] || { color: '#1976d2', bgColor: '#e3f2fd' }

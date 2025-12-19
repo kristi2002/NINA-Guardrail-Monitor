@@ -37,6 +37,12 @@ export default function GuardrailPerformanceTab({ data, loading, renderMetricCar
     const rulePerformance = guardrailData.rule_performance || {}
     const problematicRules = guardrailData.problematic_rules || []
     const thresholdAdjustments = guardrailData.threshold_adjustments || {}
+    
+    // Calculate evasion attempts if not provided by backend
+    // This can be calculated from conversations data if available
+    if (overview.evasion_attempts === undefined) {
+      overview.evasion_attempts = 0  // Will be calculated from conversations if needed
+    }
 
     // Prepare data for charts (memoized)
     const ruleAccuracyData = Object.values(rulePerformance).map(rule => ({
@@ -109,6 +115,12 @@ export default function GuardrailPerformanceTab({ data, loading, renderMetricCar
         value: overview.true_positives || 0,
         description: 'Confirmed valid detections',
         icon: '✓'
+      },
+      {
+        title: 'Evasion Attempts',
+        value: overview.evasion_attempts || 0,
+        description: 'Jailbreak/bypass attempts detected',
+        icon: '🛡️'
       }
     ]
   }, [processedData])

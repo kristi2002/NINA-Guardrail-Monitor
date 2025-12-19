@@ -226,6 +226,18 @@
         "title": "ℹ️ Falso allarme segnalato",
         "message": "Falso allarme risolto per la conversazione {{conversationId}}. {{originalMessage}}"
       },
+      "persistent_evasion": {
+        "title": "🛡️ Tentativo di Evasione Persistente",
+        "message": "L'utente sta tentando ripetutamente di bypassare le restrizioni del guardrail nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "jailbreak_attempt": {
+        "title": "🔓 Tentativo di Jailbreak Rilevato",
+        "message": "Minaccia di sicurezza rilevata: Tentativo di bypassare le restrizioni del sistema nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
+      "security_bypass_attempt": {
+        "title": "🚫 Tentativo di Bypass Sicurezza",
+        "message": "Tentativo di aggirare le misure di sicurezza rilevato nella conversazione {{conversationId}}. {{ruleSummary}}{{violationSummary}}{{originalMessage}}"
+      },
       "operator_intervention": {
         "title": "👤 Intervento operatore",
         "message": "Intervento manuale registrato per la conversazione {{conversationId}}. {{originalMessage}}"
