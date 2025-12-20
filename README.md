@@ -53,12 +53,6 @@ The system consists of three main components working together:
    - Message queue for async communication
    - Topics: `guardrail_events`, `operator_actions`, `guardrail_control`, `dead_letter_queue`, *(optional)* `conversation_transcripts`
 
-## 📚 Documentation
-
-- **[DOCKER_SETUP.md](DOCKER_SETUP.md)** - Complete Docker setup guide
-- **[docs/HTTPS_TLS_SETUP.md](docs/HTTPS_TLS_SETUP.md)** - HTTPS/TLS configuration for production
-- **[PROJECT_IMPROVEMENTS.md](PROJECT_IMPROVEMENTS.md)** - List of improvements and recommendations
-
 ## 🚀 Quick Start
 
 ### Option 1: Docker Setup (Recommended) 🐳

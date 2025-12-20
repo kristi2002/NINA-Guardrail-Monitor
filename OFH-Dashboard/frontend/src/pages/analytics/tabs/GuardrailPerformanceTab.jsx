@@ -33,7 +33,8 @@ export default function GuardrailPerformanceTab({ data, loading, renderMetricCar
   const processedData = useMemo(() => {
     if (!guardrailData) return null
 
-    const overview = guardrailData.overview || {}
+    // Create shallow copy to avoid mutating the original object
+    const overview = { ...(guardrailData.overview || {}) }
     const rulePerformance = guardrailData.rule_performance || {}
     const problematicRules = guardrailData.problematic_rules || []
     const thresholdAdjustments = guardrailData.threshold_adjustments || {}
@@ -41,7 +42,7 @@ export default function GuardrailPerformanceTab({ data, loading, renderMetricCar
     // Calculate evasion attempts if not provided by backend
     // This can be calculated from conversations data if available
     if (overview.evasion_attempts === undefined) {
-      overview.evasion_attempts = 0  // Will be calculated from conversations if needed
+      overview.evasion_attempts = 0  // Safe to mutate since it's a copy
     }
 
     // Prepare data for charts (memoized)
@@ -250,17 +251,17 @@ export default function GuardrailPerformanceTab({ data, loading, renderMetricCar
         <div className="chart-container">
           <h3>Feedback Distribution</h3>
           {chartsLoaded && overview.total_feedback > 0 ? (
-            <ResponsiveContainer minWidth={420} width="100%" height={360}>
+            <ResponsiveContainer minWidth={300} width="100%" height={250}>
               <LazyPieChart>
                 <Pie
                   data={[
                     { name: 'False Alarms', value: overview.false_alarms || 0 },
                     { name: 'True Positives', value: overview.true_positives || 0 }
                   ]}
-                  cx="45%"
+                  cx="50%"
                   cy="50%"
-                  innerRadius={55}
-                  outerRadius={110}
+                  innerRadius={40}
+                  outerRadius={80}
                   dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`}
                   labelLine={false}
