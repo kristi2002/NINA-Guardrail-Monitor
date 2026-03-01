@@ -1,4 +1,4 @@
-# NINA Guardrail Monitor
+# Guardrail Monitor
 
 A comprehensive real-time monitoring and validation system for AI chatbot conversations, specifically designed for healthcare applications. The system validates AI responses, detects violations (PII, toxicity, compliance issues), and provides a dashboard for admins to monitor and respond to guardrail events.
 
@@ -8,7 +8,7 @@ The system consists of three main components working together:
 
 ```
 ┌─────────────────┐         ┌──────────────────────┐         ┌──────────────────┐
-│   AI Agent     │────────▶│  Guardrail-Strategy │────────▶ │   OFH Dashboard  │
+│   AI Agent     │────────▶│  Guardrail-Strategy │────────▶ │ Guardrail Dashboard │
 │  (External)    │  HTTP   │    (Port 5001)       │  Kafka   │   (Port 5000)    │
 │                │  POST    │                      │         │                  │
 │                │          │  • Validates messages│         │  • Monitors      │
@@ -38,7 +38,7 @@ The system consists of three main components working together:
    - Enforces compliance rules
    - Publishes violations to Kafka
 
-2. **OFH Dashboard** (Ports 3000/5000)
+2. **Guardrail Dashboard** (Ports 3000/5000)
    - **Frontend** (React + Vite) - Port 3000
      - Real-time conversation monitoring
      - Analytics and reporting
@@ -63,13 +63,15 @@ The easiest way to get started is using Docker Compose, which sets up all servic
 
 - **Docker Desktop** (Windows/Mac) or **Docker Engine + Docker Compose** (Linux)
 
+> **Note:** If your dashboard folder has a different name, use that path in the commands below instead of `Guardrail-Monitor-Dashboard`.
+
 #### Setup Steps
 
 1. **Clone the Repository**
 
 ```bash
 git clone <repository-url>
-cd "NINA Guardrail-Monitor"
+cd "Guardrail-Monitor"
 ```
 
 2. **Initialize and Start All Services**
@@ -96,8 +98,8 @@ docker compose up -d
 Once all services are running:
 
 - **Guardrail-Strategy API**: http://localhost:5001
-- **OFH Dashboard API**: http://localhost:5000
-- **OFH Dashboard UI**: http://localhost:3001
+- **Guardrail Dashboard API**: http://localhost:5000
+- **Guardrail Dashboard UI**: http://localhost:3001
 - **Kafka**: localhost:9092
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
@@ -132,7 +134,7 @@ If you prefer to run services manually for development:
 
 ```bash
 git clone <repository-url>
-cd "NINA Guardrail-Monitor"
+cd "Guardrail-Monitor"
 ```
 
 #### 2. Start Kafka
@@ -171,12 +173,12 @@ python app.py
 
 The service will start on **http://localhost:5001**
 
-#### 4. Setup OFH Dashboard
+#### 4. Setup Guardrail Dashboard
 
 **Backend Setup:**
 
 ```powershell
-cd OFH-Dashboard\backend
+cd Guardrail-Monitor-Dashboard\backend
 
 # Create virtual environment
 python -m venv venv
@@ -201,7 +203,7 @@ The backend will start on **http://localhost:5000**
 **Frontend Setup:**
 
 ```powershell
-cd OFH-Dashboard\frontend
+cd Guardrail-Monitor-Dashboard\frontend
 
 # Install dependencies
 npm install
@@ -252,12 +254,12 @@ PORT=5001
 LOG_LEVEL=INFO
 ```
 
-#### OFH Dashboard Backend (`OFH-Dashboard/backend/.env`)
+#### Guardrail Dashboard Backend (`Guardrail-Monitor-Dashboard/backend/.env`)
 
 **For Docker:**
 ```bash
 # Database (use Docker service name)
-DATABASE_URL=postgresql://nina_user:nina_pass@postgres:5432/nina_db
+DATABASE_URL=postgresql://postgres_user:postgres_pass@postgres:5432/postgres_db
 
 # Kafka (use Docker service name)
 KAFKA_BOOTSTRAP_SERVERS=kafka:9093
@@ -269,8 +271,8 @@ REDIS_URL=redis://redis:6379/0
 **For Manual Setup:**
 ```bash
 # Database
-DATABASE_URL=sqlite:///nina_dashboard.db
-# Or PostgreSQL: postgresql://user:password@localhost:5432/nina_dashboard
+DATABASE_URL=sqlite:///guardrail_dashboard.db
+# Or PostgreSQL: postgresql://user:password@localhost:5432/guardrail_dashboard
 
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
@@ -281,7 +283,7 @@ REDIS_URL=redis://localhost:6379/0
 
 **Common Settings:**
 ```bash
-KAFKA_GROUP_ID=ofh-dashboard-consumer
+KAFKA_GROUP_ID=guardrail-monitor-consumer
 KAFKA_TOPIC_GUARDRAIL=guardrail_events
 KAFKA_TOPIC_OPERATOR=operator_actions
 KAFKA_TOPIC_CONTROL=guardrail_control
@@ -298,7 +300,7 @@ JWT_SECRET_KEY=your-jwt-secret-here
 JWT_EXPIRATION_HOURS=24
 ```
 
-#### OFH Dashboard Frontend (`OFH-Dashboard/frontend/.env`)
+#### Guardrail Dashboard Frontend (`Guardrail-Monitor-Dashboard/frontend/.env`)
 
 ```bash
 VITE_API_URL=http://localhost:5000
@@ -324,7 +326,7 @@ VITE_WS_URL=ws://localhost:5000
    - ❌ Validation fails
    - 📨 Publishes event to Kafka topic `guardrail_events`
 
-3. **OFH Dashboard** consumes from Kafka:
+3. **Guardrail Dashboard** consumes from Kafka:
    - Receives guardrail event
    - Saves to database
    - Updates frontend via WebSocket
@@ -350,7 +352,7 @@ VITE_WS_URL=ws://localhost:5000
 Run the comprehensive test script that simulates the complete flow:
 
 ```powershell
-cd OFH-Dashboard\backend\scripts
+cd Guardrail-Monitor-Dashboard\backend\scripts
 python test_full_flow.py
 ```
 
@@ -390,7 +392,7 @@ Invoke-RestMethod -Uri "http://localhost:5001/validate" `
 #### Test Bad Messages
 
 ```powershell
-cd OFH-Dashboard\backend\scripts
+cd Guardrail-Monitor-Dashboard\backend\scripts
 .\test_bad_kafka_messages.ps1
 ```
 
@@ -402,7 +404,7 @@ To exercise the alerting integration end to end:
 
 ```powershell
 # Terminal 1 – start the alerting stub (consumes guardrail events and writes to Postgres)
-cd OFH-Dashboard\backend\scripts
+cd Guardrail-Monitor-Dashboard\backend\scripts
 python run_alerting_stub.py
 
 # Terminal 2 – run the integration smoke test (publishes events + operator feedback)
@@ -461,7 +463,7 @@ Validates a message against guardrails.
 
 Health check endpoint.
 
-### OFH Dashboard API
+### Guardrail Dashboard API
 
 **Base URL:** `http://localhost:5000`
 
@@ -490,7 +492,7 @@ Authorization: Bearer <token>
 - `GET /api/analytics/overview` - Dashboard analytics
 - `GET /api/analytics/notifications` - Notification analytics
 
-See `OFH-Dashboard/API_DOCUMENTATION.md` for complete API documentation.
+See `Guardrail-Monitor-Dashboard/API_DOCUMENTATION.md` for complete API documentation.
 
 ## 🗄️ Database Schema
 
@@ -502,7 +504,7 @@ See `OFH-Dashboard/API_DOCUMENTATION.md` for complete API documentation.
 - **users** - System users (admin role)
 - **chat_messages** - Conversation messages
 
-See `OFH-Dashboard/backend/models/` for complete schema definitions.
+See `Guardrail-Monitor-Dashboard/backend/models/` for complete schema definitions.
 
 ## 🔐 Security
 
@@ -524,7 +526,7 @@ See `OFH-Dashboard/backend/models/` for complete schema definitions.
 - Input validation and sanitization
 - Audit logging
 
-See `OFH-Dashboard/SECURITY_HARDENING.md` for detailed security information.
+See `Guardrail-Monitor-Dashboard/SECURITY_HARDENING.md` for detailed security information.
 
 ## 📊 Monitoring & Analytics
 
@@ -576,7 +578,7 @@ If the Kafka consumer isn't connecting:
 
 3. **Check logs**:
    - Guardrail-Strategy: Look for Kafka producer errors
-   - OFH Dashboard backend: Look for consumer connection errors
+   - Guardrail Dashboard backend: Look for consumer connection errors
 
 4. **Common issues**:
    - Kafka not started → Start Zookeeper first, then Kafka
@@ -589,7 +591,7 @@ If you see `NotNullViolation` errors:
 
 1. Run migrations:
    ```powershell
-   cd OFH-Dashboard\backend\migrations
+   cd Guardrail-Monitor-Dashboard\backend\migrations
    python 20251104_add_category_column.py
    # Run other migrations as needed
    ```
@@ -616,7 +618,7 @@ This was a status mapping issue (now fixed). If you still see it:
 ## 📁 Project Structure
 
 ```
-NINA Guardrail-Monitor/
+Guardrail-Monitor/
 ├── Guardrail-Strategy/          # Message validation service
 │   ├── app.py                   # Flask application
 │   ├── validators.py            # Guardrail validators
@@ -624,7 +626,7 @@ NINA Guardrail-Monitor/
 │   ├── requirements.txt
 │   └── scripts/                 # Test scripts
 │
-├── OFH-Dashboard/
+├── Guardrail-Monitor-Dashboard/
 │   ├── backend/                 # Flask backend (Domain-Driven Architecture)
 │   │   ├── app.py              # Main application
 │   │   ├── api/                # REST API routes
@@ -666,7 +668,7 @@ NINA Guardrail-Monitor/
 
 ### Production Checklist
 
-See `OFH-Dashboard/PRODUCTION_CHECKLIST.md` for complete deployment guide.
+See `Guardrail-Monitor-Dashboard/PRODUCTION_CHECKLIST.md` for complete deployment guide.
 
 Key considerations:
 

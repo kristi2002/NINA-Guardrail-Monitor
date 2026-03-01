@@ -1,6 +1,6 @@
 # Backend Tests
 
-This directory contains tests for the OFH Dashboard Backend.
+This directory contains tests for the Guardrail Monitor Dashboard Backend.
 
 ## Running Tests
 

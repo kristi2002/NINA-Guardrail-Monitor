@@ -1,10 +1,10 @@
-# OFH Dashboard
+# Guardrail Monitor Dashboard
 
-A comprehensive real-time monitoring and analytics platform for the NINA Guardrail system. This dashboard provides advanced insights into conversation monitoring, security events, and system performance with enterprise-grade features.
+A comprehensive real-time monitoring and analytics platform for the guardrail system. This dashboard provides advanced insights into conversation monitoring, security events, and system performance with enterprise-grade features.
 
 ## 🎯 Project Overview
 
-The OFH Dashboard is a full-stack monitoring solution that provides real-time insights into guardrail performance, security metrics, and system analytics. It features a modern React frontend with comprehensive analytics, security monitoring, and real-time data visualization capabilities.
+The Guardrail Monitor Dashboard is a full-stack monitoring solution that provides real-time insights into guardrail performance, security metrics, and system analytics. It features a modern React frontend with comprehensive analytics, security monitoring, and real-time data visualization capabilities.
 
 ### Technology Stack
 
@@ -35,7 +35,7 @@ The OFH Dashboard is a full-stack monitoring solution that provides real-time in
 ## 📁 Project Structure
 
 ```
-OFH-Dashboard/
+Guardrail-Monitor-Dashboard/
 ├── frontend/                    # React application
 │   ├── src/
 │   │   ├── components/         # Domain-organized components
@@ -267,14 +267,14 @@ nano .env  # or use your preferred editor
 
 **Development Configuration** (SQLite):
 ```env
-DATABASE_URL=sqlite:///nina_dashboard.db
+DATABASE_URL=sqlite:///guardrail_dashboard.db
 SECRET_KEY=dev-secret-key-change-in-production-2024
 APP_DEBUG=True
 ```
 
 **Production Configuration** (PostgreSQL):
 ```env
-DATABASE_URL=postgresql://nina_user:nina_pass@localhost:5432/nina_db
+DATABASE_URL=postgresql://postgres_user:postgres_pass@localhost:5432/postgres_db
 SECRET_KEY=your-super-secure-secret-key-minimum-32-characters-long
 JWT_SECRET_KEY=your-super-secure-jwt-secret-key-minimum-32-characters-long
 APP_DEBUG=False
@@ -328,7 +328,7 @@ ADMIN_PASSWORD=your_secure_admin_password
 
 ### ✅ **Advanced Features (Implemented)**
 
-- **Kafka Integration**: Real-time data streaming from NINA system ✅
+- **Kafka Integration**: Real-time data streaming from guardrail system ✅
 - **Dead Letter Queue (DLQ)**: Failed message handling and recovery ✅
 - **Auto-Escalation**: Automatic alert escalation based on rules ✅
 - **Multi-Channel Notifications**: SMS, Email, Slack, Teams integration ✅
