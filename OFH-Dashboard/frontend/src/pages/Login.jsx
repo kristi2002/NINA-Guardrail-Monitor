@@ -144,7 +144,7 @@ function Login() {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <img src="/favicon.svg" alt="NINA Logo" className="logo-icon" />
+            <img src="/favicon.svg" alt="Logo" className="logo-icon" />
             <h1>{t('app.title')}</h1>
             <p className="login-subtitle">{t('login.subtitle')}</p>
           </div>

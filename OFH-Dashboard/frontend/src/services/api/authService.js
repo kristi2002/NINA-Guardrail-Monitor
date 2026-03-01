@@ -2,8 +2,8 @@ import axios from 'axios';
 
 class AuthService {
   constructor() {
-    this.token = localStorage.getItem('nina_token');
-    this.user = JSON.parse(localStorage.getItem('nina_user') || 'null');
+    this.token = localStorage.getItem('auth_token');
+    this.user = JSON.parse(localStorage.getItem('auth_user') || 'null');
     this.setupAxiosInterceptors();
   }
 
@@ -11,7 +11,7 @@ class AuthService {
     // Request interceptor to add token to headers
     axios.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('nina_token');
+        const token = localStorage.getItem('auth_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -33,7 +33,7 @@ class AuthService {
           
           if (!isLoginPage && !isLogoutRequest) {
             // Only clear auth data and redirect if we're not already logging out
-            const token = localStorage.getItem('nina_token');
+            const token = localStorage.getItem('auth_token');
             if (token) {
               this.logout();
               // Use setTimeout to avoid WSGI write() errors during redirect
@@ -62,8 +62,8 @@ class AuthService {
 
       if (response.data.token) {
         // Store token and user data
-        localStorage.setItem('nina_token', response.data.token);
-        localStorage.setItem('nina_user', JSON.stringify(response.data.user));
+        localStorage.setItem('auth_token', response.data.token);
+        localStorage.setItem('auth_user', JSON.stringify(response.data.user));
         
         this.token = response.data.token;
         this.user = response.data.user;
@@ -110,7 +110,7 @@ class AuthService {
       
       if (response.data.valid) {
         this.user = response.data.user;
-        localStorage.setItem('nina_user', JSON.stringify(response.data.user));
+        localStorage.setItem('auth_user', JSON.stringify(response.data.user));
         return true;
       } else {
         this.logout();
@@ -127,8 +127,8 @@ class AuthService {
     console.log('🔐 Logging out...');
     
     // Clear stored data
-    localStorage.removeItem('nina_token');
-    localStorage.removeItem('nina_user');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
     
     this.token = null;
     this.user = null;

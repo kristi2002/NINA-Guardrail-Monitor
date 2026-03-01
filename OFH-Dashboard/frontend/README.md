@@ -1,6 +1,6 @@
-# OFH Dashboard Frontend
+# Guardrail Monitor Frontend
 
-React-based frontend for the NINA Chatbot Monitoring Dashboard.
+React-based frontend for the Guardrail Monitoring Dashboard.
 
 ## Quick Start
 

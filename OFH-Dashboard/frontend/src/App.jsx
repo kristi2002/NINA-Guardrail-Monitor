@@ -41,7 +41,7 @@ function Navbar() {
       <div className="navbar-content">
         <div className="navbar-brand">
           <div className="brand-icon">
-            <img src="/favicon.svg" alt="NINA Logo" className="logo-icon" />
+            <img src="/favicon.svg" alt="Logo" className="logo-icon" />
           </div>
           <div className="brand-text">
             <h1>{t('app.title')}</h1>

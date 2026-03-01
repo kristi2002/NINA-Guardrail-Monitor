@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "NINA Guardrail Monitor",
+    "title": "Guardrail Monitor",
     "subtitle": "Real-Time Safety Monitoring Dashboard",
-    "loading": "Initializing NINA Security Dashboard...",
+    "loading": "Initializing Security Dashboard...",
     "loadingDashboard": "Loading Dashboard...",
     "loadingAnalytics": "Loading Analytics...",
     "loadingSecurity": "Loading Security..."
