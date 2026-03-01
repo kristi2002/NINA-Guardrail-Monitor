@@ -156,12 +156,12 @@ jobs:
       
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          exit-code: '0'  # Don't fail CI; results still uploaded to Security tab
       
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v2
