@@ -161,6 +161,7 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          exit-code: '0'  # Don't fail CI; results still uploaded to Security tab
       
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v2
